@@ -9,8 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResourcePlanningRouteImport } from './routes/resource-planning'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ResourcePlanningRoute = ResourcePlanningRouteImport.update({
+  id: '/resource-planning',
+  path: '/resource-planning',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +25,39 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/resource-planning': typeof ResourcePlanningRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/resource-planning': typeof ResourcePlanningRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/resource-planning': typeof ResourcePlanningRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/resource-planning'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/resource-planning'
+  id: '__root__' | '/' | '/resource-planning'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ResourcePlanningRoute: typeof ResourcePlanningRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resource-planning': {
+      id: '/resource-planning'
+      path: '/resource-planning'
+      fullPath: '/resource-planning'
+      preLoaderRoute: typeof ResourcePlanningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ResourcePlanningRoute: ResourcePlanningRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
