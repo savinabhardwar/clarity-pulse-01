@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TeamHealthRouteImport } from './routes/team-health'
 import { Route as ResourcePlanningRouteImport } from './routes/resource-planning'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PeopleRouteImport } from './routes/people'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TeamHealthRoute = TeamHealthRouteImport.update({
+  id: '/team-health',
+  path: '/team-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResourcePlanningRoute = ResourcePlanningRouteImport.update({
   id: '/resource-planning',
   path: '/resource-planning',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
+  '/team-health': typeof TeamHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
+  '/team-health': typeof TeamHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,25 @@ export interface FileRoutesById {
   '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
+  '/team-health': typeof TeamHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/people' | '/projects' | '/resource-planning'
+  fullPaths:
+    | '/'
+    | '/people'
+    | '/projects'
+    | '/resource-planning'
+    | '/team-health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/people' | '/projects' | '/resource-planning'
-  id: '__root__' | '/' | '/people' | '/projects' | '/resource-planning'
+  to: '/' | '/people' | '/projects' | '/resource-planning' | '/team-health'
+  id:
+    | '__root__'
+    | '/'
+    | '/people'
+    | '/projects'
+    | '/resource-planning'
+    | '/team-health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +87,18 @@ export interface RootRouteChildren {
   PeopleRoute: typeof PeopleRoute
   ProjectsRoute: typeof ProjectsRoute
   ResourcePlanningRoute: typeof ResourcePlanningRoute
+  TeamHealthRoute: typeof TeamHealthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/team-health': {
+      id: '/team-health'
+      path: '/team-health'
+      fullPath: '/team-health'
+      preLoaderRoute: typeof TeamHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/resource-planning': {
       id: '/resource-planning'
       path: '/resource-planning'
@@ -107,6 +135,7 @@ const rootRouteChildren: RootRouteChildren = {
   PeopleRoute: PeopleRoute,
   ProjectsRoute: ProjectsRoute,
   ResourcePlanningRoute: ResourcePlanningRoute,
+  TeamHealthRoute: TeamHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
