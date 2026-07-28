@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResourcePlanningRouteImport } from './routes/resource-planning'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as PeopleRouteImport } from './routes/people'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ResourcePlanningRoute = ResourcePlanningRouteImport.update({
@@ -23,6 +24,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects' | '/resource-planning'
+  fullPaths: '/' | '/people' | '/projects' | '/resource-planning'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects' | '/resource-planning'
-  id: '__root__' | '/' | '/projects' | '/resource-planning'
+  to: '/' | '/people' | '/projects' | '/resource-planning'
+  id: '__root__' | '/' | '/people' | '/projects' | '/resource-planning'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PeopleRoute: typeof PeopleRoute
   ProjectsRoute: typeof ProjectsRoute
   ResourcePlanningRoute: typeof ResourcePlanningRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PeopleRoute: PeopleRoute,
   ProjectsRoute: ProjectsRoute,
   ResourcePlanningRoute: ResourcePlanningRoute,
 }

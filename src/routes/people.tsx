@@ -56,7 +56,7 @@ function PeoplePage() {
           <Search className="size-4 text-muted-foreground" />
           <input
             value={q}
-            onChange={(e) => navigate({ search: (prev) => ({ ...prev, q: e.target.value }) })}
+            onChange={(e) => navigate({ search: (prev: { q: string; person: string }) => ({ ...prev, q: e.target.value }) })}
             placeholder="Search by name, role, team or project"
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -69,7 +69,7 @@ function PeoplePage() {
             key={p.id}
             personId={p.id}
             open={person === p.id}
-            onToggle={() => navigate({ search: (prev) => ({ ...prev, person: person === p.id ? "" : p.id }) })}
+            onToggle={() => navigate({ search: (prev: { q: string; person: string }) => ({ ...prev, person: person === p.id ? "" : p.id }) })}
           />
         ))}
         {filtered.length === 0 && <p className="card-soft p-8 text-center text-sm text-muted-foreground">No people match that search.</p>}
