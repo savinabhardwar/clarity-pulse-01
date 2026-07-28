@@ -9,8 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TeamHealthRouteImport } from './routes/team-health'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ResourcePlanningRouteImport } from './routes/resource-planning'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as PeopleRouteImport } from './routes/people'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TeamHealthRoute = TeamHealthRouteImport.update({
+  id: '/team-health',
+  path: '/team-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResourcePlanningRoute = ResourcePlanningRouteImport.update({
+  id: '/resource-planning',
+  path: '/resource-planning',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +49,102 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/people': typeof PeopleRoute
+  '/projects': typeof ProjectsRoute
+  '/resource-planning': typeof ResourcePlanningRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/team-health': typeof TeamHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/people': typeof PeopleRoute
+  '/projects': typeof ProjectsRoute
+  '/resource-planning': typeof ResourcePlanningRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/team-health': typeof TeamHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/people': typeof PeopleRoute
+  '/projects': typeof ProjectsRoute
+  '/resource-planning': typeof ResourcePlanningRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/team-health': typeof TeamHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/people'
+    | '/projects'
+    | '/resource-planning'
+    | '/sitemap.xml'
+    | '/team-health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/people'
+    | '/projects'
+    | '/resource-planning'
+    | '/sitemap.xml'
+    | '/team-health'
+  id:
+    | '__root__'
+    | '/'
+    | '/people'
+    | '/projects'
+    | '/resource-planning'
+    | '/sitemap.xml'
+    | '/team-health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PeopleRoute: typeof PeopleRoute
+  ProjectsRoute: typeof ProjectsRoute
+  ResourcePlanningRoute: typeof ResourcePlanningRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TeamHealthRoute: typeof TeamHealthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/team-health': {
+      id: '/team-health'
+      path: '/team-health'
+      fullPath: '/team-health'
+      preLoaderRoute: typeof TeamHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resource-planning': {
+      id: '/resource-planning'
+      path: '/resource-planning'
+      fullPath: '/resource-planning'
+      preLoaderRoute: typeof ResourcePlanningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +157,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PeopleRoute: PeopleRoute,
+  ProjectsRoute: ProjectsRoute,
+  ResourcePlanningRoute: ResourcePlanningRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TeamHealthRoute: TeamHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
