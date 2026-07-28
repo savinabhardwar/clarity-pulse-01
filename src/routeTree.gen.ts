@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TeamHealthRouteImport } from './routes/team-health'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResourcePlanningRouteImport } from './routes/resource-planning'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PeopleRouteImport } from './routes/people'
@@ -18,6 +19,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TeamHealthRoute = TeamHealthRouteImport.update({
   id: '/team-health',
   path: '/team-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResourcePlanningRoute = ResourcePlanningRouteImport.update({
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/team-health': typeof TeamHealthRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/team-health': typeof TeamHealthRoute
 }
 export interface FileRoutesById {
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/people': typeof PeopleRoute
   '/projects': typeof ProjectsRoute
   '/resource-planning': typeof ResourcePlanningRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/team-health': typeof TeamHealthRoute
 }
 export interface FileRouteTypes {
@@ -70,15 +79,23 @@ export interface FileRouteTypes {
     | '/people'
     | '/projects'
     | '/resource-planning'
+    | '/sitemap.xml'
     | '/team-health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/people' | '/projects' | '/resource-planning' | '/team-health'
+  to:
+    | '/'
+    | '/people'
+    | '/projects'
+    | '/resource-planning'
+    | '/sitemap.xml'
+    | '/team-health'
   id:
     | '__root__'
     | '/'
     | '/people'
     | '/projects'
     | '/resource-planning'
+    | '/sitemap.xml'
     | '/team-health'
   fileRoutesById: FileRoutesById
 }
@@ -87,6 +104,7 @@ export interface RootRouteChildren {
   PeopleRoute: typeof PeopleRoute
   ProjectsRoute: typeof ProjectsRoute
   ResourcePlanningRoute: typeof ResourcePlanningRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TeamHealthRoute: typeof TeamHealthRoute
 }
 
@@ -97,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/team-health'
       fullPath: '/team-health'
       preLoaderRoute: typeof TeamHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/resource-planning': {
@@ -135,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   PeopleRoute: PeopleRoute,
   ProjectsRoute: ProjectsRoute,
   ResourcePlanningRoute: ResourcePlanningRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TeamHealthRoute: TeamHealthRoute,
 }
 export const routeTree = rootRouteImport
