@@ -1,0 +1,39 @@
+name: Jira sync
+
+on:
+  schedule:
+    # Hourly. GitHub's scheduler is best-effort and can slip a few
+    # minutes under load -- that's fine for an hourly dashboard refresh.
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      sync_type:
+        description: "full (re-derive everything + reseed history) or incremental (default)"
+        required: false
+        default: "incremental"
+        type: choice
+        options: [incremental, full]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install sync script dependencies
+        run: npm install --omit=dev pg
+
+      - name: Run Jira -> Supabase sync
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          SYNC_TYPE="${{ github.event.inputs.sync_type || 'incremental' }}"
+          node scripts/jira-sync/run-full-sync.mjs --$SYNC_TYPE

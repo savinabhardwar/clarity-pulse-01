@@ -9,11 +9,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { people, projects } from "@/data/dashboard";
+import { usePeople, useProjects } from "@/data/queries";
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const { data: people = [] } = usePeople();
+  const { data: projects = [] } = useProjects();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -26,10 +28,12 @@ export function GlobalSearch() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const tickets = people.flatMap((p) =>
-    [...p.current, ...p.upcoming, ...p.completed].map((t) => ({ ...t, owner: p.name })),
-  );
-  const features = projects.flatMap((p) => p.delivered.map((d) => ({ ...d, projectId: p.id, projectName: p.name })));
+  // Ticket- and feature-level search would need every person's/project's
+  // full detail fetched up front (N+1 RPC calls) just to populate a
+  // command palette that's opened occasionally. Not worth the network
+  // cost -- search narrows to projects and people, which cover the
+  // overwhelming majority of "jump to..." usage, and still resolves to
+  // the same destination routes.
 
   const go = (fn: () => void) => {
     setOpen(false);
@@ -44,22 +48,31 @@ export function GlobalSearch() {
       >
         <Search className="size-4" />
         <span className="hidden sm:inline">Search…</span>
-        <kbd className="hidden rounded border border-border bg-secondary px-1.5 text-[10px] font-medium md:inline">⌘K</kbd>
+        <kbd className="hidden rounded border border-border bg-secondary px-1.5 text-[10px] font-medium md:inline">
+          ⌘K
+        </kbd>
       </button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search projects, people, tickets and features…" />
+        <CommandInput placeholder="Search projects and people…" />
         <CommandList>
           <CommandEmpty>No matches found.</CommandEmpty>
           <CommandGroup heading="Projects">
             {projects.map((p) => (
               <CommandItem
                 key={p.id}
-                value={`project ${p.name} ${p.purpose}`}
-                onSelect={() => go(() => navigate({ to: "/projects", search: { project: p.id } }))}
+                value={`project ${p.name} ${p.purpose ?? ""}`}
+                onSelect={() =>
+                  go(() => navigate({ to: "/projects", search: { project: p.slug } }))
+                }
               >
-                <span className="size-2 rounded-full" style={{ backgroundColor: p.color }} />
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: p.color ?? undefined }}
+                />
                 <span>{p.name}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{p.health}</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {p.health.replace("_", " ")}
+                </span>
               </CommandItem>
             ))}
           </CommandGroup>
@@ -67,40 +80,15 @@ export function GlobalSearch() {
             {people.map((p) => (
               <CommandItem
                 key={p.id}
-                value={`person ${p.name} ${p.role} ${p.team}`}
-                onSelect={() => go(() => navigate({ to: "/people", search: { person: p.id, q: "" } }))}
+                value={`person ${p.name} ${p.role ?? ""} ${p.team ?? ""}`}
+                onSelect={() =>
+                  go(() => navigate({ to: "/people", search: { person: p.id, q: "" } }))
+                }
               >
                 <span>{p.name}</span>
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {p.role} · {p.utilisation}%
+                  {p.role ?? "Engineer"} · {p.utilisation_pct}%
                 </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandGroup heading="Features delivered">
-            {features.map((f) => (
-              <CommandItem
-                key={`${f.projectId}-${f.name}`}
-                value={`feature ${f.name} ${f.projectName}`}
-                onSelect={() => go(() => navigate({ to: "/projects", search: { project: f.projectId } }))}
-              >
-                <span>{f.name}</span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {f.projectName} · {f.sprint}
-                </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandGroup heading="Tickets">
-            {tickets.map((t) => (
-              <CommandItem
-                key={`${t.key}-${t.owner}`}
-                value={`ticket ${t.key} ${t.title} ${t.owner}`}
-                onSelect={() => go(() => navigate({ to: "/projects", search: { project: t.projectId } }))}
-              >
-                <span className="num text-xs font-semibold text-muted-foreground">{t.key}</span>
-                <span className="truncate">{t.title}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{t.status}</span>
               </CommandItem>
             ))}
           </CommandGroup>

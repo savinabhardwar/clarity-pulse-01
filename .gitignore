@@ -20,6 +20,16 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Jira sync pipeline artifacts: raw pulls and auto-derived clustering
+# output, both regenerated fresh on every sync run (see
+# scripts/jira-sync/run-full-sync.mjs) -- not app source, not meant to be
+# committed. Manual corrections belong in the DB (project_overrides,
+# people.team_guessed), not in these regenerated files.
+scripts/jira-sync/cache/
+src/data/generated/
+
+.claude/settings.local.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
