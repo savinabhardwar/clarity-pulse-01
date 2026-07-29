@@ -19,7 +19,10 @@ async function getLastWatermark() {
     const { rows } = await pool.query(
       `select watermark_after from sync_runs where status = 'success' order by finished_at desc limit 1`,
     );
-    return rows[0]?.watermark_after ?? null;
+    // pg returns timestamptz columns as Date objects, not ISO strings --
+    // fetchHistory()'s JQL-building does string ops (sinceIso.slice) on this.
+    const watermark = rows[0]?.watermark_after;
+    return watermark instanceof Date ? watermark.toISOString() : (watermark ?? null);
   } catch {
     return null; // first-ever run: table may not have rows yet
   } finally {
