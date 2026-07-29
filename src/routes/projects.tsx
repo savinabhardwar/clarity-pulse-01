@@ -121,6 +121,7 @@ function ProjectsPage() {
   const navigate = useNavigate({ from: "/projects" });
   const range: DateRangeValue = from || to ? { from, to } : null;
   const { from: sinceIso, to: untilIso } = dateRangeToIso(range);
+  const [query, setQuery] = useState("");
   const projectsQuery = useProjects();
   const peopleQuery = usePeople();
 
@@ -135,8 +136,14 @@ function ProjectsPage() {
     project && !currentProjects.some((p) => p.slug === project)
       ? allProjects.find((p) => p.slug === project)
       : undefined;
-  const list = pinned ? [pinned, ...currentProjects] : currentProjects;
-  const openSlug = project || list[0]?.slug || "";
+  const fullList = pinned ? [pinned, ...currentProjects] : currentProjects;
+  // Search narrows which projects show below; the currently open one stays
+  // visible regardless so switching the query never yanks away what you're
+  // already reading.
+  const list = fullList.filter(
+    (p) => p.slug === project || p.name.toLowerCase().includes(query.toLowerCase()),
+  );
+  const openSlug = project || fullList[0]?.slug || "";
 
   const peopleById = new Map<string, PersonRow>((peopleQuery.data ?? []).map((p) => [p.id, p]));
 
@@ -146,31 +153,19 @@ function ProjectsPage() {
         title="Projects"
         question="What is each project for, what are we building now, and what have we delivered?"
       >
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <DateRangeFilter
             value={range}
             onChange={(v) =>
               navigate({ search: { project, from: v?.from ?? "", to: v?.to ?? "" } })
             }
           />
-          {list.length > 0 && (
-            <div className="flex flex-wrap justify-end gap-1.5">
-              {list.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => navigate({ search: { project: p.slug, from, to } })}
-                  className={cn(
-                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                    openSlug === p.slug
-                      ? "border-foreground/20 bg-card text-foreground shadow-soft"
-                      : "border-transparent text-muted-foreground hover:bg-secondary",
-                  )}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${fullList.length} projects…`}
+            className="h-9 w-56 rounded-md border border-input bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+          />
         </div>
       </PageHeader>
 
@@ -195,7 +190,7 @@ function ProjectsPage() {
           ))}
           {list.length === 0 && (
             <p className="card-soft p-8 text-center text-sm text-muted-foreground">
-              No active projects to show.
+              {query ? `No projects match "${query}".` : "No active projects to show."}
             </p>
           )}
         </div>
