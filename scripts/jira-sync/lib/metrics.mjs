@@ -6,6 +6,20 @@ function toDate(s) {
   return s ? new Date(s) : null;
 }
 
+// Workday keys (YYYY-MM-DD) strictly after `start` through `end`
+// inclusive -- matches workdaysBetween's exclusive-start convention.
+function enumerateWorkdayKeys(start, end) {
+  const keys = [];
+  const cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const endDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+  cur.setUTCDate(cur.getUTCDate() + 1);
+  while (cur <= endDay) {
+    if (!isWeekend(cur)) keys.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return keys;
+}
+
 function hasWord(status, word) {
   return status.toLowerCase().includes(word);
 }
@@ -39,20 +53,27 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     const adj = adjustments[accountId] || {};
     if (adj.excluded) continue;
 
-    // Distinct tracked sprints this person touches this window -> sum of
-    // prorated 60h targets, since cross-team people split across
-    // differently-dated sprints.
+    // Distinct tracked sprints this person touches this window. A person
+    // only has ONE calendar's worth of working days no matter how many
+    // concurrent projects/sprints they touch during them -- summing each
+    // sprint's target separately (as this used to) let someone touching
+    // 2 overlapping sprints show a ~114h target/bandwidth in a 60h
+    // sprint, since the same real days got counted once per project.
+    // Instead, union the actual workday calendar dates across all
+    // touched sprints (dedup via a Set), so overlapping sprints don't
+    // double-count and only genuinely non-overlapping sprint windows add
+    // real extra days.
     //
     // Two targets, both surfaced, since they answer different questions:
-    // - sprintTargetHours: the FULL sprint commitment (60h/person/sprint,
-    //   only reduced for planned leave) -- "how much of my sprint
-    //   commitment is done", the headline utilisation %.
+    // - sprintTargetHours: the FULL sprint commitment (60h/person/sprint
+    //   equivalent, only reduced for planned leave) -- "how much of my
+    //   sprint commitment is done", the headline utilisation %.
     // - paceTargetHours: prorated to elapsed workdays so far -- "am I on
     //   pace right now", a secondary check that's meaningful mid-sprint
     //   when the full target hasn't had time to be reached yet.
     const projectsTouched = [...new Set(tickets.map((t) => t.project))];
-    let sprintTargetHours = 0;
-    let paceTargetHours = 0;
+    const totalWorkdaySet = new Set();
+    const elapsedWorkdaySet = new Set();
     let matchedAnySprint = false;
     for (const pk of projectsTouched) {
       const sprint = sprintByProject.get(pk);
@@ -60,18 +81,24 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       matchedAnySprint = true;
       const start = toDate(sprint.startDate);
       const end = toDate(sprint.endDate);
-      const totalWorkdays = workdaysBetween(start, end) || 1;
-      const elapsedWorkdays = Math.min(workdaysBetween(start, asOf), totalWorkdays);
-      const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdays);
-      const leaveDaysToDate = Math.min((adj.leaveDaysThisSprint || 0) * (elapsedWorkdays / totalWorkdays), elapsedWorkdays);
-      sprintTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdays - leaveDaysTotal, 0);
-      paceTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
+      for (const key of enumerateWorkdayKeys(start, end)) {
+        totalWorkdaySet.add(key);
+        if (new Date(`${key}T00:00:00Z`) <= asOf) elapsedWorkdaySet.add(key);
+      }
     }
     // Lower-confidence signal: none of this person's projects had tracked
     // sprint dates to prorate against, so their target is a flat guess
     // rather than derived from real sprint windows.
     const targetHoursIsFallback = !matchedAnySprint;
-    if (sprintTargetHours === 0) sprintTargetHours = 60; // fallback if sprint dates missing
+    const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdaySet.size);
+    const leaveDaysToDate = Math.min(adj.leaveDaysThisSprint || 0, elapsedWorkdaySet.size);
+    let sprintTargetHours = matchedAnySprint
+      ? HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdaySet.size - leaveDaysTotal, 0)
+      : 60; // fallback if sprint dates missing
+    let paceTargetHours = matchedAnySprint
+      ? HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdaySet.size - leaveDaysToDate, 0)
+      : sprintTargetHours;
+    if (sprintTargetHours === 0) sprintTargetHours = 60;
     if (paceTargetHours === 0) paceTargetHours = sprintTargetHours; // sprint just started or fallback
 
     // ---- Hours logged: sum of worklog seconds credited to this person
