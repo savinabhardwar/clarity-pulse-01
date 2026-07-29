@@ -1,23 +1,9 @@
-import { workdaysBetween, isWeekend } from "./workdays.mjs";
+import { workdaysBetween } from "./workdays.mjs";
 
 const HOURS_PER_WORKDAY_SPRINT = 8; // 8h/workday -> 80h per person per 2-week (10-workday) sprint
 
 function toDate(s) {
   return s ? new Date(s) : null;
-}
-
-// Workday keys (YYYY-MM-DD) strictly after `start` through `end`
-// inclusive -- matches workdaysBetween's exclusive-start convention.
-function enumerateWorkdayKeys(start, end) {
-  const keys = [];
-  const cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
-  const endDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
-  cur.setUTCDate(cur.getUTCDate() + 1);
-  while (cur <= endDay) {
-    if (!isWeekend(cur)) keys.push(cur.toISOString().slice(0, 10));
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return keys;
 }
 
 function hasWord(status, word) {
@@ -53,16 +39,16 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     const adj = adjustments[accountId] || {};
     if (adj.excluded) continue;
 
-    // Distinct tracked sprints this person touches this window. A person
-    // only has ONE calendar's worth of working days no matter how many
-    // concurrent projects/sprints they touch during them -- summing each
-    // sprint's target separately (as this used to) let someone touching
-    // 2 overlapping sprints show a ~114h target/bandwidth in a 60h
-    // sprint, since the same real days got counted once per project.
-    // Instead, union the actual workday calendar dates across all
-    // touched sprints (dedup via a Set), so overlapping sprints don't
-    // double-count and only genuinely non-overlapping sprint windows add
-    // real extra days.
+    // A person has ONE job's worth of capacity regardless of how many
+    // projects they happen to have tickets in -- crediting them with a
+    // FULL extra sprint's target for every touched project (or even
+    // unioning calendar days across sprints, tried earlier) let someone
+    // with 23 tickets in one sprint and 1 incidental ticket in another,
+    // unrelated, non-overlapping sprint get charged a second sprint's
+    // worth of target on top of the first. Instead, weight each touched
+    // sprint's contribution by that project's SHARE of this person's
+    // ticket count, so a single incidental ticket barely moves the
+    // target instead of adding another 80h.
     //
     // Two targets, both surfaced, since they answer different questions:
     // - sprintTargetHours: the FULL sprint commitment (8h/workday, 80h
@@ -72,33 +58,36 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // - paceTargetHours: prorated to elapsed workdays so far -- "am I on
     //   pace right now", a secondary check that's meaningful mid-sprint
     //   when the full target hasn't had time to be reached yet.
-    const projectsTouched = [...new Set(tickets.map((t) => t.project))];
-    const totalWorkdaySet = new Set();
-    const elapsedWorkdaySet = new Set();
+    const ticketCountByProject = new Map();
+    for (const t of tickets) ticketCountByProject.set(t.project, (ticketCountByProject.get(t.project) || 0) + 1);
+    const projectsTouched = [...ticketCountByProject.keys()];
+    let weightedTotalWorkdays = 0;
+    let weightedElapsedWorkdays = 0;
     let matchedAnySprint = false;
     for (const pk of projectsTouched) {
       const sprint = sprintByProject.get(pk);
       if (!sprint) continue;
       matchedAnySprint = true;
+      const weight = ticketCountByProject.get(pk) / tickets.length;
       const start = toDate(sprint.startDate);
       const end = toDate(sprint.endDate);
-      for (const key of enumerateWorkdayKeys(start, end)) {
-        totalWorkdaySet.add(key);
-        if (new Date(`${key}T00:00:00Z`) <= asOf) elapsedWorkdaySet.add(key);
-      }
+      const totalWorkdays = workdaysBetween(start, end) || 1;
+      const elapsedWorkdays = Math.min(workdaysBetween(start, asOf), totalWorkdays);
+      weightedTotalWorkdays += weight * totalWorkdays;
+      weightedElapsedWorkdays += weight * elapsedWorkdays;
     }
     // Lower-confidence signal: none of this person's projects had tracked
     // sprint dates to prorate against, so their target is a flat guess
     // rather than derived from real sprint windows.
     const targetHoursIsFallback = !matchedAnySprint;
-    const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdaySet.size);
-    const leaveDaysToDate = Math.min(adj.leaveDaysThisSprint || 0, elapsedWorkdaySet.size);
+    const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, weightedTotalWorkdays);
+    const leaveDaysToDate = Math.min(adj.leaveDaysThisSprint || 0, weightedElapsedWorkdays);
     const FALLBACK_SPRINT_WORKDAYS = 10; // assumed 2-week sprint when no tracked dates exist
     let sprintTargetHours = matchedAnySprint
-      ? HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdaySet.size - leaveDaysTotal, 0)
+      ? HOURS_PER_WORKDAY_SPRINT * Math.max(weightedTotalWorkdays - leaveDaysTotal, 0)
       : HOURS_PER_WORKDAY_SPRINT * FALLBACK_SPRINT_WORKDAYS; // fallback if sprint dates missing
     let paceTargetHours = matchedAnySprint
-      ? HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdaySet.size - leaveDaysToDate, 0)
+      ? HOURS_PER_WORKDAY_SPRINT * Math.max(weightedElapsedWorkdays - leaveDaysToDate, 0)
       : sprintTargetHours;
     if (sprintTargetHours === 0) sprintTargetHours = HOURS_PER_WORKDAY_SPRINT * FALLBACK_SPRINT_WORKDAYS;
     if (paceTargetHours === 0) paceTargetHours = sprintTargetHours; // sprint just started or fallback
@@ -223,17 +212,17 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     const health = highSeverityCount > 0 ? "at_risk" : riskFlags.length > 0 ? "needs_attention" : "on_track";
 
     // A concrete, human reason for crossing 100% -- someone touching
-    // several concurrent projects still only has one calendar's worth of
-    // workdays (see the union above), so their target isn't inflated by
-    // project count the way it used to be; this is a plain single-target
-    // overage. Pace is mentioned too since a full-sprint overage can look
-    // very different from the day-by-day pace (e.g. genuinely ahead of
+    // several projects has their target weighted by ticket share across
+    // those sprints (see above), not inflated per project touched, so
+    // this is a plain single-target overage regardless of project count.
+    // Pace is mentioned too since a full-sprint overage can look very
+    // different from the day-by-day pace (e.g. genuinely ahead of
     // schedule vs. cramming).
     let overallocationReason = null;
     if (utilisationPct > 100) {
       const base =
         projectsTouched.length > 1
-          ? `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h target spanning ${projectsTouched.length} concurrent sprints (${projectsTouched.join(", ")})`
+          ? `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h target weighted across ${projectsTouched.length} projects by ticket share (${projectsTouched.join(", ")})`
           : `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h sprint target`;
       overallocationReason = `${base} (currently pacing at ${pacePct}% of plan for this point in the sprint)`;
     }
