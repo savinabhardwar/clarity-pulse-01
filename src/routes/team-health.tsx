@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { Award, Gauge, Sparkles, ShieldCheck, Timer, Target } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -6,6 +8,7 @@ import {
   Avatar,
   Chip,
   DateRangeFilter,
+  dateRangeToIso,
   HealthBadge,
   KeyValue,
   Meter,
@@ -14,6 +17,7 @@ import {
   SectionHeading,
   StatCard,
   UnconfirmedBadge,
+  type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
 import {
@@ -28,7 +32,13 @@ import {
   type BlockerRow,
 } from "@/data/queries";
 
+const searchSchema = z.object({
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/team-health")({
+  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
       { title: "Team Health — Is Jira Trustworthy Enough to Plan With?" },
@@ -64,8 +74,12 @@ function personInitials(name: string) {
 }
 
 function TeamHealth() {
+  const { from, to } = Route.useSearch();
+  const navigate = useNavigate({ from: "/team-health" });
+  const range: DateRangeValue = from || to ? { from, to } : null;
+  const asOf = dateRangeToIso(range).to ?? dateRangeToIso(range).from;
   const orgMetrics = useOrgMetrics();
-  const people = usePeople();
+  const people = usePeople(asOf);
   const blockers = useAllBlockers();
   const standouts = useStandouts();
 
@@ -80,14 +94,14 @@ function TeamHealth() {
         question="Is our engineering data reliable enough to plan with?"
       >
         <DateRangeFilter
-          value={null}
-          onChange={() => {}}
-          disabled
-          disabledReason="Hygiene/health scores here are a live snapshot recomputed on every sync, not stored history — there's no past date to filter into."
+          value={range}
+          onChange={(v) => navigate({ search: { from: v?.from ?? "", to: v?.to ?? "" } })}
         />
       </PageHeader>
       <p className="-mt-6 text-xs text-muted-foreground">
-        Current-sprint snapshot as of the last sync, not a historical trend.
+        {asOf
+          ? `Showing the nearest synced snapshot at or before ${new Date(asOf).toLocaleString()}.`
+          : "Current-sprint snapshot as of the last sync, not a historical trend."}
       </p>
 
       <QueryBoundary

@@ -50,16 +50,26 @@ export function toPriorityLabel(dbValue: string | null): string {
 }
 
 // ---------- People ----------
-export function usePeople() {
+// asOf: when set, returns each person's most recent history snapshot at
+// or before that instant (person_metrics_history via RPC) instead of the
+// always-current v_people_overview -- what makes the date-range filter on
+// People/Team Health/Resource Planning show something other than "now".
+export function usePeople(asOf?: string | null) {
   return useQuery({
-    queryKey: queryKeys.people,
-    queryFn: async () =>
-      unwrap(
-        await supabase
-          .from("v_people_overview")
-          .select("*")
-          .order("utilisation_pct", { ascending: false }),
-      ),
+    queryKey: [...queryKeys.people, asOf ?? "latest"],
+    queryFn: async (): Promise<PersonRow[]> =>
+      asOf
+        ? unwrap<PersonRow[]>(
+            await supabase
+              .rpc("get_people_overview_asof", { p_asof: asOf })
+              .order("utilisation_pct", { ascending: false }),
+          )
+        : unwrap<PersonRow[]>(
+            await supabase
+              .from("v_people_overview")
+              .select("*")
+              .order("utilisation_pct", { ascending: false }),
+          ),
   });
 }
 

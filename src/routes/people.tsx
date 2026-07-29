@@ -7,6 +7,7 @@ import {
   AllocationBar,
   Avatar,
   DateRangeFilter,
+  dateRangeToIso,
   HealthBadge,
   KeyValue,
   LowConfidenceNote,
@@ -14,6 +15,7 @@ import {
   PageHeader,
   SectionHeading,
   UnconfirmedBadge,
+  type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { TicketList } from "@/components/dashboard/work";
 import { QueryBoundary } from "@/components/dashboard/query-state";
@@ -22,6 +24,8 @@ import { usePeople, usePersonDetail, toHealth, type PersonRow } from "@/data/que
 const searchSchema = z.object({
   q: fallback(z.string(), "").default(""),
   person: fallback(z.string(), "").default(""),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
 });
 
 export const Route = createFileRoute("/people")({
@@ -54,9 +58,14 @@ function initials(name: string) {
 }
 
 function PeoplePage() {
-  const { q, person } = Route.useSearch();
+  const { q, person, from, to } = Route.useSearch();
   const navigate = useNavigate({ from: "/people" });
-  const people = usePeople();
+  const range: DateRangeValue = from || to ? { from, to } : null;
+  // A range picks out a point in time, not a span, for a snapshot metric
+  // like utilisation -- "to" (or "from" alone) is treated as "as of this
+  // date", showing the nearest sync at or before it.
+  const asOf = dateRangeToIso(range).to ?? dateRangeToIso(range).from;
+  const people = usePeople(asOf);
 
   const query = q.toLowerCase();
   // v_people_overview doesn't carry per-person project names (it's a flat
@@ -74,20 +83,14 @@ function PeoplePage() {
       <PageHeader title="People" question="What is everyone working on, and who has room for more?">
         <div className="flex flex-wrap items-center gap-2">
           <DateRangeFilter
-            value={null}
-            onChange={() => {}}
-            disabled
-            disabledReason="Utilisation/bandwidth here are a live snapshot recomputed on every sync, not stored history — there's no past date to filter into."
+            value={range}
+            onChange={(v) => navigate({ search: { q, person, from: v?.from ?? "", to: v?.to ?? "" } })}
           />
           <label className="flex w-full max-w-sm items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
             <Search className="size-4 text-muted-foreground" />
             <input
               value={q}
-              onChange={(e) =>
-                navigate({
-                  search: (prev: { q: string; person: string }) => ({ ...prev, q: e.target.value }),
-                })
-              }
+              onChange={(e) => navigate({ search: { q: e.target.value, person, from, to } })}
               placeholder="Search by name, role or team"
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -95,7 +98,9 @@ function PeoplePage() {
         </div>
       </PageHeader>
       <p className="-mt-6 text-xs text-muted-foreground">
-        Current-sprint snapshot as of the last sync, not a historical trend.
+        {asOf
+          ? `Showing the nearest synced snapshot at or before ${new Date(asOf).toLocaleString()}.`
+          : "Current-sprint snapshot as of the last sync, not a historical trend."}
       </p>
 
       <QueryBoundary
@@ -110,12 +115,7 @@ function PeoplePage() {
               person={p}
               open={person === p.id}
               onToggle={() =>
-                navigate({
-                  search: (prev: { q: string; person: string }) => ({
-                    ...prev,
-                    person: person === p.id ? "" : p.id,
-                  }),
-                })
+                navigate({ search: { q, person: person === p.id ? "" : p.id, from, to } })
               }
             />
           ))}

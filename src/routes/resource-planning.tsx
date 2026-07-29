@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -8,11 +10,13 @@ import {
   AvatarStack,
   Chip,
   DateRangeFilter,
+  dateRangeToIso,
   HealthBadge,
   KeyValue,
   Meter,
   PageHeader,
   StatCard,
+  type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { PersonAllocationCard } from "@/components/dashboard/work";
 import { QueryBoundary } from "@/components/dashboard/query-state";
@@ -31,7 +35,13 @@ import {
 import type { Health } from "@/data/dashboard";
 import { cn } from "@/lib/utils";
 
+const searchSchema = z.object({
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/resource-planning")({
+  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
       { title: "Resource Planning — Capacity & Allocation" },
@@ -66,8 +76,12 @@ function worstHealth(members: PersonRow[]): Health {
 }
 
 function ResourcePlanning() {
+  const { from, to } = Route.useSearch();
+  const navigate = useNavigate({ from: "/resource-planning" });
+  const range: DateRangeValue = from || to ? { from, to } : null;
+  const asOf = dateRangeToIso(range).to ?? dateRangeToIso(range).from;
   const orgMetrics = useOrgMetrics();
-  const people = usePeople();
+  const people = usePeople(asOf);
   const projects = useProjects();
   const teams = useTeams();
   const contributors = useProjectContributors();
@@ -88,14 +102,14 @@ function ResourcePlanning() {
         question="Who is working on what, and where is engineering time going?"
       >
         <DateRangeFilter
-          value={null}
-          onChange={() => {}}
-          disabled
-          disabledReason="Allocation/capacity here are a live snapshot recomputed on every sync, not stored history — there's no past date to filter into."
+          value={range}
+          onChange={(v) => navigate({ search: { from: v?.from ?? "", to: v?.to ?? "" } })}
         />
       </PageHeader>
       <p className="-mt-6 text-xs text-muted-foreground">
-        Current-sprint snapshot as of the last sync, not a historical trend.
+        {asOf
+          ? `Showing the nearest synced snapshot at or before ${new Date(asOf).toLocaleString()}. Project allocation breakdown below stays current-only.`
+          : "Current-sprint snapshot as of the last sync, not a historical trend."}
       </p>
 
       <QueryBoundary

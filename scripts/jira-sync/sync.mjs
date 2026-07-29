@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { makePool, upsert, replaceComputed } from "./lib/db.mjs";
+import { makePool, upsert, insertMany, replaceComputed } from "./lib/db.mjs";
 import { computeMetrics } from "./lib/metrics.mjs";
 import { clusterTicketTitles } from "./lib/dedup-titles.mjs";
 
@@ -343,6 +343,10 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       updateColumns: Object.keys(personMetricRows[0] || {}).filter((c) => c !== "person_id"),
     });
     recordsProcessed += personMetricRows.length;
+    // Append-only copy so the date-range filter on People/Team Health/
+    // Resource Planning can show "as of" a past sync, not just the
+    // live-overwritten latest snapshot above.
+    await insertMany(pool, "person_metrics_history", personMetricRows);
 
     // Sprint overrun: the tracked sprint is still open well past its
     // planned end date -- a real "is scope realistic" signal, not just a

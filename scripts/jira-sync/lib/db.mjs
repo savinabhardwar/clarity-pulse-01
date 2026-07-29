@@ -43,6 +43,25 @@ export async function upsert(pool, table, rows, { conflictColumns, updateColumns
   }
 }
 
+/** Plain bulk insert, no conflict handling -- for append-only history tables. */
+export async function insertMany(pool, table, rows) {
+  if (rows.length === 0) return;
+  const columns = Object.keys(rows[0]);
+  const CHUNK = 500;
+  for (let offset = 0; offset < rows.length; offset += CHUNK) {
+    const chunk = rows.slice(offset, offset + CHUNK);
+    const values = [];
+    const tuples = chunk.map((row, i) => {
+      const placeholders = columns.map((_, j) => {
+        values.push(row[columns[j]]);
+        return `$${i * columns.length + j + 1}`;
+      });
+      return `(${placeholders.join(", ")})`;
+    });
+    await pool.query(`insert into ${table} (${columns.join(", ")}) values ${tuples.join(", ")}`, values);
+  }
+}
+
 export async function replaceComputed(pool, table, rows, { scopeColumn, scopeValue }) {
   await pool.query(`delete from ${table} where ${scopeColumn} = $1`, [scopeValue]);
   if (rows.length === 0) return;
