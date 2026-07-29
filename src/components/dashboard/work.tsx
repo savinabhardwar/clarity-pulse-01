@@ -86,7 +86,7 @@ export function PersonAllocationCard({ person }: { person: PersonRow }) {
             <Chip className="mt-1">{p.team ?? "Unassigned"}</Chip>
             {p.team_guessed && <UnconfirmedBadge label="team assignment" className="mt-1" />}
             {p.target_hours_is_fallback && (
-              <LowConfidenceNote reason="no tracked sprint dates — 60h flat guess" className="mt-1" />
+              <LowConfidenceNote reason="no tracked sprint dates — 80h flat guess" className="mt-1" />
             )}
             {p.overallocation_reason && (
               <p className="mt-1 text-xs text-muted-foreground">{p.overallocation_reason}</p>

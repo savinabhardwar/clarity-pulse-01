@@ -340,7 +340,7 @@ function OverviewBody({
                     <p className="num font-semibold">{p.utilisation_pct}%</p>
                     {p.target_hours_is_fallback && (
                       <LowConfidenceNote
-                        reason="no tracked sprint dates for this person's project(s), target is a flat 60h guess"
+                        reason="no tracked sprint dates for this person's project(s), target is a flat 80h guess"
                         className="mt-0.5"
                       />
                     )}
