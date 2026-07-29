@@ -206,6 +206,8 @@ export interface PersonRow {
   team_guessed: boolean;
   utilisation_pct: number;
   bandwidth_hours: number;
+  pace_pct: number;
+  pace_target_hours: number;
   hours_logged: number;
   estimated_hours: number;
   velocity: number;
@@ -233,7 +235,12 @@ export interface ProjectRow {
   owner_name: string | null;
   is_current: boolean;
   source: "epic_cluster" | "roadmap" | "manual";
-  is_infra: boolean;
+  // Which Projects-page tab this project belongs to, derived in
+  // v_projects_overview from the Jira boards its epics come from (see
+  // migration 0020): 'infra' = all TI, 'telephony' = all TT, everything
+  // else (multi-board, TEAM/TEAMSANKYA/TRG, or no Jira link at all) is
+  // 'development'. Exactly one bucket per project.
+  project_space: ProjectSpace;
   summary_text: string | null;
   hours_invested: number;
   hours_this_sprint: number;

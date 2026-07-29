@@ -320,6 +320,8 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       person_id: personIdByAccount.get(m.accountId),
       bandwidth_hours: m.bandwidthHours,
       utilisation_pct: m.utilisationPct,
+      pace_pct: m.pacePct,
+      pace_target_hours: m.paceTargetHours,
       hours_logged: m.hoursLogged,
       estimated_hours: m.estimatedHours,
       sprint_target_hours: m.sprintTargetHours,

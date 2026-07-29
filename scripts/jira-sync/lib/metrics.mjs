@@ -42,12 +42,17 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // Distinct tracked sprints this person touches this window -> sum of
     // prorated 60h targets, since cross-team people split across
     // differently-dated sprints.
+    //
+    // Two targets, both surfaced, since they answer different questions:
+    // - sprintTargetHours: the FULL sprint commitment (60h/person/sprint,
+    //   only reduced for planned leave) -- "how much of my sprint
+    //   commitment is done", the headline utilisation %.
+    // - paceTargetHours: prorated to elapsed workdays so far -- "am I on
+    //   pace right now", a secondary check that's meaningful mid-sprint
+    //   when the full target hasn't had time to be reached yet.
     const projectsTouched = [...new Set(tickets.map((t) => t.project))];
-    // Target is prorated to elapsed sprint time, not full sprint length --
-    // otherwise everyone reads as wildly over/under-utilised until the
-    // sprint's last day, since the denominator would assume time that
-    // hasn't happened yet.
     let sprintTargetHours = 0;
+    let paceTargetHours = 0;
     let matchedAnySprint = false;
     for (const pk of projectsTouched) {
       const sprint = sprintByProject.get(pk);
@@ -57,14 +62,17 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       const end = toDate(sprint.endDate);
       const totalWorkdays = workdaysBetween(start, end) || 1;
       const elapsedWorkdays = Math.min(workdaysBetween(start, asOf), totalWorkdays);
+      const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdays);
       const leaveDaysToDate = Math.min((adj.leaveDaysThisSprint || 0) * (elapsedWorkdays / totalWorkdays), elapsedWorkdays);
-      sprintTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
+      sprintTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdays - leaveDaysTotal, 0);
+      paceTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
     }
     // Lower-confidence signal: none of this person's projects had tracked
     // sprint dates to prorate against, so their target is a flat guess
     // rather than derived from real sprint windows.
     const targetHoursIsFallback = !matchedAnySprint;
-    if (sprintTargetHours === 0) sprintTargetHours = 60; // fallback if sprint dates missing or sprint just started
+    if (sprintTargetHours === 0) sprintTargetHours = 60; // fallback if sprint dates missing
+    if (paceTargetHours === 0) paceTargetHours = sprintTargetHours; // sprint just started or fallback
 
     // ---- Hours logged: sum of worklog seconds credited to this person
     // as WORKLOG AUTHOR (not assignee), across ALL their worklogs on
@@ -167,6 +175,7 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
 
     const utilisationPct = Math.round((100 * hoursLogged) / sprintTargetHours);
     const bandwidthHours = Math.round((sprintTargetHours - hoursLogged) * 10) / 10;
+    const pacePct = Math.round((100 * hoursLogged) / paceTargetHours);
     const avgLogLagDays = logLagCount ? Math.round((10 * logLagDaysSum) / logLagCount) / 10 : null;
 
     const riskFlags = [];
@@ -186,13 +195,16 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
 
     // A concrete, human reason for crossing 100% -- concurrent sprints
     // sum multiple 60h targets together, which reads very differently
-    // from someone simply overworking a single sprint.
+    // from someone simply overworking a single sprint. Pace is mentioned
+    // too since a full-sprint overage can look very different from the
+    // day-by-day pace (e.g. genuinely ahead of schedule vs. cramming).
     let overallocationReason = null;
     if (utilisationPct > 100) {
-      overallocationReason =
+      const base =
         projectsTouched.length > 1
           ? `Logged across ${projectsTouched.length} concurrent sprints (${projectsTouched.join(", ")}) — target is the sum of each sprint's target hours`
-          : `Logged ${Math.round(hoursLogged * 10) / 10}h against a single sprint target of ${Math.round(sprintTargetHours * 10) / 10}h`;
+          : `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h sprint target`;
+      overallocationReason = `${base} (currently pacing at ${pacePct}% of plan for this point in the sprint)`;
     }
 
     const person = teamByAccount.get(accountId);
@@ -204,6 +216,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       teamGuessed: person?.guessed ?? true,
       utilisationPct,
       bandwidthHours,
+      pacePct,
+      paceTargetHours: Math.round(paceTargetHours * 10) / 10,
       hoursLogged: Math.round(hoursLogged * 10) / 10,
       estimatedHours: Math.round(estimatedHours * 10) / 10,
       sprintTargetHours: Math.round(sprintTargetHours * 10) / 10,
