@@ -13,6 +13,7 @@ import {
   TestTube2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Avatar,
   AvatarStack,
@@ -46,6 +47,7 @@ const searchSchema = z.object({
   project: fallback(z.string(), "").default(""),
   from: fallback(z.string(), "").default(""),
   to: fallback(z.string(), "").default(""),
+  view: fallback(z.enum(["development", "infra"]), "development").default("development"),
 });
 
 export const Route = createFileRoute("/projects")({
@@ -117,7 +119,7 @@ const activityIcon: Record<string, typeof Activity> = {
 };
 
 function ProjectsPage() {
-  const { project, from, to } = Route.useSearch();
+  const { project, from, to, view } = Route.useSearch();
   const navigate = useNavigate({ from: "/projects" });
   const range: DateRangeValue = from || to ? { from, to } : null;
   const { from: sinceIso, to: untilIso } = dateRangeToIso(range);
@@ -127,11 +129,16 @@ function ProjectsPage() {
 
   const allProjects = projectsQuery.data ?? [];
   // Only 38 of ~130 synced projects are is_current; that's the set the mock
-  // treated as "active" and worth listing here.
-  const currentProjects = allProjects.filter((p) => p.is_current);
-  // A deep-linked ?project=slug that isn't in the "current" set (e.g. an
-  // older project someone still has bookmarked) is pinned to the front so
-  // the URL never resolves to an empty workspace.
+  // treated as "active" and worth listing here. Split further into
+  // Development vs Infra: infra clusters are individual network/hardware/
+  // ops tickets auto-clustered into their own "project" each, not real
+  // product initiatives, and were drowning out the ones that are.
+  const currentProjects = allProjects.filter(
+    (p) => p.is_current && p.is_infra === (view === "infra"),
+  );
+  // A deep-linked ?project=slug that isn't in the current tab's set (e.g.
+  // an older project someone still has bookmarked) is pinned to the front
+  // so the URL never resolves to an empty workspace.
   const pinned =
     project && !currentProjects.some((p) => p.slug === project)
       ? allProjects.find((p) => p.slug === project)
@@ -154,10 +161,19 @@ function ProjectsPage() {
         question="What is each project for, what are we building now, and what have we delivered?"
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Tabs
+            value={view}
+            onValueChange={(v) => navigate({ search: { project: "", from, to, view: v as "development" | "infra" } })}
+          >
+            <TabsList>
+              <TabsTrigger value="development">Development</TabsTrigger>
+              <TabsTrigger value="infra">Infra</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <DateRangeFilter
             value={range}
             onChange={(v) =>
-              navigate({ search: { project, from: v?.from ?? "", to: v?.to ?? "" } })
+              navigate({ search: { project, from: v?.from ?? "", to: v?.to ?? "", view } })
             }
           />
           <input
@@ -181,7 +197,7 @@ function ProjectsPage() {
               project={p}
               open={p.slug === openSlug}
               onToggle={() =>
-                navigate({ search: { project: p.slug === openSlug ? "" : p.slug, from, to } })
+                navigate({ search: { project: p.slug === openSlug ? "" : p.slug, from, to, view } })
               }
               peopleById={peopleById}
               since={sinceIso}

@@ -223,6 +223,7 @@ export interface ProjectRow {
   owner_name: string | null;
   is_current: boolean;
   source: "epic_cluster" | "roadmap" | "manual";
+  is_infra: boolean;
   summary_text: string | null;
   hours_invested: number;
   hours_this_sprint: number;
