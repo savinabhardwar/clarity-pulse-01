@@ -58,6 +58,32 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     const epicsRaw = readJsonl(CACHE("epics.raw.jsonl"));
     const history = readJsonl(CACHE("history.raw.jsonl"));
     const teamsSeed = readJson(GENERATED("teams.seed.json")).people;
+
+    // ---- 0. account merges (persisted human corrections, e.g. two Jira
+    // accounts confirmed to be the same person) -- applied to the RAW
+    // data before any grouping/computation happens, so an aliased
+    // account never appears as a distinct person anywhere downstream
+    // (computeMetrics groups by accountId directly; remapping only at
+    // insert time left both accounts flowing through as separate people
+    // that collided at the very end, since a single upsert batch can't
+    // update the same target row twice). ----
+    const { rows: accountAliasRows } = await pool.query(
+      "select alias_jira_account_id, canonical_jira_account_id from person_account_aliases",
+    );
+    const canonicalAccountId = new Map(accountAliasRows.map((a) => [a.alias_jira_account_id, a.canonical_jira_account_id]));
+    if (canonicalAccountId.size > 0) {
+      const remap = (person) => {
+        if (person && canonicalAccountId.has(person.accountId)) person.accountId = canonicalAccountId.get(person.accountId);
+      };
+      for (const issue of issues) {
+        remap(issue.assignee);
+        remap(issue.reporter);
+        for (const wl of issue.worklogs || []) if (canonicalAccountId.has(wl.authorAccountId)) wl.authorAccountId = canonicalAccountId.get(wl.authorAccountId);
+        for (const c of issue.comments || []) if (canonicalAccountId.has(c.authorAccountId)) c.authorAccountId = canonicalAccountId.get(c.authorAccountId);
+      }
+      for (const h of history) remap(h.assignee);
+      for (const t of teamsSeed) if (canonicalAccountId.has(t.accountId)) t.accountId = canonicalAccountId.get(t.accountId);
+    }
     const projectsClustered = readJson(GENERATED("projects.json")).projects;
     const trackedSprints = readJson(CACHE("tracked-sprints.json"));
 
@@ -133,13 +159,11 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         );
       }
     }
+    // Account aliases were already applied to the raw data at the very
+    // top of this function, so every issue/worklog/comment/teamsSeed
+    // entry here already uses canonical accountIds -- this is a plain
+    // 1:1 lookup, no further merge logic needed.
     const personIdByAccount = new Map((await pool.query("select id, jira_account_id from people")).rows.map((r) => [r.jira_account_id, r.id]));
-    // Apply persisted account merges (e.g. two Jira accounts confirmed to
-    // be the same human) on top of the 1:1 account->person mapping above,
-    // the same "auto-derive fresh, then re-apply human corrections"
-    // pattern project_overrides uses for epic clustering.
-    const { rows: aliasRows } = await pool.query("select alias_jira_account_id, canonical_person_id from person_account_aliases");
-    for (const a of aliasRows) personIdByAccount.set(a.alias_jira_account_id, a.canonical_person_id);
     recordsProcessed += peopleRows.length;
 
     // ---- 3. sprints (tracked only, for now) ----
