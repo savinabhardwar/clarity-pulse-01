@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   AllocationBar,
   Avatar,
+  DateRangeFilter,
   HealthBadge,
   KeyValue,
   Meter,
@@ -69,19 +70,22 @@ function PeoplePage() {
   return (
     <div className="space-y-8">
       <PageHeader title="People" question="What is everyone working on, and who has room for more?">
-        <label className="flex w-full max-w-sm items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
-          <Search className="size-4 text-muted-foreground" />
-          <input
-            value={q}
-            onChange={(e) =>
-              navigate({
-                search: (prev: { q: string; person: string }) => ({ ...prev, q: e.target.value }),
-              })
-            }
-            placeholder="Search by name, role or team"
-            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <DateRangeFilter value="all" onChange={() => {}} disabled />
+          <label className="flex w-full max-w-sm items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
+            <Search className="size-4 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={(e) =>
+                navigate({
+                  search: (prev: { q: string; person: string }) => ({ ...prev, q: e.target.value }),
+                })
+              }
+              placeholder="Search by name, role or team"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </label>
+        </div>
       </PageHeader>
 
       <QueryBoundary

@@ -43,18 +43,20 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // prorated 60h targets, since cross-team people split across
     // differently-dated sprints.
     const projectsTouched = [...new Set(tickets.map((t) => t.project))];
+    // Target is prorated to elapsed sprint time, not full sprint length --
+    // otherwise everyone reads as wildly over/under-utilised until the
+    // sprint's last day, since the denominator would assume time that
+    // hasn't happened yet.
     let sprintTargetHours = 0;
-    let elapsedWorkdaysMax = 0;
     for (const pk of projectsTouched) {
       const sprint = sprintByProject.get(pk);
       if (!sprint) continue;
       const start = toDate(sprint.startDate);
       const end = toDate(sprint.endDate);
       const totalWorkdays = workdaysBetween(start, end) || 1;
-      const elapsed = Math.min(workdaysBetween(start, asOf), totalWorkdays);
-      const leaveDays = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdays);
-      sprintTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdays - leaveDays, 0);
-      elapsedWorkdaysMax = Math.max(elapsedWorkdaysMax, elapsed / totalWorkdays);
+      const elapsedWorkdays = Math.min(workdaysBetween(start, asOf), totalWorkdays);
+      const leaveDaysToDate = Math.min((adj.leaveDaysThisSprint || 0) * (elapsedWorkdays / totalWorkdays), elapsedWorkdays);
+      sprintTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
     }
     if (sprintTargetHours === 0) sprintTargetHours = 60; // fallback if sprint dates missing
 

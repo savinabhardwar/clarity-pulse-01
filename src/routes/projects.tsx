@@ -17,6 +17,8 @@ import {
   Avatar,
   AvatarStack,
   Chip,
+  DateRangeFilter,
+  dateRangeSince,
   HealthBadge,
   KeyValue,
   Meter,
@@ -24,6 +26,7 @@ import {
   SectionHeading,
   StatusPill,
   PriorityPill,
+  type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
 import {
@@ -38,7 +41,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/supabase";
 
-const searchSchema = z.object({ project: fallback(z.string(), "").default("") });
+const searchSchema = z.object({
+  project: fallback(z.string(), "").default(""),
+  range: fallback(z.enum(["7d", "30d", "90d", "all"]), "all").default("all"),
+});
 
 export const Route = createFileRoute("/projects")({
   validateSearch: zodValidator(searchSchema),
@@ -109,7 +115,7 @@ const activityIcon: Record<string, typeof Activity> = {
 };
 
 function ProjectsPage() {
-  const { project } = Route.useSearch();
+  const { project, range } = Route.useSearch();
   const navigate = useNavigate({ from: "/projects" });
   const projectsQuery = useProjects();
   const peopleQuery = usePeople();
@@ -136,24 +142,30 @@ function ProjectsPage() {
         title="Projects"
         question="What is each project for, what are we building now, and what have we delivered?"
       >
-        {list.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {list.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => navigate({ search: { project: p.slug } })}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                  openSlug === p.slug
-                    ? "border-foreground/20 bg-card text-foreground shadow-soft"
-                    : "border-transparent text-muted-foreground hover:bg-secondary",
-                )}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          <DateRangeFilter
+            value={range}
+            onChange={(v: DateRangeValue) => navigate({ search: { project, range: v } })}
+          />
+          {list.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {list.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => navigate({ search: { project: p.slug, range } })}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                    openSlug === p.slug
+                      ? "border-foreground/20 bg-card text-foreground shadow-soft"
+                      : "border-transparent text-muted-foreground hover:bg-secondary",
+                  )}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </PageHeader>
 
       <QueryBoundary
@@ -167,8 +179,11 @@ function ProjectsPage() {
               key={p.id}
               project={p}
               open={p.slug === openSlug}
-              onToggle={() => navigate({ search: { project: p.slug === openSlug ? "" : p.slug } })}
+              onToggle={() =>
+                navigate({ search: { project: p.slug === openSlug ? "" : p.slug, range } })
+              }
               peopleById={peopleById}
+              since={dateRangeSince(range)}
             />
           ))}
           {list.length === 0 && (
@@ -187,11 +202,13 @@ function ProjectCard({
   open,
   onToggle,
   peopleById,
+  since,
 }: {
   project: ProjectRow;
   open: boolean;
   onToggle: () => void;
   peopleById: Map<string, PersonRow>;
+  since: string | null;
 }) {
   // Full detail (initiatives, delivered, risks, activity) and the
   // contributor roster are only fetched once a card is actually expanded --
@@ -203,6 +220,12 @@ function ProjectCard({
     .map((a) => ({ ...a, person: peopleById.get(a.person_id) }))
     .filter((c): c is typeof c & { person: PersonRow } => !!c.person);
   const overallocated = contributors.filter((c) => c.person.utilisation_pct > 100);
+  // Items with no completion date can't be placed in the range, so they
+  // stay visible rather than being silently dropped by a filter that
+  // can't actually evaluate them.
+  const delivered = (detail.data?.delivered ?? []).filter(
+    (d) => !since || !d.date || d.date >= since,
+  );
 
   return (
     <article className="card-soft overflow-hidden">
@@ -312,15 +335,21 @@ function ProjectCard({
                     description="Product capabilities shipped since the project began."
                   />
                   <div className="grid gap-4 md:grid-cols-2">
-                    {detail.data.delivered.map((d) => (
+                    {delivered.map((d) => (
                       <div key={d.name} className="card-soft card-hover p-4">
                         <div className="flex items-start justify-between gap-3">
                           <h4 className="font-semibold">{d.name}</h4>
                           <Chip tone="success">Shipped</Chip>
                         </div>
-                        <p className="mt-1.5 text-sm text-muted-foreground">
-                          {d.description ?? "No description."}
-                        </p>
+                        {d.description ? (
+                          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+                            {d.description.split("\n").map((line) => (
+                              <li key={line}>{line.replace(/^•\s*/, "")}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-1.5 text-sm text-muted-foreground">No description.</p>
+                        )}
                         <div className="mt-3 grid grid-cols-2 gap-2">
                           <KeyValue
                             label="Completed"
@@ -328,16 +357,11 @@ function ProjectCard({
                           />
                           <KeyValue label="Hours" value={`${d.hours}h`} />
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {d.tickets.map((t) => (
-                            <Chip key={t}>{t}</Chip>
-                          ))}
-                        </div>
                       </div>
                     ))}
-                    {detail.data.delivered.length === 0 && (
+                    {delivered.length === 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Nothing marked as delivered yet.
+                        {since ? "Nothing delivered in this date range." : "Nothing marked as delivered yet."}
                       </p>
                     )}
                   </div>

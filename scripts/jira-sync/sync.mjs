@@ -9,6 +9,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE = (f) => path.join(__dirname, "cache", f);
 const GENERATED = (f) => path.join(__dirname, "..", "..", "src", "data", "generated", f);
 
+// Business-readable stand-in for an LLM summary: the cluster's distinct
+// ticket titles already read like a changelog, so bullet them directly
+// rather than showing "Spans N epic(s), M ticket(s)" plus a wall of raw
+// ticket-key chips.
+function summarizeCluster(cluster) {
+  const distinctSummaries = [...new Set(cluster.tickets.map((t) => t.summary.trim()))];
+  const MAX_BULLETS = 3;
+  const bullets = distinctSummaries.slice(0, MAX_BULLETS).map((s) => `• ${s}`);
+  if (distinctSummaries.length > MAX_BULLETS) {
+    bullets.push(`• +${distinctSummaries.length - MAX_BULLETS} more`);
+  }
+  return bullets.join("\n");
+}
+
 function readJsonl(file) {
   if (!existsSync(file)) return [];
   return readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
@@ -472,7 +486,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         const completionDate = dates[dates.length - 1] || null;
         const { rows } = await pool.query(
           `insert into project_features (project_id, name, description, completion_sprint, completion_date, hours) values ($1,$2,$3,$4,$5,$6) returning id`,
-          [projectId, cluster.name, `Spans ${cluster.epicKeys.length} epic(s), ${cluster.tickets.length} ticket(s)`, null, completionDate, Math.round(hours * 10) / 10],
+          [projectId, cluster.name, summarizeCluster(cluster), null, completionDate, Math.round(hours * 10) / 10],
         );
         const featureId = rows[0].id;
         for (const t of cluster.tickets) {

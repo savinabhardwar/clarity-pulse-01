@@ -142,10 +142,16 @@ export function useAllBlockers() {
   });
 }
 
-export function useRecentActivity() {
+// `since` narrows to activity that occurred on/after this ISO timestamp;
+// omit for the default "most recent 15, unfiltered" behaviour.
+export function useRecentActivity(since?: string | null) {
   return useQuery({
-    queryKey: ["recent-activity"],
-    queryFn: async () => unwrap(await supabase.from("v_recent_activity").select("*").limit(15)),
+    queryKey: ["recent-activity", since ?? "all"],
+    queryFn: async () => {
+      let query = supabase.from("v_recent_activity").select("*").order("occurred_at", { ascending: false });
+      query = since ? query.gte("occurred_at", since).limit(100) : query.limit(15);
+      return unwrap(await query);
+    },
   });
 }
 

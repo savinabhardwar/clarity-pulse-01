@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   Avatar,
   Chip,
+  DateRangeFilter,
   HealthBadge,
   KeyValue,
   Meter,
@@ -76,7 +77,9 @@ function TeamHealth() {
       <PageHeader
         title="Team Health"
         question="Is our engineering data reliable enough to plan with?"
-      />
+      >
+        <DateRangeFilter value="all" onChange={() => {}} disabled />
+      </PageHeader>
 
       <QueryBoundary
         isLoading={isLoading}

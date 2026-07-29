@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -14,11 +16,14 @@ import {
   Avatar,
   AvatarStack,
   Chip,
+  DateRangeFilter,
+  dateRangeSince,
   HealthBadge,
   Meter,
   PageHeader,
   SectionHeading,
   StatCard,
+  type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
 import {
@@ -34,7 +39,12 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/supabase";
 
+const searchSchema = z.object({
+  range: fallback(z.enum(["7d", "30d", "90d", "all"]), "all").default("all"),
+});
+
 export const Route = createFileRoute("/")({
+  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
       { title: "Engineering Overview — Delivery, Capacity & Health" },
@@ -101,12 +111,14 @@ function useSprintOverrunCount() {
 }
 
 function Overview() {
+  const { range } = Route.useSearch();
+  const navigate = useNavigate({ from: "/" });
   const orgMetrics = useOrgMetrics();
   const people = usePeople();
   const projects = useProjects();
   const allocations = useAllAllocations();
   const topRisks = useTopRisks();
-  const recentActivity = useRecentActivity();
+  const recentActivity = useRecentActivity(dateRangeSince(range));
   const overrunCount = useSprintOverrunCount();
 
   const isLoading =
@@ -118,7 +130,12 @@ function Overview() {
       <PageHeader
         title="Overview"
         question="Is engineering on track, and what needs a decision today?"
-      />
+      >
+        <DateRangeFilter
+          value={range}
+          onChange={(v: DateRangeValue) => navigate({ search: { range: v } })}
+        />
+      </PageHeader>
 
       <QueryBoundary
         isLoading={isLoading}

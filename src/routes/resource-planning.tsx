@@ -7,6 +7,7 @@ import {
   Avatar,
   AvatarStack,
   Chip,
+  DateRangeFilter,
   HealthBadge,
   KeyValue,
   Meter,
@@ -85,7 +86,9 @@ function ResourcePlanning() {
       <PageHeader
         title="Resource Planning"
         question="Who is working on what, and where is engineering time going?"
-      />
+      >
+        <DateRangeFilter value="all" onChange={() => {}} disabled />
+      </PageHeader>
 
       <QueryBoundary
         isLoading={isLoading}

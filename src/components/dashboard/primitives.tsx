@@ -1,6 +1,58 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Health, Person } from "@/data/dashboard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export type DateRangeValue = "7d" | "30d" | "90d" | "all";
+
+// Only pages with real timestamped records (activity feed, delivered
+// dates) can honor this — everything else is a single current-sprint
+// snapshot recomputed by the sync job, which has no history to filter into.
+export function dateRangeSince(range: DateRangeValue): string | null {
+  if (range === "all") return null;
+  const days = { "7d": 7, "30d": 30, "90d": 90 }[range];
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  return since.toISOString();
+}
+
+export function DateRangeFilter({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: DateRangeValue;
+  onChange: (v: DateRangeValue) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      title={
+        disabled
+          ? "This page shows the current sprint snapshot only — date range doesn't apply here"
+          : undefined
+      }
+    >
+      <Select value={value} onValueChange={(v) => onChange(v as DateRangeValue)} disabled={disabled}>
+        <SelectTrigger className="w-40">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="7d">Last 7 days</SelectItem>
+          <SelectItem value="30d">Last 30 days</SelectItem>
+          <SelectItem value="90d">Last 90 days</SelectItem>
+          <SelectItem value="all">All time</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export function HealthBadge({ health, className }: { health: Health; className?: string }) {
   const map: Record<Health, string> = {
