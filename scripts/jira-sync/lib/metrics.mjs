@@ -39,58 +39,65 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     const adj = adjustments[accountId] || {};
     if (adj.excluded) continue;
 
-    // A person has ONE job's worth of capacity regardless of how many
-    // projects they happen to have tickets in -- crediting them with a
-    // FULL extra sprint's target for every touched project (or even
-    // unioning calendar days across sprints, tried earlier) let someone
-    // with 23 tickets in one sprint and 1 incidental ticket in another,
-    // unrelated, non-overlapping sprint get charged a second sprint's
-    // worth of target on top of the first. Instead, weight each touched
-    // sprint's contribution by that project's SHARE of this person's
-    // ticket count, so a single incidental ticket barely moves the
-    // target instead of adding another 80h.
-    //
-    // Two targets, both surfaced, since they answer different questions:
-    // - sprintTargetHours: the FULL sprint commitment (8h/workday, 80h
-    //   for a 2-week/10-workday sprint, only reduced for planned leave)
-    //   -- "how much of my sprint commitment is done", the headline
-    //   utilisation %.
-    // - paceTargetHours: prorated to elapsed workdays so far -- "am I on
-    //   pace right now", a secondary check that's meaningful mid-sprint
-    //   when the full target hasn't had time to be reached yet.
+    // A person has ONE job's worth of capacity, and each tracked sprint
+    // is independently a full 8h/day commitment (not weighted down by
+    // ticket count). When someone touches more than one currently-active
+    // sprint, the one with the FEWEST remaining workdays is their
+    // reference sprint -- the most conservative "one calendar" a person
+    // actually has, until sprints across projects share the same
+    // start/end dates.
     const ticketCountByProject = new Map();
     for (const t of tickets) ticketCountByProject.set(t.project, (ticketCountByProject.get(t.project) || 0) + 1);
     const projectsTouched = [...ticketCountByProject.keys()];
-    let weightedTotalWorkdays = 0;
-    let weightedElapsedWorkdays = 0;
-    let matchedAnySprint = false;
+    const FALLBACK_SPRINT_WORKDAYS = 10; // assumed 2-week sprint when no tracked dates exist
+
+    let referenceSprint = null; // {totalWorkdays, elapsedWorkdays, remainingWorkdays}
     for (const pk of projectsTouched) {
       const sprint = sprintByProject.get(pk);
       if (!sprint) continue;
-      matchedAnySprint = true;
-      const weight = ticketCountByProject.get(pk) / tickets.length;
       const start = toDate(sprint.startDate);
       const end = toDate(sprint.endDate);
       const totalWorkdays = workdaysBetween(start, end) || 1;
       const elapsedWorkdays = Math.min(workdaysBetween(start, asOf), totalWorkdays);
-      weightedTotalWorkdays += weight * totalWorkdays;
-      weightedElapsedWorkdays += weight * elapsedWorkdays;
+      const remainingWorkdays = Math.max(totalWorkdays - elapsedWorkdays, 0);
+      if (!referenceSprint || remainingWorkdays < referenceSprint.remainingWorkdays) {
+        referenceSprint = { totalWorkdays, elapsedWorkdays, remainingWorkdays };
+      }
     }
     // Lower-confidence signal: none of this person's projects had tracked
     // sprint dates to prorate against, so their target is a flat guess
-    // rather than derived from real sprint windows.
+    // rather than derived from real sprint windows. Assumed "just
+    // started" (full runway ahead) rather than "just ended", a neutral
+    // default absent any real date to go on.
+    const matchedAnySprint = referenceSprint !== null;
     const targetHoursIsFallback = !matchedAnySprint;
-    const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, weightedTotalWorkdays);
-    const leaveDaysToDate = Math.min(adj.leaveDaysThisSprint || 0, weightedElapsedWorkdays);
-    const FALLBACK_SPRINT_WORKDAYS = 10; // assumed 2-week sprint when no tracked dates exist
-    let sprintTargetHours = matchedAnySprint
-      ? HOURS_PER_WORKDAY_SPRINT * Math.max(weightedTotalWorkdays - leaveDaysTotal, 0)
-      : HOURS_PER_WORKDAY_SPRINT * FALLBACK_SPRINT_WORKDAYS; // fallback if sprint dates missing
-    let paceTargetHours = matchedAnySprint
-      ? HOURS_PER_WORKDAY_SPRINT * Math.max(weightedElapsedWorkdays - leaveDaysToDate, 0)
-      : sprintTargetHours;
+    const totalWorkdays = matchedAnySprint ? referenceSprint.totalWorkdays : FALLBACK_SPRINT_WORKDAYS;
+    const elapsedWorkdays = matchedAnySprint ? referenceSprint.elapsedWorkdays : 0;
+    const remainingWorkdays = matchedAnySprint ? referenceSprint.remainingWorkdays : FALLBACK_SPRINT_WORKDAYS;
+
+    const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdays);
+    const leaveDaysToDate = Math.min(adj.leaveDaysThisSprint || 0, elapsedWorkdays);
+    const leaveDaysRemaining = Math.max(leaveDaysTotal - leaveDaysToDate, 0);
+
+    // Two targets, both surfaced, since they answer different questions:
+    // - sprintTargetHours: the FULL sprint commitment -- "how much of my
+    //   sprint commitment is done", the headline utilisation %.
+    // - paceTargetHours: prorated to elapsed workdays so far -- "am I on
+    //   pace right now", a secondary check meaningful mid-sprint.
+    let sprintTargetHours = HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdays - leaveDaysTotal, 0);
+    let paceTargetHours = HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
     if (sprintTargetHours === 0) sprintTargetHours = HOURS_PER_WORKDAY_SPRINT * FALLBACK_SPRINT_WORKDAYS;
     if (paceTargetHours === 0) paceTargetHours = sprintTargetHours; // sprint just started or fallback
+
+    // ---- Remaining capacity: forward-looking, for bandwidth --
+    // "how much spare room is there before sprint end, given what's
+    // still outstanding" -- not "target minus logged so far". An
+    // already-ended (overrun) sprint naturally contributes 0 here,
+    // unlike the full-sprint target above.
+    const remainingCapacityHours = HOURS_PER_WORKDAY_SPRINT * Math.max(remainingWorkdays - leaveDaysRemaining, 0);
+    const assignedRemainingWorkHours = tickets
+      .filter((t) => t.statusCategory !== "done")
+      .reduce((s, t) => s + (t.remainingSeconds || 0) / 3600, 0);
 
     // ---- Hours logged: sum of worklog seconds credited to this person
     // as WORKLOG AUTHOR (not assignee), across ALL their worklogs on
@@ -192,7 +199,7 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     });
 
     const utilisationPct = Math.round((100 * hoursLogged) / sprintTargetHours);
-    const bandwidthHours = Math.round((sprintTargetHours - hoursLogged) * 10) / 10;
+    const bandwidthHours = Math.round((remainingCapacityHours - assignedRemainingWorkHours) * 10) / 10;
     const pacePct = Math.round((100 * hoursLogged) / paceTargetHours);
     const avgLogLagDays = logLagCount ? Math.round((10 * logLagDaysSum) / logLagCount) / 10 : null;
 
@@ -212,17 +219,16 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     const health = highSeverityCount > 0 ? "at_risk" : riskFlags.length > 0 ? "needs_attention" : "on_track";
 
     // A concrete, human reason for crossing 100% -- someone touching
-    // several projects has their target weighted by ticket share across
-    // those sprints (see above), not inflated per project touched, so
-    // this is a plain single-target overage regardless of project count.
-    // Pace is mentioned too since a full-sprint overage can look very
-    // different from the day-by-day pace (e.g. genuinely ahead of
-    // schedule vs. cramming).
+    // several projects still has one reference sprint's worth of target
+    // (see above), so this is a plain single-target overage regardless
+    // of project count. Pace is mentioned too since a full-sprint
+    // overage can look very different from the day-by-day pace (e.g.
+    // genuinely ahead of schedule vs. cramming).
     let overallocationReason = null;
     if (utilisationPct > 100) {
       const base =
         projectsTouched.length > 1
-          ? `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h target weighted across ${projectsTouched.length} projects by ticket share (${projectsTouched.join(", ")})`
+          ? `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h target (reference sprint among ${projectsTouched.length} touched projects: ${projectsTouched.join(", ")})`
           : `Logged ${Math.round(hoursLogged * 10) / 10}h against a ${Math.round(sprintTargetHours * 10) / 10}h sprint target`;
       overallocationReason = `${base} (currently pacing at ${pacePct}% of plan for this point in the sprint)`;
     }
