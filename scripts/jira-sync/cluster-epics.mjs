@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { similarityRatio } from "./lib/similarity.mjs";
 
 const EPICS_PATH = new URL("./cache/epics.raw.jsonl", import.meta.url);
@@ -164,6 +164,7 @@ const output = {
   projects,
 };
 
+mkdirSync(new URL(".", OUT_PATH), { recursive: true });
 writeFileSync(OUT_PATH, JSON.stringify(output, null, 2) + "\n");
 console.log(`Clustered ${epics.length} epics into ${projects.length} projects.`);
 console.log(`Current (recently active) projects: ${projects.filter((p) => p.current).length}`);

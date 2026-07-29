@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 
 const counts = JSON.parse(readFileSync(new URL("./cache/assignee-project-counts.json", import.meta.url), "utf8"));
 
@@ -25,8 +25,10 @@ const people = counts.map((c) => {
   };
 });
 
+const OUT_PATH = new URL("../../src/data/generated/teams.seed.json", import.meta.url);
+mkdirSync(new URL(".", OUT_PATH), { recursive: true });
 writeFileSync(
-  new URL("../../src/data/generated/teams.seed.json", import.meta.url),
+  OUT_PATH,
   JSON.stringify({ note: "Every entry is a GUESS pending human correction — Jira has no team field.", people }, null, 2) + "\n",
 );
 console.log(`Wrote ${people.length} guessed team entries.`);
