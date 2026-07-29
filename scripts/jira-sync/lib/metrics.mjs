@@ -329,8 +329,18 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       .sort((a, b) => b - a)[0];
     return workdaysBetween(lastTouch, asOf) >= 5;
   }).length;
+  // Penalties are proportional to open-ticket volume, not raw counts --
+  // a fixed "N points off per ticket" saturates its 100-point cap almost
+  // immediately once a team has more than ~15-25 blocked/dark-WIP tickets
+  // total, at which point the score stops reflecting reality no matter
+  // how much worse things get (at this org's actual scale, both terms
+  // were maxed out and the "board health" score was silently just
+  // estimate coverage / 2 every single sync).
+  const openTicketCount = issues.filter((t) => t.statusCategory !== "done").length || 1;
+  const blockedRatioPct = (100 * blockedTickets) / openTicketCount;
+  const darkWipRatioPct = (100 * totalDarkWip) / openTicketCount;
   const boardHealthScore = Math.round(
-    avgEstimateCoverage * 0.5 + (100 - Math.min(100, blockedTickets * 6)) * 0.25 + (100 - Math.min(100, totalDarkWip * 4)) * 0.25,
+    avgEstimateCoverage * 0.5 + (100 - Math.min(100, blockedRatioPct)) * 0.25 + (100 - Math.min(100, darkWipRatioPct)) * 0.25,
   );
 
   const orgBoardHealth = {

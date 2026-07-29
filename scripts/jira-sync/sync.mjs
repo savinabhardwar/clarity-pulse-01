@@ -125,12 +125,21 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
              team_id = case when people.team_guessed = false then people.team_id else excluded.team_id end,
              team_guessed = case when people.team_guessed = false then false else excluded.team_guessed end,
              team_guess_reason = case when people.team_guessed = false then people.team_guess_reason else excluded.team_guess_reason end,
+             -- Never re-include a person a human has merged/excluded --
+             -- same "don't clobber a manual correction" rule as team_guessed.
+             excluded = case when people.excluded = true then true else excluded.excluded end,
              updated_at = excluded.updated_at`,
           values,
         );
       }
     }
     const personIdByAccount = new Map((await pool.query("select id, jira_account_id from people")).rows.map((r) => [r.jira_account_id, r.id]));
+    // Apply persisted account merges (e.g. two Jira accounts confirmed to
+    // be the same human) on top of the 1:1 account->person mapping above,
+    // the same "auto-derive fresh, then re-apply human corrections"
+    // pattern project_overrides uses for epic clustering.
+    const { rows: aliasRows } = await pool.query("select alias_jira_account_id, canonical_person_id from person_account_aliases");
+    for (const a of aliasRows) personIdByAccount.set(a.alias_jira_account_id, a.canonical_person_id);
     recordsProcessed += peopleRows.length;
 
     // ---- 3. sprints (tracked only, for now) ----
