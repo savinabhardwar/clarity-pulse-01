@@ -2,9 +2,9 @@ name: Jira sync
 
 on:
   schedule:
-    # Hourly. GitHub's scheduler is best-effort and can slip a few
-    # minutes under load -- that's fine for an hourly dashboard refresh.
-    - cron: "0 * * * *"
+    # 10:00 IST daily (IST = UTC+5:30, no DST). GitHub's scheduler is
+    # best-effort and can slip a few minutes under load.
+    - cron: "30 4 * * *"
   workflow_dispatch:
     inputs:
       sync_type:
