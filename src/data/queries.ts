@@ -207,6 +207,8 @@ export interface PersonRow {
   dark_wip_count: number;
   health: DbHealth;
   risk_flags: string[];
+  target_hours_is_fallback: boolean;
+  overallocation_reason: string | null;
 }
 
 export interface ProjectRow {
@@ -220,6 +222,7 @@ export interface ProjectRow {
   sprint_goal: string | null;
   owner_name: string | null;
   is_current: boolean;
+  source: "epic_cluster" | "roadmap" | "manual";
   summary_text: string | null;
   hours_invested: number;
   hours_this_sprint: number;

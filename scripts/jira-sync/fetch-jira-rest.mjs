@@ -181,16 +181,13 @@ export async function fetchAll({ historyWatermark } = {}) {
   const epics = await fetchEpics();
   writeJsonl(path.join(CACHE_DIR, "epics.raw.jsonl"), epics);
 
+  // This run's delta only -- durable accumulation across runs lives in
+  // the resolved_ticket_history table (sync.mjs upserts into it), not in
+  // this file. This file previously tried to "append to the existing
+  // cache" for incremental runs, which silently did nothing in CI since
+  // cache/ is gitignored and every checkout starts empty.
   const history = await fetchHistory({ sinceIso: historyWatermark, limit: historyWatermark ? undefined : 500 });
-  if (historyWatermark) {
-    // Incremental: APPEND to the existing append-only history cache.
-    const { readFileSync, existsSync } = await import("node:fs");
-    const file = path.join(CACHE_DIR, "history.raw.jsonl");
-    const existing = existsSync(file) ? readFileSync(file, "utf8") : "";
-    writeFileSync(file, existing + history.map((r) => JSON.stringify(r)).join("\n") + (history.length ? "\n" : ""));
-  } else {
-    writeJsonl(path.join(CACHE_DIR, "history.raw.jsonl"), history);
-  }
+  writeJsonl(path.join(CACHE_DIR, "history.raw.jsonl"), history);
 
   return { trackedSprints, issueCount: issues.length, epicCount: epics.length, historyCount: history.length };
 }

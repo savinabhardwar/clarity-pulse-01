@@ -87,8 +87,16 @@ function ResourcePlanning() {
         title="Resource Planning"
         question="Who is working on what, and where is engineering time going?"
       >
-        <DateRangeFilter value="all" onChange={() => {}} disabled />
+        <DateRangeFilter
+          value={null}
+          onChange={() => {}}
+          disabled
+          disabledReason="Allocation/capacity here are a live snapshot recomputed on every sync, not stored history — there's no past date to filter into."
+        />
       </PageHeader>
+      <p className="-mt-6 text-xs text-muted-foreground">
+        Current-sprint snapshot as of the last sync, not a historical trend.
+      </p>
 
       <QueryBoundary
         isLoading={isLoading}

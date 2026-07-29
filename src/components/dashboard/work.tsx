@@ -9,9 +9,11 @@ import {
   Chip,
   HealthBadge,
   KeyValue,
+  LowConfidenceNote,
   Meter,
   StatusPill,
   PriorityPill,
+  UnconfirmedBadge,
 } from "./primitives";
 import { QueryBoundary } from "./query-state";
 import { toHealth } from "@/data/queries";
@@ -81,10 +83,14 @@ export function PersonAllocationCard({ person }: { person: PersonRow }) {
           <div className="min-w-0">
             <p className="truncate font-semibold">{p.name}</p>
             <p className="text-sm text-muted-foreground">{p.role ?? "Engineer"}</p>
-            <Chip className="mt-1">
-              {p.team ?? "Unassigned"}
-              {p.team_guessed && " (guessed)"}
-            </Chip>
+            <Chip className="mt-1">{p.team ?? "Unassigned"}</Chip>
+            {p.team_guessed && <UnconfirmedBadge label="team assignment" className="mt-1" />}
+            {p.target_hours_is_fallback && (
+              <LowConfidenceNote reason="no tracked sprint dates — 60h flat guess" className="mt-1" />
+            )}
+            {p.overallocation_reason && (
+              <p className="mt-1 text-xs text-muted-foreground">{p.overallocation_reason}</p>
+            )}
           </div>
         </div>
 

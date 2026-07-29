@@ -18,7 +18,7 @@ import {
   AvatarStack,
   Chip,
   DateRangeFilter,
-  dateRangeSince,
+  dateRangeToIso,
   HealthBadge,
   KeyValue,
   Meter,
@@ -26,6 +26,7 @@ import {
   SectionHeading,
   StatusPill,
   PriorityPill,
+  UnconfirmedBadge,
   type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
@@ -43,7 +44,8 @@ import { supabase } from "@/supabase";
 
 const searchSchema = z.object({
   project: fallback(z.string(), "").default(""),
-  range: fallback(z.enum(["7d", "30d", "90d", "all"]), "all").default("all"),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
 });
 
 export const Route = createFileRoute("/projects")({
@@ -115,8 +117,10 @@ const activityIcon: Record<string, typeof Activity> = {
 };
 
 function ProjectsPage() {
-  const { project, range } = Route.useSearch();
+  const { project, from, to } = Route.useSearch();
   const navigate = useNavigate({ from: "/projects" });
+  const range: DateRangeValue = from || to ? { from, to } : null;
+  const { from: sinceIso, to: untilIso } = dateRangeToIso(range);
   const projectsQuery = useProjects();
   const peopleQuery = usePeople();
 
@@ -145,14 +149,16 @@ function ProjectsPage() {
         <div className="flex flex-col items-end gap-2">
           <DateRangeFilter
             value={range}
-            onChange={(v: DateRangeValue) => navigate({ search: { project, range: v } })}
+            onChange={(v) =>
+              navigate({ search: { project, from: v?.from ?? "", to: v?.to ?? "" } })
+            }
           />
           {list.length > 0 && (
             <div className="flex flex-wrap justify-end gap-1.5">
               {list.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => navigate({ search: { project: p.slug, range } })}
+                  onClick={() => navigate({ search: { project: p.slug, from, to } })}
                   className={cn(
                     "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
                     openSlug === p.slug
@@ -180,10 +186,11 @@ function ProjectsPage() {
               project={p}
               open={p.slug === openSlug}
               onToggle={() =>
-                navigate({ search: { project: p.slug === openSlug ? "" : p.slug, range } })
+                navigate({ search: { project: p.slug === openSlug ? "" : p.slug, from, to } })
               }
               peopleById={peopleById}
-              since={dateRangeSince(range)}
+              since={sinceIso}
+              until={untilIso}
             />
           ))}
           {list.length === 0 && (
@@ -203,12 +210,14 @@ function ProjectCard({
   onToggle,
   peopleById,
   since,
+  until,
 }: {
   project: ProjectRow;
   open: boolean;
   onToggle: () => void;
   peopleById: Map<string, PersonRow>;
   since: string | null;
+  until: string | null;
 }) {
   // Full detail (initiatives, delivered, risks, activity) and the
   // contributor roster are only fetched once a card is actually expanded --
@@ -224,7 +233,7 @@ function ProjectCard({
   // stay visible rather than being silently dropped by a filter that
   // can't actually evaluate them.
   const delivered = (detail.data?.delivered ?? []).filter(
-    (d) => !since || !d.date || d.date >= since,
+    (d) => (!since && !until) || !d.date || ((!since || d.date >= since) && (!until || d.date <= until)),
   );
 
   return (
@@ -240,6 +249,9 @@ function ProjectCard({
               />
               <h2 className="text-xl font-semibold">{project.name}</h2>
               <HealthBadge health={toHealth(project.health)} />
+              {project.source === "epic_cluster" && (
+                <UnconfirmedBadge label="project grouping (auto-clustered from epics)" />
+              )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {project.sprint_goal ?? "No sprint goal set"} · Owner{" "}

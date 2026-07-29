@@ -334,6 +334,8 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       avg_log_lag_days: m.avgLogLagDays,
       health: m.health,
       risk_flags: m.riskFlags,
+      target_hours_is_fallback: m.targetHoursIsFallback,
+      overallocation_reason: m.overallocationReason,
       computed_at: new Date(),
     })).filter((r) => r.person_id);
     await upsert(pool, "person_metrics", personMetricRows, {
@@ -465,14 +467,38 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     }
 
     // ---- 9. project_features (delivered capabilities, from history) ----
+    // history is only THIS run's delta -- persist it into
+    // resolved_ticket_history so accumulated history survives across CI
+    // runs (which start from an empty, gitignored cache/ every time),
+    // then rebuild project_features from the FULL persisted set, not
+    // just this run's slice.
+    const historyRows = history
+      .filter((h) => h.parent)
+      .map((h) => ({
+        jira_key: h.key,
+        summary: h.summary,
+        issuetype: h.issuetype,
+        resolution_date: h.resolutiondate,
+        spent_seconds: h.spentSeconds || 0,
+        parent_epic_key: h.parent.key,
+        updated_at: new Date(),
+      }));
+    await upsert(pool, "resolved_ticket_history", historyRows, {
+      conflictColumns: ["jira_key"],
+      updateColumns: ["summary", "issuetype", "resolution_date", "spent_seconds", "parent_epic_key", "updated_at"],
+    });
+
+    const { rows: allHistoryRows } = await pool.query(
+      "select jira_key as key, summary, resolution_date as resolutiondate, spent_seconds as \"spentSeconds\", parent_epic_key from resolved_ticket_history",
+    );
+
     await pool.query("delete from project_features");
     const historyByProject = new Map();
-    for (const h of history) {
-      if (!h.parent) continue;
-      const slug = epicToProjectSlug.get(h.parent.key);
+    for (const h of allHistoryRows) {
+      const slug = epicToProjectSlug.get(h.parent_epic_key);
       if (!slug) continue;
       if (!historyByProject.has(slug)) historyByProject.set(slug, []);
-      historyByProject.get(slug).push({ ...h, epicKey: h.parent.key });
+      historyByProject.get(slug).push({ ...h, epicKey: h.parent_epic_key });
     }
     for (const [slug, tickets] of historyByProject) {
       const projectId = projectIdBySlug.get(slug);

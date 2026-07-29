@@ -1,56 +1,90 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Health, Person } from "@/data/dashboard";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-export type DateRangeValue = "7d" | "30d" | "90d" | "all";
+export type DateRangeValue = { from: string; to: string } | null;
 
-// Only pages with real timestamped records (activity feed, delivered
-// dates) can honor this — everything else is a single current-sprint
-// snapshot recomputed by the sync job, which has no history to filter into.
-export function dateRangeSince(range: DateRangeValue): string | null {
-  if (range === "all") return null;
-  const days = { "7d": 7, "30d": 30, "90d": 90 }[range];
-  const since = new Date();
-  since.setDate(since.getDate() - days);
-  return since.toISOString();
+export function dateRangeToIso(range: DateRangeValue): { from: string | null; to: string | null } {
+  if (!range) return { from: null, to: null };
+  return {
+    from: range.from ? new Date(range.from + "T00:00:00").toISOString() : null,
+    to: range.to ? new Date(range.to + "T23:59:59").toISOString() : null,
+  };
 }
 
+// Plain <input type="date"> + <button>, deliberately not a dropdown/popover
+// component — this is the same native-element pattern already proven to
+// work elsewhere in this app (the /projects project picker, /people
+// search box), rather than a portal-based widget with no in-app precedent.
 export function DateRangeFilter({
   value,
   onChange,
   disabled,
+  disabledReason,
 }: {
   value: DateRangeValue;
   onChange: (v: DateRangeValue) => void;
   disabled?: boolean;
+  disabledReason?: string;
 }) {
+  const from = value?.from ?? "";
+  const to = value?.to ?? "";
   return (
     <div
-      title={
-        disabled
-          ? "This page shows the current sprint snapshot only — date range doesn't apply here"
-          : undefined
-      }
+      className="flex items-center gap-1.5"
+      title={disabled ? disabledReason : undefined}
     >
-      <Select value={value} onValueChange={(v) => onChange(v as DateRangeValue)} disabled={disabled}>
-        <SelectTrigger className="w-40">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="7d">Last 7 days</SelectItem>
-          <SelectItem value="30d">Last 30 days</SelectItem>
-          <SelectItem value="90d">Last 90 days</SelectItem>
-          <SelectItem value="all">All time</SelectItem>
-        </SelectContent>
-      </Select>
+      <input
+        type="date"
+        value={from}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value || to ? { from: e.target.value, to } : null)}
+        className="h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <span className="text-sm text-muted-foreground">to</span>
+      <input
+        type="date"
+        value={to}
+        disabled={disabled}
+        onChange={(e) => onChange(from || e.target.value ? { from, to: e.target.value } : null)}
+        className="h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      {value && !disabled && (
+        <button
+          onClick={() => onChange(null)}
+          className="text-sm font-medium text-info hover:underline"
+        >
+          Clear
+        </button>
+      )}
     </div>
+  );
+}
+
+// Deliberately loud, not a quiet "(guessed)" suffix — one wrong
+// auto-guess (team assignment, project clustering) reads as a data
+// error and erodes trust in every other number on the page unless it's
+// visually impossible to miss.
+export function UnconfirmedBadge({ label, className }: { label: string; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning",
+        className,
+      )}
+      title="Auto-derived, not human-confirmed"
+    >
+      <span className="size-1.5 rounded-full bg-warning" />
+      Unconfirmed: {label}
+    </span>
+  );
+}
+
+export function LowConfidenceNote({ reason, className }: { reason: string; className?: string }) {
+  return (
+    <p className={cn("text-xs font-medium text-warning", className)} title={reason}>
+      ⚠ Low-confidence number — {reason}
+    </p>
   );
 }
 

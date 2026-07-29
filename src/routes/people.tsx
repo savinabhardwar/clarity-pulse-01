@@ -9,9 +9,11 @@ import {
   DateRangeFilter,
   HealthBadge,
   KeyValue,
+  LowConfidenceNote,
   Meter,
   PageHeader,
   SectionHeading,
+  UnconfirmedBadge,
 } from "@/components/dashboard/primitives";
 import { TicketList } from "@/components/dashboard/work";
 import { QueryBoundary } from "@/components/dashboard/query-state";
@@ -71,7 +73,12 @@ function PeoplePage() {
     <div className="space-y-8">
       <PageHeader title="People" question="What is everyone working on, and who has room for more?">
         <div className="flex flex-wrap items-center gap-2">
-          <DateRangeFilter value="all" onChange={() => {}} disabled />
+          <DateRangeFilter
+            value={null}
+            onChange={() => {}}
+            disabled
+            disabledReason="Utilisation/bandwidth here are a live snapshot recomputed on every sync, not stored history — there's no past date to filter into."
+          />
           <label className="flex w-full max-w-sm items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
             <Search className="size-4 text-muted-foreground" />
             <input
@@ -87,6 +94,9 @@ function PeoplePage() {
           </label>
         </div>
       </PageHeader>
+      <p className="-mt-6 text-xs text-muted-foreground">
+        Current-sprint snapshot as of the last sync, not a historical trend.
+      </p>
 
       <QueryBoundary
         isLoading={people.isLoading}
@@ -144,6 +154,7 @@ function PersonProfile({
           <p className="text-sm text-muted-foreground">
             {p.role ?? "Engineer"} · {p.team ?? "Unassigned team"}
           </p>
+          {p.team_guessed && <UnconfirmedBadge label="team assignment" className="mt-1" />}
         </div>
         <div className="w-44">
           <div className="mb-1 flex justify-between text-xs text-muted-foreground">
@@ -151,6 +162,12 @@ function PersonProfile({
             <span className="num">{p.utilisation_pct}%</span>
           </div>
           <Meter value={p.utilisation_pct} />
+          {p.target_hours_is_fallback && (
+            <LowConfidenceNote reason="no tracked sprint dates — 60h flat guess" className="mt-1" />
+          )}
+          {p.overallocation_reason && (
+            <p className="mt-1 text-xs text-muted-foreground">{p.overallocation_reason}</p>
+          )}
         </div>
         <div className="w-24">
           <p className="text-xs text-muted-foreground">Bandwidth</p>

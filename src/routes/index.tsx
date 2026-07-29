@@ -17,12 +17,14 @@ import {
   AvatarStack,
   Chip,
   DateRangeFilter,
-  dateRangeSince,
+  dateRangeToIso,
   HealthBadge,
+  LowConfidenceNote,
   Meter,
   PageHeader,
   SectionHeading,
   StatCard,
+  UnconfirmedBadge,
   type DateRangeValue,
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
@@ -40,7 +42,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/supabase";
 
 const searchSchema = z.object({
-  range: fallback(z.enum(["7d", "30d", "90d", "all"]), "all").default("all"),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
 });
 
 export const Route = createFileRoute("/")({
@@ -111,14 +114,16 @@ function useSprintOverrunCount() {
 }
 
 function Overview() {
-  const { range } = Route.useSearch();
+  const { from, to } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
+  const range: DateRangeValue = from || to ? { from, to } : null;
+  const since = dateRangeToIso(range).from;
   const orgMetrics = useOrgMetrics();
   const people = usePeople();
   const projects = useProjects();
   const allocations = useAllAllocations();
   const topRisks = useTopRisks();
-  const recentActivity = useRecentActivity(dateRangeSince(range));
+  const recentActivity = useRecentActivity(since);
   const overrunCount = useSprintOverrunCount();
 
   const isLoading =
@@ -133,9 +138,13 @@ function Overview() {
       >
         <DateRangeFilter
           value={range}
-          onChange={(v: DateRangeValue) => navigate({ search: { range: v } })}
+          onChange={(v) => navigate({ search: { from: v?.from ?? "", to: v?.to ?? "" } })}
         />
       </PageHeader>
+      <p className="-mt-6 text-xs text-muted-foreground">
+        KPIs and people/project health below are the current-sprint snapshot as of the last sync
+        {range ? " — the date range only narrows Recent Activity further down." : "."}
+      </p>
 
       <QueryBoundary
         isLoading={isLoading}
@@ -310,8 +319,10 @@ function OverviewBody({
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {p.role ?? "Engineer"} · {p.team ?? "Unassigned team"}
-                      {p.team_guessed && <span className="text-warning"> (guessed)</span>}
                     </p>
+                    {p.team_guessed && (
+                      <UnconfirmedBadge label="team assignment" className="mt-1.5" />
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -320,6 +331,17 @@ function OverviewBody({
                       Allocation
                     </p>
                     <p className="num font-semibold">{p.utilisation_pct}%</p>
+                    {p.target_hours_is_fallback && (
+                      <LowConfidenceNote
+                        reason="no tracked sprint dates for this person's project(s), target is a flat 60h guess"
+                        className="mt-0.5"
+                      />
+                    )}
+                    {p.overallocation_reason && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {p.overallocation_reason}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">

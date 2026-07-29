@@ -13,6 +13,7 @@ import {
   PriorityPill,
   SectionHeading,
   StatCard,
+  UnconfirmedBadge,
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
 import {
@@ -78,8 +79,16 @@ function TeamHealth() {
         title="Team Health"
         question="Is our engineering data reliable enough to plan with?"
       >
-        <DateRangeFilter value="all" onChange={() => {}} disabled />
+        <DateRangeFilter
+          value={null}
+          onChange={() => {}}
+          disabled
+          disabledReason="Hygiene/health scores here are a live snapshot recomputed on every sync, not stored history — there's no past date to filter into."
+        />
       </PageHeader>
+      <p className="-mt-6 text-xs text-muted-foreground">
+        Current-sprint snapshot as of the last sync, not a historical trend.
+      </p>
 
       <QueryBoundary
         isLoading={isLoading}
@@ -166,6 +175,7 @@ function TeamHealthBody({
                   <p className="text-sm text-muted-foreground">
                     {p.role ?? "Engineer"} · {p.team ?? "Unassigned team"}
                   </p>
+                  {p.team_guessed && <UnconfirmedBadge label="team assignment" className="mt-1" />}
                 </div>
               </div>
               <div className="mt-4 space-y-2">
@@ -280,6 +290,11 @@ function TeamHealthBody({
                     <span className="block font-medium">{p.name}</span>
                     <span className="block text-xs text-muted-foreground">
                       {p.team ?? "Unassigned team"}
+                      {p.team_guessed && (
+                        <span className="ml-1 font-semibold text-warning" title="Unconfirmed: team assignment">
+                          ⚠ unconfirmed
+                        </span>
+                      )}
                     </span>
                   </span>
                 </span>
@@ -339,6 +354,9 @@ function TeamHealthBody({
                       <p className="font-semibold">{s.person_name}</p>
                       <p className="text-sm text-muted-foreground">
                         {p?.role ?? "Engineer"} · {p?.team ?? "Unassigned team"}
+                        {p?.team_guessed && (
+                          <span className="ml-1 font-semibold text-warning">⚠ unconfirmed</span>
+                        )}
                       </p>
                     </div>
                   </div>

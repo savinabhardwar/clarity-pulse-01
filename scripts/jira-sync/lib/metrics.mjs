@@ -48,9 +48,11 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // sprint's last day, since the denominator would assume time that
     // hasn't happened yet.
     let sprintTargetHours = 0;
+    let matchedAnySprint = false;
     for (const pk of projectsTouched) {
       const sprint = sprintByProject.get(pk);
       if (!sprint) continue;
+      matchedAnySprint = true;
       const start = toDate(sprint.startDate);
       const end = toDate(sprint.endDate);
       const totalWorkdays = workdaysBetween(start, end) || 1;
@@ -58,18 +60,36 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       const leaveDaysToDate = Math.min((adj.leaveDaysThisSprint || 0) * (elapsedWorkdays / totalWorkdays), elapsedWorkdays);
       sprintTargetHours += HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
     }
-    if (sprintTargetHours === 0) sprintTargetHours = 60; // fallback if sprint dates missing
+    // Lower-confidence signal: none of this person's projects had tracked
+    // sprint dates to prorate against, so their target is a flat guess
+    // rather than derived from real sprint windows.
+    const targetHoursIsFallback = !matchedAnySprint;
+    if (sprintTargetHours === 0) sprintTargetHours = 60; // fallback if sprint dates missing or sprint just started
 
     // ---- Hours logged: sum of worklog seconds credited to this person
     // as WORKLOG AUTHOR (not assignee), across ALL their worklogs on
-    // ANY in-window ticket regardless of who it's assigned to. ----
+    // ANY in-window ticket regardless of who it's assigned to. Scoped to
+    // worklogs actually STARTED within that ticket's own tracked sprint
+    // window -- a ticket sitting in the currently-open sprint can carry
+    // months of old worklogs from earlier sprints, which would otherwise
+    // all get credited to this sprint's utilisation. Tickets whose
+    // project has no tracked sprint (fallback case, already flagged via
+    // targetHoursIsFallback) count every worklog, since there's no
+    // window to scope against. ----
     let hoursLogged = 0;
     let worklogCount = 0;
     let logLagDaysSum = 0;
     let logLagCount = 0;
+    function inSprintWindow(t, wl) {
+      const sprint = sprintByProject.get(t.project);
+      if (!sprint) return true;
+      const started = new Date(wl.started);
+      return started >= toDate(sprint.startDate) && started <= asOf;
+    }
     for (const t of tickets) {
       for (const wl of t.worklogs || []) {
         if (wl.authorAccountId !== accountId) continue;
+        if (!inSprintWindow(t, wl)) continue;
         hoursLogged += wl.seconds / 3600;
         worklogCount++;
         const lag = workdaysBetween(new Date(wl.started), new Date(wl.created));
@@ -83,6 +103,7 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       if (other.assignee && other.assignee.accountId === accountId) continue;
       for (const wl of other.worklogs || []) {
         if (wl.authorAccountId !== accountId) continue;
+        if (!inSprintWindow(other, wl)) continue;
         hoursLogged += wl.seconds / 3600;
         worklogCount++;
         const lag = workdaysBetween(new Date(wl.started), new Date(wl.created));
@@ -163,6 +184,17 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     const highSeverityCount = riskFlags.filter((f) => f.includes("Exceeded") || f.includes("Blocked")).length;
     const health = highSeverityCount > 0 ? "at_risk" : riskFlags.length > 0 ? "needs_attention" : "on_track";
 
+    // A concrete, human reason for crossing 100% -- concurrent sprints
+    // sum multiple 60h targets together, which reads very differently
+    // from someone simply overworking a single sprint.
+    let overallocationReason = null;
+    if (utilisationPct > 100) {
+      overallocationReason =
+        projectsTouched.length > 1
+          ? `Logged across ${projectsTouched.length} concurrent sprints (${projectsTouched.join(", ")}) — target is the sum of each sprint's target hours`
+          : `Logged ${Math.round(hoursLogged * 10) / 10}h against a single sprint target of ${Math.round(sprintTargetHours * 10) / 10}h`;
+    }
+
     const person = teamByAccount.get(accountId);
 
     personMetrics.push({
@@ -186,6 +218,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
       avgLogLagDays,
       health,
       riskFlags,
+      targetHoursIsFallback,
+      overallocationReason,
       projectsTouched,
       wipCount: wip.length,
       todoCount: todo.length,
