@@ -447,7 +447,7 @@ function ProjectCard({
                     title="Metrics"
                     description="Delivery throughput and remaining work."
                   />
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
                     <KeyValue label="Total hours" value={`${project.hours_invested}h`} />
                     <KeyValue label="Hours this sprint" value={`${project.hours_this_sprint}h`} />
                     <KeyValue label="Completed tickets" value={project.closed_tickets} />
@@ -461,7 +461,18 @@ function ProjectCard({
                       label="Remaining estimate"
                       value={`${project.remaining_estimate_hours}h`}
                     />
+                    <KeyValue
+                      label="Projected spillage"
+                      value={`${project.spillage_hours}h`}
+                      tone={project.spillage_hours > 0 ? "warning" : "success"}
+                    />
                   </div>
+                  {project.spillage_hours > 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      At the team's current logging pace this sprint, ~{project.spillage_hours}h of
+                      this project's open work is projected to carry into the next sprint.
+                    </p>
+                  )}
                 </section>
 
                 {/* Risks */}

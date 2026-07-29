@@ -242,6 +242,7 @@ export interface ProjectRow {
   blocked_tickets: number;
   remaining_estimate_hours: number;
   contributor_count: number;
+  spillage_hours: number;
 }
 
 export interface ProjectContributorRow {
@@ -262,6 +263,7 @@ export interface OrgMetrics {
   dark_wip: number;
   closed_without_logs: number;
   board_health_score: number;
+  total_spillage_hours: number;
 }
 
 export interface ActivityRow {

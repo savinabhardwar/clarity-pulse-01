@@ -288,6 +288,13 @@ function OverviewBody({
           tone={m.board_health_score > 80 ? "success" : "warning"}
           footer={`${m.blocked_count} blocked tickets · ${m.dark_wip} dark WIP`}
         />
+        <StatCard
+          label="Projected Sprint Spillage"
+          value={`${m.total_spillage_hours}h`}
+          sub="Work unlikely to finish by sprint end, at current pace"
+          tone={m.total_spillage_hours > 0 ? "warning" : "success"}
+          footer="Across active Development projects"
+        />
       </section>
 
       {/* People requiring attention */}
