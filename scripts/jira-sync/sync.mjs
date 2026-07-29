@@ -178,6 +178,19 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       is_tracked: true,
       updated_at: new Date(),
     }));
+    // Clear the old tracked flag for these projects FIRST -- when a
+    // project rolls over to a new sprint, its jira_sprint_id hash
+    // changes (different name), so the row below is a fresh INSERT, not
+    // an UPDATE of the old row. Without this, both the old and new
+    // sprint end up is_tracked = true for the same project at once,
+    // violating idx_sprints_one_tracked_per_project.
+    const trackedProjectIds = sprintRows.map((r) => r.jira_project_id).filter(Boolean);
+    if (trackedProjectIds.length) {
+      await pool.query(
+        `update sprints set is_tracked = false where is_tracked = true and jira_project_id = any($1)`,
+        [trackedProjectIds],
+      );
+    }
     await upsert(pool, "sprints", sprintRows, {
       conflictColumns: ["jira_sprint_id"],
       updateColumns: ["name", "state", "start_date", "end_date", "is_tracked", "updated_at"],
