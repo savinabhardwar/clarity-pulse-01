@@ -37,17 +37,36 @@ import {
   usePeople,
   toHealth,
   toPriorityLabel,
+  PROJECT_SPACES,
+  type ProjectSpace,
   type ProjectRow,
   type PersonRow,
 } from "@/data/queries";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/supabase";
 
+// The tabs map 1:1 onto v_projects_overview.project_space (migration 0020),
+// so every current project lands in exactly one tab -- no gaps, no overlap.
+const VIEW_LABELS: Record<ProjectSpace, string> = {
+  development: "Development",
+  infra: "Infra",
+  telephony: "Telephony",
+};
+
+// `?project=` empty means "nothing chosen yet", in which case the first card
+// auto-expands so the page never lands fully collapsed. That made an
+// *explicit* collapse of that first card unrepresentable -- writing "" back
+// just re-derived it as open, so its Collapse button did nothing (most
+// visibly on CX Messaging, permanently first in Development by hours). This
+// reserved value distinguishes "deliberately all collapsed" from "no choice
+// yet"; slugify() strips leading/trailing dashes, so no real slug is "-".
+const COLLAPSED = "-";
+
 const searchSchema = z.object({
   project: fallback(z.string(), "").default(""),
   from: fallback(z.string(), "").default(""),
   to: fallback(z.string(), "").default(""),
-  view: fallback(z.enum(["development", "infra"]), "development").default("development"),
+  view: fallback(z.enum(PROJECT_SPACES), "development").default("development"),
 });
 
 export const Route = createFileRoute("/projects")({
@@ -128,29 +147,35 @@ function ProjectsPage() {
   const peopleQuery = usePeople();
 
   const allProjects = projectsQuery.data ?? [];
-  // Only 38 of ~130 synced projects are is_current; that's the set the mock
-  // treated as "active" and worth listing here. Split further into
-  // Development vs Infra: infra clusters are individual network/hardware/
-  // ops tickets auto-clustered into their own "project" each, not real
-  // product initiatives, and were drowning out the ones that are.
+  // Only 40 of ~130 synced projects are is_current; that's the set the mock
+  // treated as "active" and worth listing here. Split further by
+  // project_space into Development / Infra / Telephony: the infra and
+  // telephony clusters are board-specific ops and voice-platform tickets
+  // auto-clustered into their own "project" each, and were drowning out the
+  // product initiatives on a single combined list.
   const currentProjects = allProjects.filter(
-    (p) => p.is_current && p.is_infra === (view === "infra"),
+    (p) => p.is_current && p.project_space === view,
   );
+  // COLLAPSED is a UI state, not a project reference, so it selects nothing.
+  const selected = project === COLLAPSED ? "" : project;
   // A deep-linked ?project=slug that isn't in the current tab's set (e.g.
   // an older project someone still has bookmarked) is pinned to the front
   // so the URL never resolves to an empty workspace.
   const pinned =
-    project && !currentProjects.some((p) => p.slug === project)
-      ? allProjects.find((p) => p.slug === project)
+    selected && !currentProjects.some((p) => p.slug === selected)
+      ? allProjects.find((p) => p.slug === selected)
       : undefined;
   const fullList = pinned ? [pinned, ...currentProjects] : currentProjects;
   // Search narrows which projects show below; the currently open one stays
   // visible regardless so switching the query never yanks away what you're
   // already reading.
   const list = fullList.filter(
-    (p) => p.slug === project || p.name.toLowerCase().includes(query.toLowerCase()),
+    (p) => p.slug === selected || p.name.toLowerCase().includes(query.toLowerCase()),
   );
-  const openSlug = project || fullList[0]?.slug || "";
+  // Nothing chosen yet -> auto-expand the first card. An explicit collapse
+  // (project === COLLAPSED) leaves every card closed instead of falling back
+  // to the first one and instantly re-opening it.
+  const openSlug = project === COLLAPSED ? "" : project || fullList[0]?.slug || "";
 
   const peopleById = new Map<string, PersonRow>((peopleQuery.data ?? []).map((p) => [p.id, p]));
 
@@ -163,11 +188,16 @@ function ProjectsPage() {
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Tabs
             value={view}
-            onValueChange={(v) => navigate({ search: { project: "", from, to, view: v as "development" | "infra" } })}
+            onValueChange={(v) =>
+              navigate({ search: { project: "", from, to, view: v as ProjectSpace } })
+            }
           >
             <TabsList>
-              <TabsTrigger value="development">Development</TabsTrigger>
-              <TabsTrigger value="infra">Infra</TabsTrigger>
+              {PROJECT_SPACES.map((space) => (
+                <TabsTrigger key={space} value={space}>
+                  {VIEW_LABELS[space]}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
           <DateRangeFilter
@@ -197,7 +227,9 @@ function ProjectsPage() {
               project={p}
               open={p.slug === openSlug}
               onToggle={() =>
-                navigate({ search: { project: p.slug === openSlug ? "" : p.slug, from, to, view } })
+                navigate({
+                  search: { project: p.slug === openSlug ? COLLAPSED : p.slug, from, to, view },
+                })
               }
               peopleById={peopleById}
               since={sinceIso}

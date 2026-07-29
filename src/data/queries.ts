@@ -223,6 +223,9 @@ export interface PersonRow {
   overallocation_reason: string | null;
 }
 
+export const PROJECT_SPACES = ["development", "infra", "telephony"] as const;
+export type ProjectSpace = (typeof PROJECT_SPACES)[number];
+
 export interface ProjectRow {
   id: string;
   slug: string;
