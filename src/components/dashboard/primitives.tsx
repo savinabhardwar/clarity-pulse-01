@@ -201,14 +201,14 @@ export function StatCard({
     danger: "text-danger",
   }[tone];
   return (
-    <div className="card-soft card-hover p-5">
+    <div className="card-soft card-hover p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         {icon && <span className="text-muted-foreground">{icon}</span>}
       </div>
-      <p className={cn("num mt-3 text-3xl font-semibold", valueTone)}>{value}</p>
-      {sub && <p className="mt-1 text-sm text-muted-foreground">{sub}</p>}
-      {footer && <div className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">{footer}</div>}
+      <p className={cn("num mt-2 text-2xl font-semibold", valueTone)}>{value}</p>
+      {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+      {footer && <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">{footer}</div>}
     </div>
   );
 }

@@ -259,7 +259,7 @@ function OverviewBody({
       </section>
 
       {/* KPIs */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           label="Team Capacity"
           value={`${m.avg_utilisation}%`}
