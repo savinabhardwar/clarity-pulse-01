@@ -48,6 +48,8 @@ async function main() {
   await runScript(path.join(__dirname, "build-teams-seed.mjs"));
 
   await runSync({ syncType });
+  await runScript(path.join(__dirname, "generate-narratives.mjs"));
+
   console.log("[run-full-sync] done");
 }
 
