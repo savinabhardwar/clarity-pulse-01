@@ -15,6 +15,7 @@ export const queryKeys = {
   orgMetrics: ["org-metrics"] as const,
   standouts: ["standouts"] as const,
   allBlockers: ["all-blockers"] as const,
+  ticketHygiene: ["ticket-hygiene"] as const,
   teams: ["teams"] as const,
 };
 
@@ -148,6 +149,19 @@ export function useAllBlockers() {
           .from("v_all_blockers")
           .select("*")
           .order("days_blocked", { ascending: false }),
+      ),
+  });
+}
+
+export function useTicketHygiene() {
+  return useQuery({
+    queryKey: queryKeys.ticketHygiene,
+    queryFn: async () =>
+      unwrap<TicketHygieneRow[]>(
+        await supabase
+          .from("v_ticket_hygiene")
+          .select("*")
+          .order("person_name", { ascending: true }),
       ),
   });
 }
@@ -305,6 +319,25 @@ export interface BlockerRow {
   project_name: string;
   owner_name: string | null;
   days_blocked: number;
+}
+
+export interface TicketHygieneRow {
+  ticket_id: string;
+  jira_key: string;
+  summary: string;
+  status: string;
+  status_category: string;
+  updated_at: string;
+  project_id: string | null;
+  project_slug: string | null;
+  project_name: string | null;
+  person_id: string | null;
+  person_name: string | null;
+  sprint_name: string;
+  missing_estimate: boolean;
+  missing_epic: boolean;
+  missing_comments: boolean;
+  missing_worklog: boolean;
 }
 
 export interface PersonDetail {

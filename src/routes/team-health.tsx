@@ -16,6 +16,7 @@ import {
   PriorityPill,
   SectionHeading,
   StatCard,
+  StatusPill,
   UnconfirmedBadge,
   type DateRangeValue,
 } from "@/components/dashboard/primitives";
@@ -25,11 +26,13 @@ import {
   usePeople,
   useAllBlockers,
   useStandouts,
+  useTicketHygiene,
   toHealth,
   toPriorityLabel,
   type OrgMetrics,
   type PersonRow,
   type BlockerRow,
+  type TicketHygieneRow,
 } from "@/data/queries";
 
 const searchSchema = z.object({
@@ -82,10 +85,16 @@ function TeamHealth() {
   const people = usePeople(asOf);
   const blockers = useAllBlockers();
   const standouts = useStandouts();
+  const ticketHygiene = useTicketHygiene();
 
   const isLoading =
-    orgMetrics.isLoading || people.isLoading || blockers.isLoading || standouts.isLoading;
-  const firstError = orgMetrics.error || people.error || blockers.error || standouts.error;
+    orgMetrics.isLoading ||
+    people.isLoading ||
+    blockers.isLoading ||
+    standouts.isLoading ||
+    ticketHygiene.isLoading;
+  const firstError =
+    orgMetrics.error || people.error || blockers.error || standouts.error || ticketHygiene.error;
 
   return (
     <div className="space-y-8">
@@ -109,12 +118,13 @@ function TeamHealth() {
         isError={!!firstError}
         error={firstError as Error | null}
       >
-        {orgMetrics.data && people.data && blockers.data && standouts.data && (
+        {orgMetrics.data && people.data && blockers.data && standouts.data && ticketHygiene.data && (
           <TeamHealthBody
             m={orgMetrics.data}
             people={people.data}
             blockers={blockers.data}
             standouts={standouts.data}
+            ticketHygiene={ticketHygiene.data}
           />
         )}
       </QueryBoundary>
@@ -127,13 +137,33 @@ function TeamHealthBody({
   people,
   blockers,
   standouts,
+  ticketHygiene,
 }: {
   m: OrgMetrics;
   people: PersonRow[];
   blockers: BlockerRow[];
   standouts: StandoutRow[];
+  ticketHygiene: TicketHygieneRow[];
 }) {
   const personById = new Map(people.map((p) => [p.id, p]));
+
+  const hygieneByPerson = new Map<string, TicketHygieneRow[]>();
+  for (const t of ticketHygiene) {
+    const key = t.person_name ?? "Unassigned";
+    const list = hygieneByPerson.get(key) ?? [];
+    list.push(t);
+    hygieneByPerson.set(key, list);
+  }
+  const hygieneGroups = [...hygieneByPerson.entries()].sort((a, b) => b[1].length - a[1].length);
+
+  function missingLabels(t: TicketHygieneRow) {
+    const labels: string[] = [];
+    if (t.missing_estimate) labels.push("No estimate");
+    if (t.missing_epic) labels.push("No epic");
+    if (t.missing_comments) labels.push("No comments");
+    if (t.missing_worklog) labels.push("No worklog");
+    return labels;
+  }
 
   return (
     <>
@@ -339,6 +369,57 @@ function TeamHealthBody({
               </Link>
             ))}
           </div>
+
+          <SectionHeading
+            title="Tickets needing attention"
+            description="Every ticket missing an estimate, an epic, comments, or a worklog — all four are required for a ticket to count as properly updated."
+            className="mt-8"
+          />
+          {hygieneGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Every ticket in the current sprint is fully updated.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {hygieneGroups.map(([personName, tickets]) => (
+                <div key={personName} className="card-soft p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <Avatar person={{ name: personName, initials: personInitials(personName) }} size="sm" />
+                      <p className="font-semibold">{personName}</p>
+                    </div>
+                    <Chip tone="danger">
+                      {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
+                    </Chip>
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                    {tickets.map((t) => (
+                      <li
+                        key={t.ticket_id}
+                        className="rounded-lg border border-border bg-card p-3 transition-colors hover:border-foreground/15"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="num text-xs font-semibold text-muted-foreground">
+                            {t.jira_key}
+                          </span>
+                          <StatusPill status={t.status} />
+                          {t.project_name && <Chip>{t.project_name}</Chip>}
+                        </div>
+                        <p className="mt-1.5 text-sm">{t.summary}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {missingLabels(t).map((label) => (
+                            <Chip key={label} tone="warning">
+                              {label}
+                            </Chip>
+                          ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="standouts" className="mt-6">
