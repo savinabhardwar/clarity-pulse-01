@@ -66,19 +66,22 @@ function ticketHygieneGaps(t) {
 
 function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, comments, sprintStart, sprintEnd }) {
   const owned = tickets.filter((t) => t.assignee_person_id === personId);
-  // allocatedHours/loggedHours/pace must exclude done tickets -- matches
-  // the live app's useOpenTickets(), which structurally excludes
-  // status_category='done' from what computeSprintHours ever sees for
-  // these numbers (a finished ticket isn't current-sprint capacity).
-  // hygieneScore below deliberately uses the FULL `owned` (open + done)
-  // instead -- a completed ticket with no epic/estimate/comment/worklog
-  // is still a real gap.
-  const ownedOpen = owned.filter((t) => t.status_category !== "done");
-  const sized = ownedOpen.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+  // allocatedHours/loggedHours count BOTH open and done tickets this
+  // sprint -- hours logged on something finished are still real work
+  // done this sprint. A done ticket contributes its ORIGINAL estimate
+  // (not remaining, which is trivially ~0 once finished -- pro-rata only
+  // makes sense for work still in flight) so the denominator reflects
+  // "this much work was committed to the sprint," not zero just because
+  // it's done. Mirrors computeSprintHours in eng-data.ts.
+  const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
   const sizedIds = new Set(sized.map((t) => t.id));
+  const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
 
   const allocatedHours =
-    sized.reduce((s, t) => s + (t.remaining_estimate_seconds ?? t.original_estimate_seconds ?? 0), 0) / 3600;
+    sized.reduce((s, t) => {
+      const hours = doneIds.has(t.id) ? t.original_estimate_seconds : (t.remaining_estimate_seconds ?? t.original_estimate_seconds);
+      return s + (hours ?? 0);
+    }, 0) / 3600;
   const loggedSeconds = worklogs
     .filter(
       (w) =>

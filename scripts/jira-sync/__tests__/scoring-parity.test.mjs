@@ -142,16 +142,23 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
 
   function computeForPersonInline() {
     const owned = tickets.filter((t) => t.assignee_person_id === personId);
-    // allocatedHours/loggedHours/pace/estimateCoverage all exclude done
-    // tickets -- matches the live app's useOpenTickets(), which
-    // structurally excludes status_category='done' from what
-    // computeSprintHours ever sees for these numbers. hygieneScore below
-    // deliberately uses the FULL `owned` (open + done) instead.
+    // allocatedHours/loggedHours count BOTH open and done tickets --
+    // hours logged on something finished are still real work done this
+    // sprint. A done ticket contributes its ORIGINAL estimate (not
+    // remaining, which is trivially ~0 once finished -- pro-rata still
+    // applies to open tickets exactly as before, just not to done ones).
+    // estimateCoverage stays open-tickets-only, matching eng-data.ts's
+    // narrower "Estimate coverage" metric. hygieneScore below uses the
+    // FULL `owned` (open + done).
     const ownedOpen = owned.filter((t) => t.status_category !== "done");
-    const sized = ownedOpen.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+    const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
     const sizedIds = new Set(sized.map((t) => t.id));
+    const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
     const allocatedHours =
-      sized.reduce((s, t) => s + (t.remaining_estimate_seconds ?? t.original_estimate_seconds ?? 0), 0) / 3600;
+      sized.reduce((s, t) => {
+        const hours = doneIds.has(t.id) ? t.original_estimate_seconds : (t.remaining_estimate_seconds ?? t.original_estimate_seconds);
+        return s + (hours ?? 0);
+      }, 0) / 3600;
     const loggedSeconds = worklogs
       .filter((w) => w.author_person_id === personId && sizedIds.has(w.ticket_id) && w.started_at >= sprintStart && w.started_at <= sprintEnd)
       .reduce((s, w) => s + w.seconds, 0);
@@ -263,7 +270,7 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
   // collapses to the full allocation -- same as the snapshot side.
   const sprintRow = { id: "sprint-1", jira_project_id: "p", name: "S", state: "active", start_date: sprintStart.toISOString(), end_date: sprintEnd.toISOString() };
   const { dayNumber, totalDays } = engData.sprintWindow([sprintRow], now);
-  const livePaceScore = liveResult.hasOpenWork
+  const livePaceScore = liveResult.hasSprintWork
     ? engData.computePaceScore(liveResult.allocatedHours, liveResult.loggedHours, dayNumber, totalDays)
     : null;
   assert.equal(livePaceScore, snapshotResult.paceScore, "paceScore must match at sprint close");
