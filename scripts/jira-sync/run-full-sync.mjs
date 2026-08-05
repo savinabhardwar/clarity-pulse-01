@@ -8,6 +8,7 @@ import { fetchAll } from "./fetch-jira-rest.mjs";
 import { computeAssigneeProjectCounts } from "./lib/compute-assignee-counts.mjs";
 import { run as runSync } from "./sync.mjs";
 import { snapshotClosedSprints } from "./snapshot-sprint-summary.mjs";
+import { flagInactivePeople } from "./flag-inactive-people.mjs";
 import { purgeClosedSprintTickets } from "./purge-closed-sprint-tickets.mjs";
 import { runSmokeTest } from "./smoke-test.mjs";
 import { withRetry, isRetryablePgError } from "./lib/retry.mjs";
@@ -80,6 +81,13 @@ async function main() {
   // it's found closed, safe to run on every sync.
   const snapshotResult = await snapshotClosedSprints(process.env.DATABASE_URL);
   console.log("[run-full-sync] sprint summary snapshots:", snapshotResult);
+
+  // Auto-excludes anyone the sync has been passively picking up (as a
+  // ticket reporter or commenter, e.g. a customer contact) who has never
+  // shown any real engineering activity -- see flag-inactive-people.mjs
+  // for the exact bar and why it's not just "never assigned a ticket".
+  const flagResult = await flagInactivePeople(process.env.DATABASE_URL);
+  console.log("[run-full-sync] inactive-people flagging:", flagResult);
 
   // Must run after snapshotting -- only purges tickets from a sprint that
   // already has a person_sprint_summaries row (see purge-closed-sprint-
