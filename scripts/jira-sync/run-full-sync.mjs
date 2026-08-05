@@ -10,6 +10,7 @@ import { run as runSync } from "./sync.mjs";
 import { snapshotClosedSprints } from "./snapshot-sprint-summary.mjs";
 import { purgeClosedSprintTickets } from "./purge-closed-sprint-tickets.mjs";
 import { runSmokeTest } from "./smoke-test.mjs";
+import { withRetry, isRetryablePgError } from "./lib/retry.mjs";
 import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,21 +20,43 @@ async function getLastWatermark() {
   const { Pool } = pg;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
-    const { rows } = await pool.query(
-      `select watermark_after from sync_runs where status = 'success' order by finished_at desc limit 1`,
+    const { rows } = await withRetry(
+      () => pool.query(`select watermark_after from sync_runs where status = 'success' order by finished_at desc limit 1`),
+      { label: "getLastWatermark", isRetryable: isRetryablePgError },
     );
     // pg returns timestamptz columns as Date objects, not ISO strings --
     // fetchHistory()'s JQL-building does string ops (sinceIso.slice) on this.
     const watermark = rows[0]?.watermark_after;
     return watermark instanceof Date ? watermark.toISOString() : (watermark ?? null);
-  } catch {
-    return null; // first-ever run: table may not have rows yet
+  } catch (err) {
+    // Only a genuinely first-ever run (sync_runs table/rows don't exist
+    // yet) should fall back to a full historical fetch -- a real
+    // connectivity failure (already retried above and still failing)
+    // must surface, not be silently treated as "first run" and trigger
+    // an unnecessary full-history re-fetch.
+    if (isRetryablePgError(err)) throw err;
+    return null;
   } finally {
     await pool.end();
   }
 }
 
+// Fails fast with every missing var listed at once, instead of a vague
+// error deep inside fetch-jira-rest.mjs or sync.mjs once the run is
+// already partway through (e.g. "JIRA_EMAIL / JIRA_API_TOKEN not set"
+// after already having spent time fetching from Jira with only half the
+// required secrets, or a raw pg connection error with no hint that
+// DATABASE_URL was simply never set).
+function validateEnv() {
+  const required = ["JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "DATABASE_URL"];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(`[run-full-sync] missing required environment variable(s): ${missing.join(", ")}`);
+  }
+}
+
 async function main() {
+  validateEnv();
   const syncType = process.argv.includes("--full") ? "full" : process.argv.includes("--incremental") ? "incremental" : "manual";
   console.log(`[run-full-sync] starting ${syncType} sync`);
 

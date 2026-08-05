@@ -10,6 +10,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withRetry, isRetryableHttpStatus } from "./lib/retry.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.join(__dirname, "cache");
@@ -32,17 +33,37 @@ function authHeader() {
   return "Basic " + Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
 }
 
+// A single page's request+response, wrapped in retry -- rate limiting
+// (429) and transient 5xx responses are common on a large paginated
+// fetch across 5 projects' full ticket/worklog/comment history and
+// shouldn't fail the entire sync. A genuine 400 (bad JQL) or 401/403
+// (bad token/permissions) fails immediately instead of burning retries
+// on something that will never succeed.
+async function jiraSearchPage({ jql, fields, maxResults, nextPageToken }) {
+  return withRetry(
+    async () => {
+      const res = await fetch(`${JIRA_BASE}/rest/api/3/search/jql`, {
+        method: "POST",
+        headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ jql, fields, maxResults, nextPageToken }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        const err = new Error(`Jira search failed: ${res.status} ${text}`);
+        err.status = res.status;
+        throw err;
+      }
+      return res.json();
+    },
+    { label: `Jira search (jql=${jql.slice(0, 60)}...)`, isRetryable: (err) => isRetryableHttpStatus(err.status) },
+  );
+}
+
 async function jiraSearch({ jql, fields, maxResults = 100 }) {
   const results = [];
   let nextPageToken;
   do {
-    const res = await fetch(`${JIRA_BASE}/rest/api/3/search/jql`, {
-      method: "POST",
-      headers: { Authorization: authHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({ jql, fields, maxResults, nextPageToken }),
-    });
-    if (!res.ok) throw new Error(`Jira search failed: ${res.status} ${await res.text()}`);
-    const body = await res.json();
+    const body = await jiraSearchPage({ jql, fields, maxResults, nextPageToken });
     results.push(...body.issues);
     nextPageToken = body.nextPageToken;
   } while (nextPageToken);

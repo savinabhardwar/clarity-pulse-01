@@ -4,6 +4,7 @@ import path from "node:path";
 import { makePool, upsert, insertMany, replaceComputed } from "./lib/db.mjs";
 import { computeMetrics } from "./lib/metrics.mjs";
 import { clusterTicketTitles } from "./lib/dedup-titles.mjs";
+import { withRetry, isRetryablePgError } from "./lib/retry.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE = (f) => path.join(__dirname, "cache", f);
@@ -46,9 +47,19 @@ function statusCategoryKeyToDb(key) {
 
 async function run({ syncType = "manual", asOf = new Date() } = {}) {
   const pool = makePool();
-  const syncRun = await pool.query(
-    `insert into sync_runs (started_at, status, sync_type, watermark_before) values (now(), 'running', $1, null) returning id`,
-    [syncType],
+  // This first query is where the 2026-08-05 incident actually failed
+  // ("password authentication failed for user postgres") -- a manual
+  // rerun minutes later succeeded with the identical secret, confirming
+  // it was a transient pooler blip, not a genuinely stale credential.
+  // Retrying here means that class of blip self-heals instead of
+  // failing the entire daily sync and waiting for someone to notice.
+  const syncRun = await withRetry(
+    () =>
+      pool.query(
+        `insert into sync_runs (started_at, status, sync_type, watermark_before) values (now(), 'running', $1, null) returning id`,
+        [syncType],
+      ),
+    { label: "sync_runs insert (initial DB connection)", isRetryable: isRetryablePgError },
   );
   const syncRunId = syncRun.rows[0].id;
   let recordsProcessed = 0;
