@@ -278,6 +278,36 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     const epicIdByKey = new Map((await pool.query("select id, jira_key from epics")).rows.map((r) => [r.jira_key, r.id]));
     recordsProcessed += epicRows.length;
 
+    // ---- 4.5. untrack tickets that fell out of their project's
+    // currently-tracked sprint. fetchInWindowIssues' JQL is scoped to
+    // `Sprint = "<tracked sprint name>"`, so a ticket removed from that
+    // sprint (moved to backlog/another sprint) or deleted in Jira simply
+    // stops appearing in `issues` -- this sync never sees it again. Since
+    // everything below is upsert-only, that ticket's row would otherwise
+    // keep whatever sprint_id/status/estimate/worklogs it had at its last
+    // successful sync FOREVER: sprint_id still points at the sprint we're
+    // currently tracking, so computeSprintHours/computeJiraUpdateStatus
+    // (activeSprintIds-scoped) keep counting it as live current-sprint
+    // work, frozen and increasingly stale, indistinguishable from a real
+    // ticket. Nulling sprint_id is the safe response -- it's the one
+    // fact we're actually sure of (Jira no longer reports this as part of
+    // this sprint), without guessing whether it moved, closed, or was
+    // deleted outright.
+    const issueKeysByProject = new Map();
+    for (const t of issues) {
+      if (!issueKeysByProject.has(t.project)) issueKeysByProject.set(t.project, new Set());
+      issueKeysByProject.get(t.project).add(t.key);
+    }
+    for (const [projectKey, sprintId] of sprintIdByProjectKey) {
+      const currentKeys = issueKeysByProject.get(projectKey) ?? new Set();
+      const { rows: stillTracked } = await pool.query(`select jira_key from tickets where sprint_id = $1`, [sprintId]);
+      const toUntrack = stillTracked.map((r) => r.jira_key).filter((key) => !currentKeys.has(key));
+      if (toUntrack.length) {
+        await pool.query(`update tickets set sprint_id = null where jira_key = any($1)`, [toUntrack]);
+        console.log(`[sync] untracked ${toUntrack.length} ticket(s) no longer in ${projectKey}'s tracked sprint:`, toUntrack.join(", "));
+      }
+    }
+
     // ---- 5. tickets, worklogs, comments (in-window sprint tickets) ----
     const ticketRows = issues.map((t) => ({
       jira_key: t.key,
@@ -533,11 +563,16 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         resolution_date: h.resolutiondate,
         spent_seconds: h.spentSeconds || 0,
         parent_epic_key: h.parent.key,
+        // Populated so get_person_detail's "Completed" panel can source
+        // from this durable table instead of the live `tickets` row,
+        // which the closed-sprint purge (purge-closed-sprint-tickets.mjs)
+        // deletes -- a person's completed-work history must survive that.
+        assignee_person_id: h.assignee ? personIdByAccount.get(h.assignee.accountId) ?? null : null,
         updated_at: new Date(),
       }));
     await upsert(pool, "resolved_ticket_history", historyRows, {
       conflictColumns: ["jira_key"],
-      updateColumns: ["summary", "issuetype", "resolution_date", "spent_seconds", "parent_epic_key", "updated_at"],
+      updateColumns: ["summary", "issuetype", "resolution_date", "spent_seconds", "parent_epic_key", "assignee_person_id", "updated_at"],
     });
 
     const { rows: allHistoryRows } = await pool.query(

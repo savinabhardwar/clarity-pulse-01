@@ -8,6 +8,8 @@ import { fetchAll } from "./fetch-jira-rest.mjs";
 import { computeAssigneeProjectCounts } from "./lib/compute-assignee-counts.mjs";
 import { run as runSync } from "./sync.mjs";
 import { snapshotClosedSprints } from "./snapshot-sprint-summary.mjs";
+import { purgeClosedSprintTickets } from "./purge-closed-sprint-tickets.mjs";
+import { runSmokeTest } from "./smoke-test.mjs";
 import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -55,6 +57,18 @@ async function main() {
   // it's found closed, safe to run on every sync.
   const snapshotResult = await snapshotClosedSprints(process.env.DATABASE_URL);
   console.log("[run-full-sync] sprint summary snapshots:", snapshotResult);
+
+  // Must run after snapshotting -- only purges tickets from a sprint that
+  // already has a person_sprint_summaries row (see purge-closed-sprint-
+  // tickets.mjs for the full eligibility rule and grace period).
+  const purgeResult = await purgeClosedSprintTickets(process.env.DATABASE_URL);
+  console.log("[run-full-sync] closed-sprint ticket purge:", purgeResult);
+
+  const smokeResult = await runSmokeTest(process.env.DATABASE_URL);
+  if (!smokeResult.ok) {
+    throw new Error(`[run-full-sync] smoke test failed: ${smokeResult.problems.join("; ")}`);
+  }
+  console.log("[run-full-sync] smoke test passed");
 
   console.log("[run-full-sync] done");
 }

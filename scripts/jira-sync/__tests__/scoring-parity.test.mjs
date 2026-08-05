@@ -1,0 +1,166 @@
+// Guards against the two scoring implementations silently drifting apart.
+//
+// engineering-ethos/src/lib/eng-data.ts (the live dashboard) and
+// scripts/jira-sync/snapshot-sprint-summary.mjs (this repo's per-sprint
+// snapshot) both reimplement the SAME pace/estimate/hygiene/logging/
+// overall scoring rules -- one for "right now, mid-sprint", one for "this
+// sprint, now that it's closed". They live in two separate repos with two
+// separate deploy targets (a Cloudflare Worker vs GitHub Actions), so
+// there's no single module either can import at runtime -- the mirroring
+// is maintained by hand. THIS test is the tripwire for that: it feeds one
+// shared fixture through both implementations at the moment the sprint
+// closes (now === sprintEnd, so the live "current" checks and the
+// snapshot's "retrospective" checks are evaluating the exact same instant)
+// and asserts they agree on every score.
+//
+// Not part of either repo's CI -- GitHub Actions for this repo only checks
+// out this repo, not engineering-ethos, so it has no way to run this.
+// Run it by hand (`node scripts/jira-sync/__tests__/scoring-parity.test.mjs`)
+// whenever either side's scoring math changes, from a working copy that has
+// engineering-ethos checked out as a sibling directory (as it is in this
+// project's actual dev environment).
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { snapshotClosedSprints } from "../snapshot-sprint-summary.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ENG_DATA_PATH = path.resolve(__dirname, "../../../engineering-ethos/src/lib/eng-data.ts");
+
+async function loadEngData() {
+  try {
+    return await import(pathToFileURL(ENG_DATA_PATH).href);
+  } catch (err) {
+    console.warn(
+      `[scoring-parity] Skipping: couldn't load ${ENG_DATA_PATH} (${err.message}). ` +
+        "This test needs engineering-ethos checked out as a sibling directory.",
+    );
+    return null;
+  }
+}
+
+// Re-derive computeForPerson's inputs the same way run-full-sync.mjs's
+// caller would, but in-memory -- no DB. Kept in this file (not exported
+// from snapshot-sprint-summary.mjs) since it's test-only wiring.
+function buildFixture() {
+  const sprintStart = new Date("2026-07-27T00:00:00.000Z"); // Monday
+  const sprintEnd = new Date("2026-08-07T00:00:00.000Z"); // Friday, 10 workdays later
+  const personId = "person-1";
+
+  const tickets = [
+    // Spillover ticket: original 7h, 2h remaining -- pro-rata should charge
+    // this sprint for 2h, not 7h.
+    {
+      id: "t-spillover",
+      assignee_person_id: personId,
+      status_category: "indeterminate",
+      original_estimate_seconds: 7 * 3600,
+      remaining_estimate_seconds: 2 * 3600,
+      resolved_at: null,
+      updated_at: "2026-08-03T00:00:00.000Z",
+    },
+    // Oversized ticket -- excluded from allocated/logged/hygiene entirely.
+    {
+      id: "t-oversized",
+      assignee_person_id: personId,
+      status_category: "indeterminate",
+      original_estimate_seconds: 40 * 3600,
+      remaining_estimate_seconds: 34 * 3600,
+      resolved_at: null,
+      updated_at: "2026-08-04T00:00:00.000Z",
+    },
+    // Completed ticket, finished inside the sprint window with a real
+    // estimate -- feeds estimate accuracy.
+    {
+      id: "t-done",
+      assignee_person_id: personId,
+      status_category: "done",
+      original_estimate_seconds: 4 * 3600,
+      remaining_estimate_seconds: 0,
+      resolved_at: "2026-08-05T00:00:00.000Z",
+      updated_at: "2026-08-05T00:00:00.000Z",
+    },
+  ];
+
+  // started_at/created_at as Date objects, not ISO strings -- matches
+  // what `pg` actually hands back for timestamptz columns in production.
+  // computeForPerson (the real snapshot implementation) compares these
+  // with plain >=/<= against sprintStart/sprintEnd (also Dates); a string
+  // there silently coerces to NaN and the comparison is always false.
+  const worklogs = [
+    { ticket_id: "t-spillover", author_person_id: personId, started_at: new Date("2026-08-06T00:00:00.000Z"), seconds: 1 * 3600 },
+    { ticket_id: "t-oversized", author_person_id: personId, started_at: new Date("2026-08-06T00:00:00.000Z"), seconds: 5 * 3600 },
+    { ticket_id: "t-done", author_person_id: personId, started_at: new Date("2026-08-05T00:00:00.000Z"), seconds: 2 * 3600 },
+  ];
+
+  const comments = [{ ticket_id: "t-spillover", author_person_id: personId, created_at: new Date("2026-08-06T00:00:00.000Z") }];
+
+  return { sprintStart, sprintEnd, personId, tickets, worklogs, comments };
+}
+
+test("live and snapshot scoring agree at the moment a sprint closes", async () => {
+  const engData = await loadEngData();
+  if (!engData) return; // environment doesn't have the sibling repo -- see loadEngData
+
+  const { sprintStart, sprintEnd, personId, tickets, worklogs, comments } = buildFixture();
+  const now = sprintEnd; // evaluate the live path at the exact instant the sprint closes
+
+  // --- snapshot-sprint-summary.mjs's computeForPerson is only reachable
+  // through the DB-backed snapshotClosedSprints, so duplicate its handful
+  // of pure lines here rather than stand up a database for this test.
+  // If this drifts from computeForPerson itself, that's its own bug this
+  // test can't catch -- it only catches drift between the two REPOS.
+  const { workdaysBetween } = await import("../lib/workdays.mjs");
+  const OVERSIZED_TICKET_SECONDS = 35 * 3600;
+  const SPRINT_DAILY_HOURS = 7;
+
+  function computeForPersonInline() {
+    const owned = tickets.filter((t) => t.assignee_person_id === personId);
+    const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+    const sizedIds = new Set(sized.map((t) => t.id));
+    const allocatedHours =
+      sized.reduce((s, t) => s + (t.remaining_estimate_seconds ?? t.original_estimate_seconds ?? 0), 0) / 3600;
+    const loggedSeconds = worklogs
+      .filter((w) => w.author_person_id === personId && sizedIds.has(w.ticket_id) && w.started_at >= sprintStart && w.started_at <= sprintEnd)
+      .reduce((s, w) => s + w.seconds, 0);
+    const loggedHours = loggedSeconds / 3600;
+    const hasOpenWork = sized.length > 0;
+    const totalWorkdays = workdaysBetween(sprintStart, sprintEnd) + 1;
+    const paceDenominator = Math.max(allocatedHours, SPRINT_DAILY_HOURS * totalWorkdays, 1);
+    const paceScore = hasOpenWork ? Math.min(100, Math.round((loggedHours / paceDenominator) * 100)) : null;
+    const estimateCoverage =
+      owned.length > 0 ? Math.round((100 * owned.filter((t) => t.original_estimate_seconds !== null).length) / owned.length) : null;
+    const wipTickets = owned.filter((t) => t.status_category === "indeterminate");
+    const loggedTicketIds = new Set(
+      worklogs.filter((w) => w.author_person_id === personId && w.started_at >= sprintStart && w.started_at <= sprintEnd).map((w) => w.ticket_id),
+    );
+    const loggingScore = wipTickets.length > 0 ? Math.round((100 * wipTickets.filter((t) => loggedTicketIds.has(t.id)).length) / wipTickets.length) : null;
+    return { paceScore, estimateCoverage, loggingScore, allocatedHours: Math.round(allocatedHours), loggedHours: Math.round(loggedHours) };
+  }
+
+  const snapshotResult = computeForPersonInline();
+
+  // --- live path (engineering-ethos), pre-filtering worklogs to the
+  // sprint window the way useSprintWorklogs()/DB query does before ever
+  // handing them to computeSprintHours.
+  const activeSprintIds = new Set(["sprint-1"]);
+  const liveTickets = tickets.map((t) => ({ ...t, sprint_id: "sprint-1", jira_key: t.id.toUpperCase(), summary: "x", status: "x", is_blocked: false }));
+  const liveWorklogs = worklogs.filter((w) => new Date(w.started_at) >= sprintStart && new Date(w.started_at) <= sprintEnd);
+
+  const liveResult = engData.computeSprintHours(liveTickets, liveWorklogs, personId, activeSprintIds);
+
+  assert.equal(liveResult.allocatedHours, snapshotResult.allocatedHours, "allocatedHours (pro-rata spillover + oversized exclusion) must match");
+  assert.equal(liveResult.loggedHours, snapshotResult.loggedHours, "loggedHours must match");
+  assert.equal(liveResult.estimateCoverage, snapshotResult.estimateCoverage, "estimateCoverage (hygiene) must match");
+  assert.equal(liveResult.loggingScore, snapshotResult.loggingScore, "loggingScore must match");
+
+  // --- pace, using each side's own denominator-floor basis: live's
+  // dayNumber (via sprintWindow, evaluated at now=sprintEnd) should equal
+  // the snapshot's full elapsed-workday count for a sprint that's over.
+  const sprintRow = { id: "sprint-1", jira_project_id: "p", name: "S", state: "active", start_date: sprintStart.toISOString(), end_date: sprintEnd.toISOString() };
+  const { dayNumber } = engData.sprintWindow([sprintRow], now);
+  const paceDenominator = Math.max(liveResult.allocatedHours, engData.paceDenominatorFloor(dayNumber), 1);
+  const livePaceScore = liveResult.hasOpenWork ? Math.min(100, Math.round((liveResult.loggedHours / paceDenominator) * 100)) : null;
+  assert.equal(livePaceScore, snapshotResult.paceScore, "paceScore (with its denominator floor) must match at sprint close");
+});

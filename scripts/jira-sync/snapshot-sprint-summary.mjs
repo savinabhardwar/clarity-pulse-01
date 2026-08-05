@@ -26,6 +26,15 @@ function toDate(v) {
   return v instanceof Date ? v : new Date(v);
 }
 
+// Gated on EITHER table missing a row for this sprint, not just
+// person_sprint_summaries -- a sprint already person-snapshotted (e.g.
+// from before project_sprint_summaries existed) must still come back
+// through here until its project-level rows exist too, otherwise the
+// project snapshot silently never runs and, once purge-closed-sprint-
+// tickets.mjs deletes the underlying tickets, can never be computed at
+// all. Both inserts below are idempotent (on conflict do nothing), so
+// re-running person-snapshotting for an already-snapshotted sprint here
+// is a harmless no-op.
 async function findUnsnapshottedClosedSprints(pool) {
   const { rows } = await pool.query(`
     select s.start_date, max(s.end_date) as end_date
@@ -34,6 +43,8 @@ async function findUnsnapshottedClosedSprints(pool) {
     group by s.start_date
     having not exists (
       select 1 from person_sprint_summaries pss where pss.sprint_start = s.start_date
+    ) or not exists (
+      select 1 from project_sprint_summaries pjs where pjs.sprint_start = s.start_date
     )
     order by s.start_date
   `);
@@ -170,6 +181,30 @@ function computeForPerson({ personId, tickets, worklogs, comments, sprintStart, 
   };
 }
 
+// Project-level counterpart to computeForPerson -- one row per project
+// that had tickets in this sprint, so purge-closed-sprint-tickets.mjs has
+// somewhere durable to preserve project history before deleting the
+// underlying ticket rows. A ticket created before the sprint started
+// counts as spillover into it (carried-over work), mirroring the same
+// "was this already in flight before this sprint" signal the person-level
+// pace/allocated-hours math uses remaining_estimate_seconds for.
+function computeForProject({ tickets, sprintStart, sprintEnd }) {
+  const sized = tickets.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+  const hoursEstimated = sized.reduce((s, t) => s + (t.original_estimate_seconds ?? 0), 0) / 3600;
+  const hoursLogged = sized.reduce((s, t) => s + (t.time_spent_seconds ?? 0), 0) / 3600;
+  const ticketsCompleted = tickets.filter(
+    (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
+  ).length;
+  const spilloverTickets = tickets.filter((t) => t.created_at && t.created_at < sprintStart).length;
+  return {
+    ticketsTotal: tickets.length,
+    ticketsCompleted,
+    hoursEstimated: Math.round(hoursEstimated * 10) / 10,
+    hoursLogged: Math.round(hoursLogged * 10) / 10,
+    spilloverTickets,
+  };
+}
+
 export async function snapshotClosedSprints(databaseUrl) {
   const { Pool } = pg;
   const pool = new Pool({ connectionString: databaseUrl, ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false } });
@@ -178,17 +213,19 @@ export async function snapshotClosedSprints(databaseUrl) {
     const closedSprints = await findUnsnapshottedClosedSprints(pool);
     if (closedSprints.length === 0) {
       console.log("[snapshot-sprint-summary] no newly-closed sprints to snapshot");
-      return { sprintsSnapshotted: 0, rowsInserted: 0 };
+      return { sprintsSnapshotted: 0, rowsInserted: 0, projectRowsInserted: 0 };
     }
 
     const { rows: people } = await pool.query(`select id from people where active and not excluded`);
+    let totalProjectRowsInserted = 0;
 
     for (const sprint of closedSprints) {
       const sprintStart = sprint.start;
       const sprintEnd = sprint.end;
 
       const { rows: tickets } = await pool.query(
-        `select id, assignee_person_id, status_category, original_estimate_seconds, remaining_estimate_seconds, resolved_at, updated_at
+        `select id, assignee_person_id, epic_id, status_category, original_estimate_seconds, remaining_estimate_seconds,
+                time_spent_seconds, resolved_at, updated_at, created_at
          from tickets
          where sprint_id in (select id from sprints where start_date = $1)`,
         [sprintStart],
@@ -242,8 +279,35 @@ export async function snapshotClosedSprints(databaseUrl) {
       console.log(
         `[snapshot-sprint-summary] snapshotted sprint starting ${sprintStart.toISOString()} -- ${summaryRows.length} people`,
       );
+
+      // Project-level: group this sprint's tickets by conceptual project
+      // (via epic -> epics.project_id), same grouping the rest of the app
+      // already uses for project_contributors/project_updates.
+      const { rows: epicRows } = await pool.query(`select id, project_id from epics where project_id is not null`);
+      const projectIdByEpicId = new Map(epicRows.map((r) => [r.id, r.project_id]));
+      const ticketsByProject = new Map();
+      for (const t of tickets) {
+        const projectId = t.epic_id ? projectIdByEpicId.get(t.epic_id) : null;
+        if (!projectId) continue;
+        if (!ticketsByProject.has(projectId)) ticketsByProject.set(projectId, []);
+        ticketsByProject.get(projectId).push(t);
+      }
+      for (const [projectId, projectTickets] of ticketsByProject) {
+        const s = computeForProject({ tickets: projectTickets, sprintStart, sprintEnd });
+        await pool.query(
+          `insert into project_sprint_summaries
+             (project_id, sprint_start, sprint_end, tickets_total, tickets_completed, hours_estimated, hours_logged, spillover_tickets)
+           values ($1,$2,$3,$4,$5,$6,$7,$8)
+           on conflict (project_id, sprint_start) do nothing`,
+          [projectId, sprintStart, sprintEnd, s.ticketsTotal, s.ticketsCompleted, s.hoursEstimated, s.hoursLogged, s.spilloverTickets],
+        );
+        totalProjectRowsInserted++;
+      }
+      console.log(
+        `[snapshot-sprint-summary] snapshotted sprint starting ${sprintStart.toISOString()} -- ${ticketsByProject.size} project(s)`,
+      );
     }
-    return { sprintsSnapshotted: closedSprints.length, rowsInserted: totalInserted };
+    return { sprintsSnapshotted: closedSprints.length, rowsInserted: totalInserted, projectRowsInserted: totalProjectRowsInserted };
   } finally {
     await pool.end();
   }
