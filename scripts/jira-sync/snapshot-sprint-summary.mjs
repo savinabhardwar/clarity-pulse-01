@@ -20,7 +20,6 @@ import { pathToFileURL } from "node:url";
 import { workdaysBetween } from "./lib/workdays.mjs";
 
 const OVERSIZED_TICKET_SECONDS = 35 * 3600; // 5 workdays at this org's 7h/day sprint policy
-const SPRINT_DAILY_HOURS = 7;
 
 function toDate(v) {
   return v instanceof Date ? v : new Date(v);
@@ -51,9 +50,31 @@ async function findUnsnapshottedClosedSprints(pool) {
   return rows.map((r) => ({ start: toDate(r.start_date), end: toDate(r.end_date) }));
 }
 
-function computeForPerson({ personId, tickets, worklogs, comments, sprintStart, sprintEnd }) {
+// Per-ticket Jira Hygiene check -- mirrors ticketHygieneGaps in
+// eng-data.ts exactly (see that function's comment for the full
+// rationale). Duplicated here rather than imported since this repo and
+// engineering-ethos are separate deploy targets with no shared package.
+function ticketHygieneGaps(t) {
+  const gaps = [];
+  if (!t.hasEstimate) gaps.push("no original estimate");
+  if (t.isOversized) gaps.push("estimate over 35h (needs breakdown)");
+  if (!t.hasEpic) gaps.push("no epic");
+  if (!t.isToDo && !t.hasComment) gaps.push("no comment");
+  if (!t.isToDo && !t.isBlocked && !t.hasWorklog) gaps.push("no worklog");
+  return gaps;
+}
+
+function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, comments, sprintStart, sprintEnd }) {
   const owned = tickets.filter((t) => t.assignee_person_id === personId);
-  const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+  // allocatedHours/loggedHours/pace must exclude done tickets -- matches
+  // the live app's useOpenTickets(), which structurally excludes
+  // status_category='done' from what computeSprintHours ever sees for
+  // these numbers (a finished ticket isn't current-sprint capacity).
+  // hygieneScore below deliberately uses the FULL `owned` (open + done)
+  // instead -- a completed ticket with no epic/estimate/comment/worklog
+  // is still a real gap.
+  const ownedOpen = owned.filter((t) => t.status_category !== "done");
+  const sized = ownedOpen.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
   const sizedIds = new Set(sized.map((t) => t.id));
 
   const allocatedHours =
@@ -70,19 +91,43 @@ function computeForPerson({ personId, tickets, worklogs, comments, sprintStart, 
   const loggedHours = loggedSeconds / 3600;
   const hasOpenWork = sized.length > 0;
 
-  // Same pace-denominator floor as toEmployee/paceDenominatorFloor in
-  // eng-data.ts -- a thin remaining-estimate pool (most tickets already
-  // burned down to 0h) shouldn't let a small amount of logged work spike
-  // the ratio. For a closed sprint the floor uses its FULL workday
-  // count (the whole sprint has elapsed by the time this runs), not a
-  // partial day count the way the live app does mid-sprint.
-  const totalWorkdays = workdaysBetween(sprintStart, sprintEnd) + 1;
-  const paceDenominator = Math.max(allocatedHours, SPRINT_DAILY_HOURS * totalWorkdays, 1);
+  // Same pace formula as computePaceScore in eng-data.ts: logged hours
+  // vs a pro-rated expectation for how far into the sprint "now" is,
+  // not the full allocation outright. For a CLOSED sprint the whole
+  // thing has already elapsed by the time this runs, so dayNumber ===
+  // totalDays and the expectation collapses to the full allocatedHours
+  // -- i.e. plain loggedHours/allocatedHours, floored at 1h to avoid
+  // dividing by zero on an empty allocation.
+  const paceDenominator = Math.max(allocatedHours, 1);
   const paceScore = hasOpenWork ? Math.min(100, Math.round((loggedHours / paceDenominator) * 100)) : null;
 
-  const estimateCoverage =
+  // Jira Hygiene: multi-criteria check via ticketHygieneGaps, across
+  // every ticket owned this sprint (open AND done -- `tickets` here was
+  // never filtered by status_category, unlike the live app's
+  // useOpenTickets, so done tickets are already included). hasWorklog is
+  // "ever" (allWorklogsForTickets, unscoped by date), matching
+  // get_person_detail's semantics -- not the sprint-window-scoped
+  // `worklogs` used for pace/logging discipline above.
+  const ticketsWithWorklogEver = new Set(allWorklogsForTickets.map((w) => w.ticket_id));
+  const ticketsWithCommentEver = new Set(comments.map((c) => c.ticket_id));
+  const hygieneScore =
     owned.length > 0
-      ? Math.round((100 * owned.filter((t) => t.original_estimate_seconds !== null).length) / owned.length)
+      ? Math.round(
+          (100 *
+            owned.filter(
+              (t) =>
+                ticketHygieneGaps({
+                  hasEstimate: t.original_estimate_seconds !== null,
+                  isOversized: (t.original_estimate_seconds ?? 0) > OVERSIZED_TICKET_SECONDS,
+                  hasEpic: t.epic_id !== null,
+                  hasComment: ticketsWithCommentEver.has(t.id),
+                  hasWorklog: ticketsWithWorklogEver.has(t.id),
+                  isToDo: t.status_category === "new" && !t.is_blocked,
+                  isBlocked: t.is_blocked,
+                }).length === 0,
+            ).length) /
+            owned.length,
+        )
       : null;
 
   // Logging discipline: of the tickets they were actively working
@@ -124,7 +169,7 @@ function computeForPerson({ personId, tickets, worklogs, comments, sprintStart, 
   // hygiene/logging stay excluded when null since "haven't finished a
   // ticket" or "no in-progress ticket" legitimately can be blameless.
   const paceTerm = paceScore ?? 0;
-  const otherTerms = [estimateScore, estimateCoverage, loggingScore].filter((s) => s !== null);
+  const otherTerms = [estimateScore, hygieneScore, loggingScore].filter((s) => s !== null);
   const terms = [paceTerm, ...otherTerms];
   const rawOverallScore = Math.round(terms.reduce((a, b) => a + b, 0) / terms.length);
 
@@ -171,7 +216,7 @@ function computeForPerson({ personId, tickets, worklogs, comments, sprintStart, 
   return {
     paceScore,
     estimateScore,
-    hygieneScore: estimateCoverage,
+    hygieneScore,
     loggingScore,
     overallScore,
     allocatedHours: Math.round(allocatedHours * 10) / 10,
@@ -224,7 +269,7 @@ export async function snapshotClosedSprints(databaseUrl) {
       const sprintEnd = sprint.end;
 
       const { rows: tickets } = await pool.query(
-        `select id, assignee_person_id, epic_id, status_category, original_estimate_seconds, remaining_estimate_seconds,
+        `select id, assignee_person_id, epic_id, status_category, is_blocked, original_estimate_seconds, remaining_estimate_seconds,
                 time_spent_seconds, resolved_at, updated_at, created_at
          from tickets
          where sprint_id in (select id from sprints where start_date = $1)`,
@@ -236,6 +281,16 @@ export async function snapshotClosedSprints(databaseUrl) {
          where w.started_at >= $1 and w.started_at <= $2`,
         [sprintStart, sprintEnd],
       );
+      // Unscoped by date -- hygiene's hasWorklog check is "was this
+      // ticket ever logged against", not "logged against within this
+      // sprint's window" (that's what the sprint-scoped `worklogs` above
+      // is for -- pace/logging discipline).
+      const { rows: allWorklogsForTickets } = await pool.query(
+        `select w.ticket_id from worklogs w
+         join tickets tk on tk.id = w.ticket_id
+         where tk.sprint_id in (select id from sprints where start_date = $1)`,
+        [sprintStart],
+      );
       const { rows: comments } = await pool.query(
         `select tc.ticket_id, tc.author_person_id, tc.created_at from ticket_comments tc`,
       );
@@ -245,6 +300,7 @@ export async function snapshotClosedSprints(databaseUrl) {
           personId: p.id,
           tickets,
           worklogs,
+          allWorklogsForTickets,
           comments,
           sprintStart,
           sprintEnd,
