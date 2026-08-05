@@ -252,11 +252,16 @@ async function main() {
     // (0020_project_space_telephony.sql). Their ticket summaries are
     // internal ops text (server alerts, helpdesk URLs) that has no
     // business on an executive dashboard.
+    // A project with zero tickets ever (open + closed) is an empty
+    // clustering artifact -- an epic with nothing under it -- not real
+    // work, so it's excluded the same as infra clusters rather than
+    // generating a narrative for a project with nothing to say.
     const { rows: projects } = await pool.query(
       `select v.*, p.roadmap_go_live, p.roadmap_status, p.roadmap_key_benefit
        from v_projects_overview v
        join projects p on p.id = v.id
-       where v.is_current = true and v.project_space != 'infra'`,
+       where v.is_current = true and v.project_space != 'infra'
+         and (v.open_tickets + v.closed_tickets) > 0`,
     );
     console.log(`[generate-narratives] generating for ${projects.length} current project(s)`);
 

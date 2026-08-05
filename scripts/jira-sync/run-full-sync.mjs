@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { fetchAll } from "./fetch-jira-rest.mjs";
 import { computeAssigneeProjectCounts } from "./lib/compute-assignee-counts.mjs";
 import { run as runSync } from "./sync.mjs";
+import { snapshotClosedSprints } from "./snapshot-sprint-summary.mjs";
 import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,6 +50,11 @@ async function main() {
 
   await runSync({ syncType });
   await runScript(path.join(__dirname, "generate-narratives.mjs"));
+
+  // Idempotent -- only ever inserts a sprint's snapshot the first time
+  // it's found closed, safe to run on every sync.
+  const snapshotResult = await snapshotClosedSprints(process.env.DATABASE_URL);
+  console.log("[run-full-sync] sprint summary snapshots:", snapshotResult);
 
   console.log("[run-full-sync] done");
 }
