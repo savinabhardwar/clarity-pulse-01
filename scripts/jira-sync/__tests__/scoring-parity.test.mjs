@@ -88,7 +88,11 @@ function buildFixture() {
       epic_id: null,
       original_estimate_seconds: 4 * 3600,
       remaining_estimate_seconds: 0,
-      resolved_at: "2026-08-05T00:00:00.000Z",
+      // Date object, not an ISO string -- matches what `pg` hands back
+      // for timestamptz columns; the snapshot side compares this
+      // directly (>=/<=) against sprintStart/sprintEnd (also Dates), and
+      // a string there silently coerces to NaN and always fails.
+      resolved_at: new Date("2026-08-05T00:00:00.000Z"),
       updated_at: "2026-08-05T00:00:00.000Z",
     },
   ];
@@ -190,7 +194,28 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
       worklogs.filter((w) => w.author_person_id === personId && w.started_at >= sprintStart && w.started_at <= sprintEnd).map((w) => w.ticket_id),
     );
     const loggingScore = wipTickets.length > 0 ? Math.round((100 * wipTickets.filter((t) => loggedTicketIds.has(t.id)).length) / wipTickets.length) : null;
-    return { paceScore, estimateCoverage, hygieneScore, loggingScore, allocatedHours: Math.round(allocatedHours), loggedHours: Math.round(loggedHours) };
+
+    // Estimate accuracy: min(spent,est)/max(spent,est) pooled across
+    // tickets resolved inside this window -- mirrors
+    // computeSprintEstimateAccuracy in eng-data.ts exactly (symmetric,
+    // so an overrun pulls the score down instead of being excluded).
+    const doneInWindow = owned.filter(
+      (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
+    );
+    let matchedSeconds = 0;
+    let totalSeconds = 0;
+    for (const t of doneInWindow) {
+      const est = t.original_estimate_seconds ?? 0;
+      const spent = worklogs
+        .filter((w) => w.ticket_id === t.id && w.started_at >= sprintStart && w.started_at <= sprintEnd)
+        .reduce((s, w) => s + w.seconds, 0);
+      if (est <= 0 || est > OVERSIZED_TICKET_SECONDS || spent <= 0) continue;
+      matchedSeconds += Math.min(spent, est);
+      totalSeconds += Math.max(spent, est);
+    }
+    const estimateScore = totalSeconds > 0 ? Math.round((matchedSeconds / totalSeconds) * 100) : null;
+
+    return { paceScore, estimateCoverage, hygieneScore, loggingScore, estimateScore, allocatedHours: Math.round(allocatedHours), loggedHours: Math.round(loggedHours) };
   }
 
   const snapshotResult = computeForPersonInline();
@@ -215,6 +240,22 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
   assert.equal(liveResult.estimateCoverage, snapshotResult.estimateCoverage, "estimateCoverage must match");
   assert.equal(liveResult.hygieneScore, snapshotResult.hygieneScore, "hygieneScore (multi-criteria) must match");
   assert.equal(liveResult.loggingScore, snapshotResult.loggingScore, "loggingScore must match");
+
+  // --- estimate accuracy, using engData's own computeSprintEstimateAccuracy
+  // -- completedTickets shaped like CompletedTicketRow (id,
+  // assignee_person_id, original_estimate_seconds), worklogs pre-filtered
+  // to the sprint window the same way useSprintWorklogs()/DB query does.
+  const liveCompletedTickets = liveDoneTickets
+    .filter((t) => t.resolved_at && new Date(t.resolved_at) >= sprintStart)
+    .map((t) => ({
+      id: t.id,
+      assignee_person_id: t.assignee_person_id,
+      original_estimate_seconds: t.original_estimate_seconds,
+      time_spent_seconds: null,
+      resolved_at: t.resolved_at,
+    }));
+  const liveEstimateScores = engData.computeSprintEstimateAccuracy(liveCompletedTickets, liveWorklogs, new Set([personId]));
+  assert.equal(liveEstimateScores.get(personId) ?? null, snapshotResult.estimateScore, "estimateScore (symmetric min/max accuracy) must match");
 
   // --- pace: live's dayNumber (via sprintWindow, evaluated at
   // now=sprintEnd) should equal totalDays for a sprint that's fully

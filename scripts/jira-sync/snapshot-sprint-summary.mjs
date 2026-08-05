@@ -146,22 +146,25 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
       : null;
 
   // Estimate accuracy: tickets resolved inside this window, spent time
-  // from worklogs dated inside it.
+  // from worklogs dated inside it. Mirrors computeSprintEstimateAccuracy
+  // in eng-data.ts -- per ticket, accuracy is min(spent,est)/max(spent,est)
+  // (symmetric, so an overrun pulls the score down instead of being
+  // silently excluded), pooled across tickets weighted by size.
   const doneInWindow = owned.filter(
     (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
   );
-  let estSeconds = 0;
-  let spentSeconds = 0;
+  let matchedSeconds = 0;
+  let totalSeconds = 0;
   for (const t of doneInWindow) {
     const est = t.original_estimate_seconds ?? 0;
     const spent = worklogs
       .filter((w) => w.ticket_id === t.id && w.started_at >= sprintStart && w.started_at <= sprintEnd)
       .reduce((s, w) => s + w.seconds, 0);
-    if (est <= 0 || est > OVERSIZED_TICKET_SECONDS || spent <= 0 || spent > est) continue;
-    estSeconds += est;
-    spentSeconds += spent;
+    if (est <= 0 || est > OVERSIZED_TICKET_SECONDS || spent <= 0) continue;
+    matchedSeconds += Math.min(spent, est);
+    totalSeconds += Math.max(spent, est);
   }
-  const estimateScore = estSeconds > 0 ? Math.round((spentSeconds / estSeconds) * 100) : null;
+  const estimateScore = totalSeconds > 0 ? Math.round((matchedSeconds / totalSeconds) * 100) : null;
 
   // Pace counts as a real 0 when null (mirrors computeOverallScore in
   // eng-data.ts) -- "nothing to measure pace against" is exactly the
