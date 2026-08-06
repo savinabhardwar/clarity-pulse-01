@@ -4,9 +4,12 @@
 // closed, into person_sprint_summaries (see 0032 migration for the full
 // design rationale and known limitations). Mirrors the exact scoring
 // rules in engineering-ethos/src/lib/eng-data.ts:
-//   - computeSprintHours: pro-rated allocated hours (remaining estimate,
-//     falling back to original), sprint-window-scoped logged hours,
-//     tickets over OVERSIZED_TICKET_SECONDS excluded from both.
+//   - computeSprintHours: pro-rated allocated hours (original estimate
+//     minus ALL-TIME logged hours across every sprint, not Jira's own
+//     remaining_estimate_seconds -- that field can be, and in practice
+//     has been, manually overridden independent of actual logging),
+//     sprint-window-scoped logged hours, tickets over
+//     OVERSIZED_TICKET_SECONDS excluded from both.
 //   - computeSprintEstimateAccuracy: judged only on tickets resolved
 //     inside the sprint window, spent time from worklogs dated inside it.
 //   - computeJiraUpdateStatus: qualifies only with zero silently-pending
@@ -79,10 +82,23 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   const sizedIds = new Set(sized.map((t) => t.id));
   const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
 
+  // A ticket carried over from a prior sprint has already had some of
+  // its original estimate burned down there -- allocatedHours for THIS
+  // sprint should reflect only what's still outstanding, computed
+  // ourselves as original minus ALL-TIME logged (any sprint, any
+  // author), rather than trusting Jira's own remaining_estimate_seconds
+  // directly (observed to drift from that computation in practice, via
+  // manual overrides). Mirrors computeSprintHours in eng-data.ts.
+  const totalLoggedByTicket = new Map();
+  for (const w of allWorklogsForTickets) {
+    totalLoggedByTicket.set(w.ticket_id, (totalLoggedByTicket.get(w.ticket_id) ?? 0) + w.seconds);
+  }
   const allocatedHours =
     sized.reduce((s, t) => {
-      const hours = doneIds.has(t.id) ? t.original_estimate_seconds : (t.remaining_estimate_seconds ?? t.original_estimate_seconds);
-      return s + (hours ?? 0);
+      const original = t.original_estimate_seconds ?? 0;
+      if (doneIds.has(t.id)) return s + original;
+      const loggedAllTime = totalLoggedByTicket.get(t.id) ?? 0;
+      return s + Math.max(original - loggedAllTime, 0);
     }, 0) / 3600;
   const loggedSeconds = worklogs
     .filter(
@@ -289,12 +305,14 @@ export async function snapshotClosedSprints(databaseUrl) {
          where w.started_at >= $1 and w.started_at <= $2`,
         [sprintStart, sprintEnd],
       );
-      // Unscoped by date -- hygiene's hasWorklog check is "was this
-      // ticket ever logged against", not "logged against within this
-      // sprint's window" (that's what the sprint-scoped `worklogs` above
-      // is for -- pace/logging discipline).
+      // Unscoped by date -- used both for hygiene's hasWorklog check
+      // ("was this ticket ever logged against", not "logged against
+      // within this sprint's window" -- that's what the sprint-scoped
+      // `worklogs` above is for) and for allocatedHours' pro-rata
+      // (original estimate minus ALL-TIME logged, so seconds is needed
+      // here too).
       const { rows: allWorklogsForTickets } = await pool.query(
-        `select w.ticket_id from worklogs w
+        `select w.ticket_id, w.seconds from worklogs w
          join tickets tk on tk.id = w.ticket_id
          where tk.sprint_id in (select id from sprints where start_date = $1)`,
         [sprintStart],

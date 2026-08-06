@@ -49,9 +49,13 @@ function buildFixture() {
   const personId = "person-1";
 
   const tickets = [
-    // Spillover ticket: original 7h, 2h remaining -- pro-rata should charge
-    // this sprint for 2h, not 7h. Has an epic, no comment -- a real
-    // hygiene gap (it's in progress, so it needs one).
+    // Spillover ticket: original 7h, with 4h already logged in a PRIOR
+    // sprint (see allTimeWorklogs below) -- pro-rata should charge this
+    // sprint for 3h (7-4), computed ourselves from all-time logged
+    // hours, not from remaining_estimate_seconds (left populated with a
+    // deliberately-wrong value here to prove that field is ignored).
+    // Has an epic, no comment -- a real hygiene gap (it's in progress,
+    // so it needs one).
     {
       id: "t-spillover",
       assignee_person_id: personId,
@@ -59,7 +63,7 @@ function buildFixture() {
       is_blocked: false,
       epic_id: "epic-1",
       original_estimate_seconds: 7 * 3600,
-      remaining_estimate_seconds: 2 * 3600,
+      remaining_estimate_seconds: 999 * 3600,
       resolved_at: null,
       updated_at: "2026-08-03T00:00:00.000Z",
     },
@@ -110,14 +114,24 @@ function buildFixture() {
 
   const comments = [{ ticket_id: "t-spillover", author_person_id: personId, created_at: new Date("2026-08-06T00:00:00.000Z") }];
 
-  return { sprintStart, sprintEnd, personId, tickets, worklogs, comments };
+  // Logged in a PRIOR sprint, well before sprintStart -- excluded from
+  // the sprint-window-scoped `worklogs` above (so it doesn't count
+  // toward loggedHours/pace/logging-discipline for THIS sprint), but
+  // included in allWorklogs (all-time, any sprint) so it correctly
+  // reduces t-spillover's pro-rata allocatedHours for this sprint.
+  const priorSprintWorklogs = [
+    { ticket_id: "t-spillover", author_person_id: personId, started_at: new Date("2026-07-10T00:00:00.000Z"), seconds: 4 * 3600 },
+  ];
+  const allWorklogs = [...worklogs, ...priorSprintWorklogs];
+
+  return { sprintStart, sprintEnd, personId, tickets, worklogs, allWorklogs, comments };
 }
 
 test("live and snapshot scoring agree at the moment a sprint closes", async () => {
   const engData = await loadEngData();
   if (!engData) return; // environment doesn't have the sibling repo -- see loadEngData
 
-  const { sprintStart, sprintEnd, personId, tickets, worklogs, comments } = buildFixture();
+  const { sprintStart, sprintEnd, personId, tickets, worklogs, allWorklogs, comments } = buildFixture();
   const now = sprintEnd; // evaluate the live path at the exact instant the sprint closes
 
   // --- snapshot-sprint-summary.mjs's computeForPerson is only reachable
@@ -157,10 +171,19 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
     const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS && !t.is_blocked);
     const sizedIds = new Set(sized.map((t) => t.id));
     const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
+    // Pro-rata via original minus ALL-TIME logged (any sprint), not
+    // remaining_estimate_seconds -- mirrors snapshot-sprint-summary.mjs's
+    // computeForPerson and eng-data.ts's computeSprintHours.
+    const totalLoggedByTicket = new Map();
+    for (const w of allWorklogs) {
+      totalLoggedByTicket.set(w.ticket_id, (totalLoggedByTicket.get(w.ticket_id) ?? 0) + w.seconds);
+    }
     const allocatedHours =
       sized.reduce((s, t) => {
-        const hours = doneIds.has(t.id) ? t.original_estimate_seconds : (t.remaining_estimate_seconds ?? t.original_estimate_seconds);
-        return s + (hours ?? 0);
+        const original = t.original_estimate_seconds ?? 0;
+        if (doneIds.has(t.id)) return s + original;
+        const loggedAllTime = totalLoggedByTicket.get(t.id) ?? 0;
+        return s + Math.max(original - loggedAllTime, 0);
       }, 0) / 3600;
     const loggedSeconds = worklogs
       .filter((w) => w.author_person_id === personId && sizedIds.has(w.ticket_id) && w.started_at >= sprintStart && w.started_at <= sprintEnd)
@@ -175,10 +198,9 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
     const paceScore = hasOpenWork ? Math.min(100, Math.round((loggedHours / paceDenominator) * 100)) : null;
     const estimateCoverage =
       ownedOpen.length > 0 ? Math.round((100 * ownedOpen.filter((t) => t.original_estimate_seconds !== null).length) / ownedOpen.length) : null;
-    // hasWorklog/hasComment are "ever" (unscoped by date) -- worklogs/
-    // comments fixtures are already unscoped here, matching
+    // hasWorklog/hasComment are "ever" (unscoped by date) -- matching
     // allWorklogsForTickets/comments in the real snapshot script.
-    const ticketsWithWorklogEver = new Set(worklogs.map((w) => w.ticket_id));
+    const ticketsWithWorklogEver = new Set(allWorklogs.map((w) => w.ticket_id));
     const ticketsWithCommentEver = new Set(comments.map((c) => c.ticket_id));
     const hygieneScore =
       owned.length > 0
@@ -243,7 +265,7 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
   const liveDoneTickets = liveTicketsAll.filter((t) => t.status_category === "done");
   const liveWorklogs = worklogs.filter((w) => new Date(w.started_at) >= sprintStart && new Date(w.started_at) <= sprintEnd);
 
-  const liveResult = engData.computeSprintHours(liveOpenTickets, liveDoneTickets, liveWorklogs, worklogs, comments, personId, activeSprintIds);
+  const liveResult = engData.computeSprintHours(liveOpenTickets, liveDoneTickets, liveWorklogs, allWorklogs, comments, personId, activeSprintIds);
 
   assert.equal(liveResult.allocatedHours, snapshotResult.allocatedHours, "allocatedHours (pro-rata spillover + oversized exclusion) must match");
   assert.equal(liveResult.loggedHours, snapshotResult.loggedHours, "loggedHours must match");
