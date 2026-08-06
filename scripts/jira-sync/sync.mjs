@@ -603,13 +603,19 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     // sprint fetchTrackedSprints resolved as "the active one" for that
     // board), not one global cutoff -- boards run staggered sprint
     // cadences (same root cause as the person-scoring fix in
-    // eng-data.ts). A row whose board/epic can't be matched to a
-    // tracked sprint is kept rather than silently dropped.
-    const epicKeyToProjectKey = new Map(epicsRaw.map((e) => [e.key, e.project]));
+    // eng-data.ts). Derives the board from the ticket's OWN jira_key
+    // prefix (e.g. "TRG-1260" -> "TRG"), not via parent_epic_key ->
+    // epicsRaw -- parent_epic_key is whatever Jira's own `parent` field
+    // held, which is frequently a non-Epic ticket with no entry in
+    // epicsRaw at all, so that lookup silently failed for most rows and
+    // let stale entries straight through the "can't be matched" escape
+    // hatch. The key prefix is always present and always correct. A row
+    // whose board has no currently tracked sprint is kept rather than
+    // silently dropped.
     const currentSprintStartByProjectKey = new Map(trackedSprints.map((s) => [s.jiraProjectKey, s.startDate]));
     const allHistoryRows = allHistoryRowsRaw.filter((h) => {
-      const projectKey = epicKeyToProjectKey.get(h.parent_epic_key);
-      const sprintStart = projectKey ? currentSprintStartByProjectKey.get(projectKey) : undefined;
+      const projectKey = h.key.split("-")[0];
+      const sprintStart = currentSprintStartByProjectKey.get(projectKey);
       if (!sprintStart || !h.resolutiondate) return true;
       return new Date(h.resolutiondate) >= new Date(sprintStart);
     });
