@@ -185,10 +185,12 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
       : null;
 
   // Estimate accuracy: tickets resolved inside this window, spent time
-  // from worklogs dated inside it. Mirrors computeSprintEstimateAccuracy
-  // in eng-data.ts -- per ticket, accuracy is min(spent,est)/max(spent,est)
-  // (symmetric, so an overrun pulls the score down instead of being
-  // silently excluded), pooled across tickets weighted by size.
+  // from the ticket's own all-time time_spent_seconds (Jira's own
+  // tracked total), not a worklog-date-window sum. Mirrors
+  // computeSprintEstimateAccuracy in eng-data.ts -- per ticket, accuracy
+  // is min(spent,est)/max(spent,est) (symmetric, so an overrun pulls the
+  // score down instead of being silently excluded), pooled across
+  // tickets weighted by size.
   const doneInWindow = owned.filter(
     (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
   );
@@ -196,9 +198,7 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   let totalSeconds = 0;
   for (const t of doneInWindow) {
     const est = t.original_estimate_seconds ?? 0;
-    const spent = worklogs
-      .filter((w) => w.ticket_id === t.id && w.started_at >= sprintStart && w.started_at <= sprintEnd)
-      .reduce((s, w) => s + w.seconds, 0);
+    const spent = t.time_spent_seconds ?? 0;
     if (est <= 0 || est > OVERSIZED_TICKET_SECONDS || spent <= 0) continue;
     matchedSeconds += Math.min(spent, est);
     totalSeconds += Math.max(spent, est);

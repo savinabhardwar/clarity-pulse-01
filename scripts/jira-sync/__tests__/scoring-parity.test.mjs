@@ -92,6 +92,10 @@ function buildFixture() {
       epic_id: null,
       original_estimate_seconds: 4 * 3600,
       remaining_estimate_seconds: 0,
+      // Ticket's own all-time tracked total (Jira's time_spent_seconds),
+      // matching its worklog below -- estimate accuracy now reads this
+      // directly instead of summing worklogs inside a date window.
+      time_spent_seconds: 2 * 3600,
       // Date object, not an ISO string -- matches what `pg` hands back
       // for timestamptz columns; the snapshot side compares this
       // directly (>=/<=) against sprintStart/sprintEnd (also Dates), and
@@ -236,9 +240,10 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
     const loggingScore = wipTickets.length > 0 ? Math.round((100 * wipTickets.filter((t) => loggedTicketIds.has(t.id)).length) / wipTickets.length) : null;
 
     // Estimate accuracy: min(spent,est)/max(spent,est) pooled across
-    // tickets resolved inside this window -- mirrors
-    // computeSprintEstimateAccuracy in eng-data.ts exactly (symmetric,
-    // so an overrun pulls the score down instead of being excluded).
+    // tickets resolved inside this window, spent read from the ticket's
+    // own all-time time_spent_seconds -- mirrors computeSprintEstimateAccuracy
+    // in eng-data.ts exactly (symmetric, so an overrun pulls the score
+    // down instead of being excluded).
     const doneInWindow = owned.filter(
       (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
     );
@@ -246,9 +251,7 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
     let totalSeconds = 0;
     for (const t of doneInWindow) {
       const est = t.original_estimate_seconds ?? 0;
-      const spent = worklogs
-        .filter((w) => w.ticket_id === t.id && w.started_at >= sprintStart && w.started_at <= sprintEnd)
-        .reduce((s, w) => s + w.seconds, 0);
+      const spent = t.time_spent_seconds ?? 0;
       if (est <= 0 || est > OVERSIZED_TICKET_SECONDS || spent <= 0) continue;
       matchedSeconds += Math.min(spent, est);
       totalSeconds += Math.max(spent, est);
@@ -263,17 +266,20 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
   // --- live path (engineering-ethos). doneTickets split out separately
   // -- useOpenTickets() excludes status_category='done' entirely, but
   // useSprintDoneTickets() fetches it back for hygiene (see
-  // useEmployees.ts) -- and worklogs pre-filtered to the sprint window
-  // the way useSprintWorklogs()/DB query does before ever handing them
-  // to computeSprintHours. allWorklogs/allComments stay unscoped by
-  // date, matching useAllWorklogs()/useAllComments().
+  // useEmployees.ts). computeSprintHours now judges "logged this sprint"
+  // per ticket against its own sprint's start_date (not a separately
+  // pre-filtered worklogs list), so it takes `sprints` instead --
+  // allWorklogs/allComments stay unscoped by date, matching
+  // useAllWorklogs()/useAllComments().
   const activeSprintIds = new Set(["sprint-1"]);
   const liveTicketsAll = tickets.map((t) => ({ ...t, sprint_id: "sprint-1", jira_key: t.id.toUpperCase(), summary: "x", status: "x" }));
   const liveOpenTickets = liveTicketsAll.filter((t) => t.status_category !== "done");
   const liveDoneTickets = liveTicketsAll.filter((t) => t.status_category === "done");
-  const liveWorklogs = worklogs.filter((w) => new Date(w.started_at) >= sprintStart && new Date(w.started_at) <= sprintEnd);
+  const liveSprints = [
+    { id: "sprint-1", jira_project_id: "p", name: "S", state: "active", start_date: sprintStart.toISOString(), end_date: sprintEnd.toISOString() },
+  ];
 
-  const liveResult = engData.computeSprintHours(liveOpenTickets, liveDoneTickets, liveWorklogs, allWorklogs, comments, personId, activeSprintIds);
+  const liveResult = engData.computeSprintHours(liveOpenTickets, liveDoneTickets, liveSprints, allWorklogs, comments, personId, activeSprintIds);
 
   assert.equal(liveResult.allocatedHours, snapshotResult.allocatedHours, "allocatedHours (pro-rata spillover + oversized exclusion) must match");
   assert.equal(liveResult.loggedHours, snapshotResult.loggedHours, "loggedHours must match");
@@ -283,26 +289,24 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
 
   // --- estimate accuracy, using engData's own computeSprintEstimateAccuracy
   // -- completedTickets shaped like CompletedTicketRow (id,
-  // assignee_person_id, original_estimate_seconds), worklogs pre-filtered
-  // to the sprint window the same way useSprintWorklogs()/DB query does.
+  // assignee_person_id, original_estimate_seconds, time_spent_seconds).
   const liveCompletedTickets = liveDoneTickets
     .filter((t) => t.resolved_at && new Date(t.resolved_at) >= sprintStart)
     .map((t) => ({
       id: t.id,
       assignee_person_id: t.assignee_person_id,
       original_estimate_seconds: t.original_estimate_seconds,
-      time_spent_seconds: null,
+      time_spent_seconds: t.time_spent_seconds ?? null,
       resolved_at: t.resolved_at,
     }));
-  const liveEstimateScores = engData.computeSprintEstimateAccuracy(liveCompletedTickets, liveWorklogs, new Set([personId]));
+  const liveEstimateScores = engData.computeSprintEstimateAccuracy(liveCompletedTickets, new Set([personId]));
   assert.equal(liveEstimateScores.get(personId) ?? null, snapshotResult.estimateScore, "estimateScore (symmetric min/max accuracy) must match");
 
   // --- pace: live's dayNumber (via sprintWindow, evaluated at
   // now=sprintEnd) should equal totalDays for a sprint that's fully
   // elapsed, at which point computePaceScore's pro-rated expectation
   // collapses to the full allocation -- same as the snapshot side.
-  const sprintRow = { id: "sprint-1", jira_project_id: "p", name: "S", state: "active", start_date: sprintStart.toISOString(), end_date: sprintEnd.toISOString() };
-  const { dayNumber, totalDays } = engData.sprintWindow([sprintRow], now);
+  const { dayNumber, totalDays } = engData.sprintWindow(liveSprints, now);
   const livePaceScore = liveResult.hasSprintWork
     ? engData.computePaceScore(liveResult.allocatedHours, liveResult.loggedHours, dayNumber, totalDays)
     : null;
