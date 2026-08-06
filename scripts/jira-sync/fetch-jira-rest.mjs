@@ -131,10 +131,18 @@ async function fetchTrackedSprints() {
 }
 
 async function fetchInWindowIssues(trackedSprints) {
+  // issuetype != Epic -- an Epic sitting in a sprint is a container, not
+  // a work item someone logs hours against directly; work happens on
+  // its CHILD tickets. Without this exclusion an Epic assigned to
+  // someone (a common ownership convention) got ingested into `tickets`
+  // like any other ticket and then wrongly counted as neglected WIP --
+  // dark-WIP penalized the assignee for not logging a worklog/comment
+  // against the Epic itself, which nobody ever would. Mirrors
+  // fetchHistory's existing exclusion below.
   const clause = trackedSprints
     .map((s) => JIRA_PROJECTS.find((p) => p.key === s.jiraProjectKey))
     .filter(Boolean)
-    .map((p, i) => `(project = "${p.name}" AND Sprint = "${trackedSprints[i].name}")`)
+    .map((p, i) => `(project = "${p.name}" AND Sprint = "${trackedSprints[i].name}" AND issuetype != Epic)`)
     .join(" OR ");
   if (!clause) return [];
   const issues = await jiraSearch({
