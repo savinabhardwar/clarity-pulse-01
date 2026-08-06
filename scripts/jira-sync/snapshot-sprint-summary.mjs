@@ -69,8 +69,15 @@ function ticketHygieneGaps(t) {
   return gaps;
 }
 
-function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, comments, sprintStart, sprintEnd }) {
+function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, comments, sprintStart, sprintEnd, nameBySprintId }) {
   const owned = tickets.filter((t) => t.assignee_person_id === personId);
+  // The board this person's own work actually lived on for this closed
+  // sprint -- multiple boards close sprints on different, unaligned
+  // dates (see 0047 migration), so "the sprint" isn't a single global
+  // concept; it's whichever board's sprint this person was actually
+  // assigned to. Undefined when they had nothing assigned at all, in
+  // which case the caller skips inserting a row entirely.
+  const sprintName = owned.length > 0 ? (nameBySprintId.get(owned[0].sprint_id) ?? null) : null;
   // allocatedHours/loggedHours count BOTH open and done tickets this
   // sprint -- hours logged on something finished are still real work
   // done this sprint. A done ticket contributes its ORIGINAL estimate
@@ -258,6 +265,7 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
     loggedHours: Math.round(loggedHours * 10) / 10,
     jiraQualifies,
     jiraStatusTag,
+    sprintName,
   };
 }
 
@@ -305,11 +313,15 @@ export async function snapshotClosedSprints(databaseUrl) {
 
       const { rows: tickets } = await pool.query(
         `select id, assignee_person_id, epic_id, status_category, is_blocked, original_estimate_seconds, remaining_estimate_seconds,
-                time_spent_seconds, resolved_at, updated_at, created_at
+                time_spent_seconds, resolved_at, updated_at, created_at, sprint_id
          from tickets
          where sprint_id in (select id from sprints where start_date = $1)`,
         [sprintStart],
       );
+      // Which literal board/sprint each person's tickets actually sat
+      // in, for sprintName -- see computeForPerson.
+      const { rows: sprintRowsForGroup } = await pool.query(`select id, name from sprints where start_date = $1`, [sprintStart]);
+      const nameBySprintId = new Map(sprintRowsForGroup.map((r) => [r.id, r.name]));
       const { rows: worklogs } = await pool.query(
         `select w.ticket_id, w.author_person_id, w.started_at, w.seconds
          from worklogs w
@@ -332,25 +344,34 @@ export async function snapshotClosedSprints(databaseUrl) {
         `select tc.ticket_id, tc.author_person_id, tc.created_at from ticket_comments tc`,
       );
 
-      const summaryRows = people.map((p) => {
-        const s = computeForPerson({
-          personId: p.id,
-          tickets,
-          worklogs,
-          allWorklogsForTickets,
-          comments,
-          sprintStart,
-          sprintEnd,
-        });
-        return { personId: p.id, ...s };
-      });
+      const summaryRows = people
+        .map((p) => {
+          const s = computeForPerson({
+            personId: p.id,
+            tickets,
+            worklogs,
+            allWorklogsForTickets,
+            comments,
+            sprintStart,
+            sprintEnd,
+            nameBySprintId,
+          });
+          return { personId: p.id, ...s };
+        })
+        // Every closed sprint on every board used to get snapshotted for
+        // EVERY person, regardless of whether they had anything to do
+        // with that board -- producing a "Nothing assigned this sprint"
+        // row for each unrelated board's sprint that happened to close
+        // around the same time. That's pure noise (see 0047 migration),
+        // so it's never inserted going forward.
+        .filter((s) => s.jiraStatusTag !== "Nothing assigned this sprint");
 
       for (const s of summaryRows) {
         await pool.query(
           `insert into person_sprint_summaries
              (person_id, sprint_start, sprint_end, pace_score, estimate_score, hygiene_score,
-              logging_score, overall_score, allocated_hours, logged_hours, jira_qualifies, jira_status_tag)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+              logging_score, overall_score, allocated_hours, logged_hours, jira_qualifies, jira_status_tag, sprint_name)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
            on conflict (person_id, sprint_start) do nothing`,
           [
             s.personId,
@@ -365,6 +386,7 @@ export async function snapshotClosedSprints(databaseUrl) {
             s.loggedHours,
             s.jiraQualifies,
             s.jiraStatusTag,
+            s.sprintName,
           ],
         );
         totalInserted++;
