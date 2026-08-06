@@ -586,9 +586,33 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       updateColumns: ["summary", "issuetype", "resolution_date", "spent_seconds", "parent_epic_key", "assignee_person_id", "updated_at"],
     });
 
-    const { rows: allHistoryRows } = await pool.query(
+    const { rows: allHistoryRowsRaw } = await pool.query(
       "select jira_key as key, summary, resolution_date as resolutiondate, spent_seconds as \"spentSeconds\", parent_epic_key from resolved_ticket_history",
     );
+
+    // resolved_ticket_history is a permanent, all-time archive (by
+    // design -- get_person_detail's "Completed" panel needs a person's
+    // full history even after purge-closed-sprint-tickets.mjs deletes
+    // the live ticket row). But "delivered" (project_features) is a
+    // "recently shipped" feed, not an all-time changelog -- without a
+    // time bound it accumulated EVERY resolved ticket ever, so a ticket
+    // resolved in a long-closed sprint (e.g. "Woven Daily Issues"'s
+    // TT-559/560/561, resolved 31 Jul) kept showing up as "recent"
+    // forever. Scope to each ticket's OWN board's CURRENT tracked
+    // sprint (trackedSprints has exactly one row per board -- whichever
+    // sprint fetchTrackedSprints resolved as "the active one" for that
+    // board), not one global cutoff -- boards run staggered sprint
+    // cadences (same root cause as the person-scoring fix in
+    // eng-data.ts). A row whose board/epic can't be matched to a
+    // tracked sprint is kept rather than silently dropped.
+    const epicKeyToProjectKey = new Map(epicsRaw.map((e) => [e.key, e.project]));
+    const currentSprintStartByProjectKey = new Map(trackedSprints.map((s) => [s.jiraProjectKey, s.startDate]));
+    const allHistoryRows = allHistoryRowsRaw.filter((h) => {
+      const projectKey = epicKeyToProjectKey.get(h.parent_epic_key);
+      const sprintStart = projectKey ? currentSprintStartByProjectKey.get(projectKey) : undefined;
+      if (!sprintStart || !h.resolutiondate) return true;
+      return new Date(h.resolutiondate) >= new Date(sprintStart);
+    });
 
     await pool.query("delete from project_features");
     const historyByProject = new Map();
