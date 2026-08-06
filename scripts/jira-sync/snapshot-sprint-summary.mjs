@@ -14,13 +14,10 @@
 //     OVERSIZED_TICKET_SECONDS excluded from both.
 //   - computeSprintEstimateAccuracy: judged only on tickets resolved
 //     inside the sprint window, spent time from worklogs dated inside it.
-//   - computeJiraUpdateStatus: qualifies only when every in-progress
-//     ticket's own most recent worklog/comment is within
-//     STALE_TICKET_WORKDAYS of the sprint's end (missing entirely
-//     counts as maximally stale) AND the person has a recent worklog/
-//     comment of their own; "recent" here is evaluated against the
-//     sprint's OWN end date, not today, since this is a retrospective
-//     judgment of how that sprint ended, not of today.
+//   - computeJiraUpdateStatus: qualifies only with zero silently-pending
+//     in-progress tickets and a recent worklog/comment; "recent" here is
+//     evaluated against the sprint's OWN end date, not today, since this
+//     is a retrospective judgment of how that sprint ended, not of today.
 // Run as a step in run-full-sync.mjs -- idempotent, only ever inserts,
 // never updates an existing snapshot (see the unique constraint).
 import pg from "pg";
@@ -28,7 +25,6 @@ import { pathToFileURL } from "node:url";
 import { workdaysBetween } from "./lib/workdays.mjs";
 
 const OVERSIZED_TICKET_SECONDS = 35 * 3600; // 5 workdays at this org's 7h/day sprint policy
-const STALE_TICKET_WORKDAYS = 5; // mirrors STALE_TICKET_WORKDAYS in eng-data.ts
 
 function toDate(v) {
   return v instanceof Date ? v : new Date(v);
@@ -229,31 +225,11 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
     jiraStatusTag = "Nothing assigned this sprint";
   } else {
     const wip = owned.filter((t) => t.status_category === "indeterminate");
-    // Per-ticket staleness, not just "ever touched" -- a ticket with
-    // some old worklog/comment that's gone quiet for weeks is caught
-    // here too, not only a ticket with literally zero activity ever.
-    // Mirrors computeJiraUpdateStatus in eng-data.ts.
-    const lastTouchByTicket = new Map();
-    for (const w of worklogs) {
-      const prev = lastTouchByTicket.get(w.ticket_id);
-      if (!prev || w.started_at > prev) lastTouchByTicket.set(w.ticket_id, w.started_at);
-    }
-    for (const c of comments) {
-      const prev = lastTouchByTicket.get(c.ticket_id);
-      if (!prev || c.created_at > prev) lastTouchByTicket.set(c.ticket_id, c.created_at);
-    }
-    const pending = wip.filter((t) => {
-      const lastTouch = lastTouchByTicket.get(t.id);
-      if (!lastTouch) return true;
-      return workdaysBetween(toDate(lastTouch), sprintEnd) > STALE_TICKET_WORKDAYS;
-    });
+    const ticketsWithWorklog = new Set(worklogs.map((w) => w.ticket_id));
+    const ticketsWithComment = new Set(comments.map((c) => c.ticket_id));
+    const pending = wip.filter((t) => !ticketsWithWorklog.has(t.id) && !ticketsWithComment.has(t.id));
     if (pending.length > 0) {
-      const maxDays = Math.max(
-        ...pending.map((t) => {
-          const lastTouch = lastTouchByTicket.get(t.id);
-          return workdaysBetween(lastTouch ? toDate(lastTouch) : toDate(t.updated_at), sprintEnd);
-        }),
-      );
+      const maxDays = Math.max(...pending.map((t) => workdaysBetween(toDate(t.updated_at), sprintEnd)));
       jiraStatusTag = `Pending updates on ${pending.length} ticket${pending.length === 1 ? "" : "s"} (${maxDays} working day${maxDays === 1 ? "" : "s"} since last touched)`;
     } else {
       let lastActivity = null;
