@@ -151,7 +151,10 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
     // narrower "Estimate coverage" metric. hygieneScore below uses the
     // FULL `owned` (open + done).
     const ownedOpen = owned.filter((t) => t.status_category !== "done");
-    const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+    // Blocked tickets excluded too -- not actionable regardless of
+    // effort, so they shouldn't count as capacity someone is failing to
+    // use.
+    const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS && !t.is_blocked);
     const sizedIds = new Set(sized.map((t) => t.id));
     const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
     const allocatedHours =

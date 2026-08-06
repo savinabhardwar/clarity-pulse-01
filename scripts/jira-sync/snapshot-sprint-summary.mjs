@@ -72,8 +72,10 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   // (not remaining, which is trivially ~0 once finished -- pro-rata only
   // makes sense for work still in flight) so the denominator reflects
   // "this much work was committed to the sprint," not zero just because
-  // it's done. Mirrors computeSprintHours in eng-data.ts.
-  const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+  // it's done. Blocked tickets are excluded outright -- not actionable
+  // regardless of effort, so they shouldn't count as capacity someone is
+  // failing to use. Mirrors computeSprintHours in eng-data.ts.
+  const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS && !t.is_blocked);
   const sizedIds = new Set(sized.map((t) => t.id));
   const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
 
