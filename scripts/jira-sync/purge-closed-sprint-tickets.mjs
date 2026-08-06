@@ -11,8 +11,13 @@
 // still pointing at it is done, or was truly abandoned there, and its
 // per-person/per-project scores are already durably captured.
 //
+// Also deletes tickets sync.mjs has already untracked (sprint_id is
+// null), past the same grace period -- those are excluded from every
+// score already, but the rows themselves had nothing to ever clean them
+// up, so they accumulated as dead weight indefinitely.
+//
 // Safe to run unconditionally on every sync -- purges nothing if there's
-// no newly-eligible sprint. Deleting a ticket cascades to worklogs,
+// nothing newly eligible. Deleting a ticket cascades to worklogs,
 // ticket_comments, project_update_tickets, project_feature_tickets (all
 // ON DELETE CASCADE); risks.ticket_id is never populated so it can't
 // conflict. Completed-ticket history survives via resolved_ticket_history
@@ -47,11 +52,6 @@ export async function purgeClosedSprintTickets(databaseUrl) {
       [GRACE_DAYS],
     );
 
-    if (eligibleSprints.length === 0) {
-      console.log("[purge-closed-sprint-tickets] nothing to purge");
-      return { sprintsPurged: 0, ticketsDeleted: 0 };
-    }
-
     let totalDeleted = 0;
     for (const sprint of eligibleSprints) {
       const { rowCount } = await pool.query(`delete from tickets where sprint_id = $1`, [sprint.id]);
@@ -60,6 +60,26 @@ export async function purgeClosedSprintTickets(databaseUrl) {
         `[purge-closed-sprint-tickets] purged ${rowCount} ticket(s) from "${sprint.name}" (closed ${new Date(sprint.end_date).toISOString()})`,
       );
     }
+
+    // sync.mjs's untrack step (see its "4.5") nulls sprint_id the moment
+    // a ticket falls out of its board's tracked sprint (moved elsewhere,
+    // or deleted in Jira) -- these are already excluded from every
+    // score (activeSprintIds requires a non-null sprint_id), but the
+    // rows themselves stay forever with nothing to ever clean them up.
+    // last_synced_at freezes at the moment it was last actually
+    // in-window, so it's a reliable "how long has this been untracked"
+    // signal -- give it the same grace period as a closed sprint before
+    // deleting, in case it was untracked only moments ago.
+    const { rowCount: untrackedDeleted } = await pool.query(
+      `delete from tickets where sprint_id is null and last_synced_at < now() - make_interval(days => $1)`,
+      [GRACE_DAYS],
+    );
+    if (untrackedDeleted > 0) {
+      console.log(`[purge-closed-sprint-tickets] purged ${untrackedDeleted} untracked (sprint_id null) ticket(s)`);
+    }
+    totalDeleted += untrackedDeleted;
+
+    if (totalDeleted === 0) console.log("[purge-closed-sprint-tickets] nothing to purge");
     return { sprintsPurged: eligibleSprints.length, ticketsDeleted: totalDeleted };
   } finally {
     await pool.end();
