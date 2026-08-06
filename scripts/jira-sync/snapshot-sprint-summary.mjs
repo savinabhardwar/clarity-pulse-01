@@ -4,11 +4,13 @@
 // closed, into person_sprint_summaries (see 0032 migration for the full
 // design rationale and known limitations). Mirrors the exact scoring
 // rules in engineering-ethos/src/lib/eng-data.ts:
-//   - computeSprintHours: pro-rated allocated hours (original estimate
-//     minus ALL-TIME logged hours across every sprint, not Jira's own
+//   - computeSprintHours: allocated hours are the full original estimate,
+//     pro-rated only for spillover tickets by subtracting hours logged
+//     BEFORE this sprint started (any earlier sprint), not Jira's own
 //     remaining_estimate_seconds -- that field can be, and in practice
-//     has been, manually overridden independent of actual logging),
-//     sprint-window-scoped logged hours, tickets over
+//     has been, manually overridden independent of actual logging.
+//     Hours logged DURING this sprint never reduce the figure.
+//     Sprint-window-scoped logged hours, tickets over
 //     OVERSIZED_TICKET_SECONDS excluded from both.
 //   - computeSprintEstimateAccuracy: judged only on tickets resolved
 //     inside the sprint window, spent time from worklogs dated inside it.
@@ -85,20 +87,29 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   // A ticket carried over from a prior sprint has already had some of
   // its original estimate burned down there -- allocatedHours for THIS
   // sprint should reflect only what's still outstanding, computed
-  // ourselves as original minus ALL-TIME logged (any sprint, any
-  // author), rather than trusting Jira's own remaining_estimate_seconds
-  // directly (observed to drift from that computation in practice, via
-  // manual overrides). Mirrors computeSprintHours in eng-data.ts.
+  // ourselves as original minus whatever was logged BEFORE this sprint
+  // started (any earlier sprint, any author), rather than trusting
+  // Jira's own remaining_estimate_seconds directly (observed to drift
+  // from that computation in practice, via manual overrides). Hours
+  // logged DURING this sprint never reduce this figure -- it's a fixed
+  // "committed to this sprint" total, not something that shrinks as the
+  // sprint progresses. Mirrors computeSprintHours in eng-data.ts.
   const totalLoggedByTicket = new Map();
   for (const w of allWorklogsForTickets) {
     totalLoggedByTicket.set(w.ticket_id, (totalLoggedByTicket.get(w.ticket_id) ?? 0) + w.seconds);
+  }
+  const loggedThisSprintByTicket = new Map();
+  for (const w of worklogs) {
+    loggedThisSprintByTicket.set(w.ticket_id, (loggedThisSprintByTicket.get(w.ticket_id) ?? 0) + w.seconds);
   }
   const allocatedHours =
     sized.reduce((s, t) => {
       const original = t.original_estimate_seconds ?? 0;
       if (doneIds.has(t.id)) return s + original;
       const loggedAllTime = totalLoggedByTicket.get(t.id) ?? 0;
-      return s + Math.max(original - loggedAllTime, 0);
+      const loggedThisSprint = loggedThisSprintByTicket.get(t.id) ?? 0;
+      const loggedBeforeSprint = Math.max(loggedAllTime - loggedThisSprint, 0);
+      return s + Math.max(original - loggedBeforeSprint, 0);
     }, 0) / 3600;
   const loggedSeconds = worklogs
     .filter(

@@ -171,19 +171,27 @@ test("live and snapshot scoring agree at the moment a sprint closes", async () =
     const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS && !t.is_blocked);
     const sizedIds = new Set(sized.map((t) => t.id));
     const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
-    // Pro-rata via original minus ALL-TIME logged (any sprint), not
-    // remaining_estimate_seconds -- mirrors snapshot-sprint-summary.mjs's
-    // computeForPerson and eng-data.ts's computeSprintHours.
+    // Pro-rata via original minus logged BEFORE this sprint (any earlier
+    // sprint), not ALL-TIME logged and not remaining_estimate_seconds --
+    // hours logged DURING this sprint never reduce allocatedHours.
+    // Mirrors snapshot-sprint-summary.mjs's computeForPerson and
+    // eng-data.ts's computeSprintHours.
     const totalLoggedByTicket = new Map();
     for (const w of allWorklogs) {
       totalLoggedByTicket.set(w.ticket_id, (totalLoggedByTicket.get(w.ticket_id) ?? 0) + w.seconds);
+    }
+    const loggedThisSprintByTicket = new Map();
+    for (const w of worklogs) {
+      loggedThisSprintByTicket.set(w.ticket_id, (loggedThisSprintByTicket.get(w.ticket_id) ?? 0) + w.seconds);
     }
     const allocatedHours =
       sized.reduce((s, t) => {
         const original = t.original_estimate_seconds ?? 0;
         if (doneIds.has(t.id)) return s + original;
         const loggedAllTime = totalLoggedByTicket.get(t.id) ?? 0;
-        return s + Math.max(original - loggedAllTime, 0);
+        const loggedThisSprint = loggedThisSprintByTicket.get(t.id) ?? 0;
+        const loggedBeforeSprint = Math.max(loggedAllTime - loggedThisSprint, 0);
+        return s + Math.max(original - loggedBeforeSprint, 0);
       }, 0) / 3600;
     const loggedSeconds = worklogs
       .filter((w) => w.author_person_id === personId && sizedIds.has(w.ticket_id) && w.started_at >= sprintStart && w.started_at <= sprintEnd)
