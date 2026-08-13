@@ -331,10 +331,28 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     }
 
     // ---- 5. tickets, worklogs, comments (in-window sprint tickets) ----
+    // A ticket's real epic isn't always its DIRECT parent -- a subtask's
+    // parent is its Story, not an Epic, and the Story only reveals the
+    // epic one level further up. Walk the parent chain (subtask -> story
+    // -> epic) instead of checking only t.parent, so a subtask under a
+    // properly-epic-linked Story doesn't get wrongly flagged as
+    // "no epic" in Data Gaps/hygiene just because Jira's own hierarchy
+    // puts the epic link on the Story, not the subtask. Capped at a few
+    // hops as a safety net against a malformed/cyclic parent chain.
+    const issueByKey = new Map(issues.map((i) => [i.key, i]));
+    function resolveEpicId(t) {
+      let current = t;
+      for (let hop = 0; hop < 4 && current?.parent; hop++) {
+        const epicId = epicIdByKey.get(current.parent.key);
+        if (epicId) return epicId;
+        current = issueByKey.get(current.parent.key);
+      }
+      return null;
+    }
     const ticketRows = issues.map((t) => ({
       jira_key: t.key,
       jira_project_id: jiraProjectIdByKey.get(t.project),
-      epic_id: t.parent ? epicIdByKey.get(t.parent.key) ?? null : null,
+      epic_id: resolveEpicId(t),
       sprint_id: sprintIdByProjectKey.get(t.project) ?? null,
       summary: t.summary,
       issue_type: t.issuetype,
