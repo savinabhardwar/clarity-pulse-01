@@ -26,6 +26,17 @@ const JIRA_PROJECTS = [
   { key: "TEAMSANKYA", name: "Team Sankya" },
   { key: "TT", name: "Team - Telephony" },
   { key: "TRG", name: "Team RUMA GPT" },
+  { key: "QIP", name: "QIP" },
+  { key: "PBX", name: "PBX Manager" },
+  { key: "KA", name: "Keyboardless Agent" },
+  { key: "CP", name: "CX Pass" },
+  { key: "UM", name: "Usage Monitoring" },
+  { key: "AMY", name: "Amy(17E Pro)" },
+  { key: "CX", name: "CX Omnichannel" },
+  { key: "ACX", name: "ACX" },
+  { key: "AA", name: "Agent Assist" },
+  { key: "KH", name: "Knowledge Hub" },
+  { key: "AV", name: "AVANI" },
 ];
 
 function authHeader() {
@@ -35,7 +46,7 @@ function authHeader() {
 
 // A single page's request+response, wrapped in retry -- rate limiting
 // (429) and transient 5xx responses are common on a large paginated
-// fetch across 5 projects' full ticket/worklog/comment history and
+// fetch across JIRA_PROJECTS' full ticket/worklog/comment history and
 // shouldn't fail the entire sync. A genuine 400 (bad JQL) or 401/403
 // (bad token/permissions) fails immediately instead of burning retries
 // on something that will never succeed.

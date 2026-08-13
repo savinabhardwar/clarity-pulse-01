@@ -8,6 +8,17 @@ const PROJECT_NAMES = {
   TEAMSANKYA: "Team Sankya",
   TT: "Team - Telephony",
   TRG: "Team RUMA GPT",
+  QIP: "QIP",
+  PBX: "PBX Manager",
+  KA: "Keyboardless Agent",
+  CP: "CX Pass",
+  UM: "Usage Monitoring",
+  AMY: "Amy(17E Pro)",
+  CX: "CX Omnichannel",
+  ACX: "ACX",
+  AA: "Agent Assist",
+  KH: "Knowledge Hub",
+  AV: "AVANI",
 };
 
 const people = counts.map((c) => {
