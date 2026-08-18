@@ -128,7 +128,23 @@ async function fetchTrackedSprints() {
     });
     if (issues.length === 0) continue;
     const sprints = issues[0].fields[SPRINT_FIELD] || [];
-    const active = sprints.find((s) => s.state === "active") || sprints[sprints.length - 1];
+    // Deliberately NO fallback to sprints[sprints.length - 1] here -- that
+    // fallback used to grab whatever sprint happened to be last in this
+    // issue's sprint history, CLOSED or not, whenever Jira reported no
+    // genuinely 'active' one (e.g. a brand-new board whose first real
+    // sprint hasn't been created yet, right as its old shared board's
+    // sprint just closed). sync.mjs trusts fetchTrackedSprints' output as
+    // truth for is_tracked, and its closed-sprint purge then deletes every
+    // ticket sitting in whatever it's handed -- so a stale closed sprint
+    // here meant purging a project's tickets with nothing valid to
+    // replace them, emptying the tickets table until Jira actually
+    // started a new sprint (caught by the smoke test, but only self-heals
+    // on the NEXT scheduled run, up to a day later). If no genuinely
+    // active sprint exists for a project this run, skip it entirely --
+    // sync.mjs's is_tracked flip only touches projects present in this
+    // run's list, so the project's previously-tracked sprint (and its
+    // tickets) are simply left alone until a real new sprint shows up.
+    const active = sprints.find((s) => s.state === "active");
     if (!active) continue;
     tracked.push({
       jiraProjectKey: p.key,
