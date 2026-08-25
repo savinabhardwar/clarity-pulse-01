@@ -1,0 +1,11 @@
+-- Migration 0028 changed get_person_detail's signature from
+-- (p_person_id uuid) to (p_person_id uuid, p_sprint_start timestamptz
+-- default null) using `create or replace function` -- but Postgres
+-- identifies functions by name + parameter TYPES, so a changed
+-- signature doesn't replace the old function, it creates a second
+-- overload alongside it. Both have existed since 0028: the app's own
+-- calls (always passing both args) were never ambiguous, but any call
+-- with just one uuid argument became ambiguous ("not unique") since the
+-- second parameter's default made both overloads match. Drop the
+-- original single-argument overload -- nothing in this app calls it.
+drop function if exists get_person_detail(uuid);

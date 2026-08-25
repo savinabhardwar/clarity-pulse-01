@@ -152,6 +152,10 @@ async function fetchTrackedSprints() {
       startDate: active.startDate,
       endDate: active.endDate,
       state: active.state,
+      // Jira returns "" rather than omitting the field when no goal has
+      // been set on the sprint -- normalize to null so downstream code
+      // (and the DB column) can tell "no goal" apart from an empty string.
+      goal: active.goal || null,
     });
   }
   return tracked;

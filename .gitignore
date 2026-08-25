@@ -43,3 +43,6 @@ src/data/generated/
 
 # Local Netlify folder
 .netlify
+
+# context-mem
+.context-mem/

@@ -197,6 +197,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       start_date: s.startDate,
       end_date: s.endDate,
       complete_date: null,
+      goal: s.goal ?? null,
       is_tracked: true,
       updated_at: new Date(),
     }));
@@ -215,7 +216,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     }
     await upsert(pool, "sprints", sprintRows, {
       conflictColumns: ["jira_sprint_id"],
-      updateColumns: ["name", "state", "start_date", "end_date", "is_tracked", "updated_at"],
+      updateColumns: ["name", "state", "start_date", "end_date", "goal", "is_tracked", "updated_at"],
     });
     const sprintIdByProjectKey = new Map();
     {
