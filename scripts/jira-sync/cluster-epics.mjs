@@ -13,18 +13,30 @@ const SIMILARITY_THRESHOLD = 0.72;
 // identity (e.g. "WAAC" vs "WAAC migration" are left as separate epics
 // rather than risk silently merging unrelated work).
 const MODIFIER_TOKENS = new Set([
-  "frontend", "front-end", "front", "backend", "back-end", "back",
-  "fe", "be", "ui", "api", "design", "bugs", "bug", "testing", "tests",
-  "test", "cases", "improvement", "improvements",
+  "frontend",
+  "front-end",
+  "front",
+  "backend",
+  "back-end",
+  "back",
+  "fe",
+  "be",
+  "ui",
+  "api",
+  "design",
+  "bugs",
+  "bug",
+  "testing",
+  "tests",
+  "test",
+  "cases",
+  "improvement",
+  "improvements",
 ]);
 
 // Generic catch-all epic names that exist independently per team and should
 // NOT be merged across the 5 Jira projects even if their names match.
-const GENERIC_PATTERNS = [
-  /^support tickets?$/i,
-  /^support ticket requests?$/i,
-  /^backlog\b/i,
-];
+const GENERIC_PATTERNS = [/^support tickets?$/i, /^support ticket requests?$/i, /^backlog\b/i];
 
 function normalize(name) {
   const cleaned = name
@@ -56,8 +68,18 @@ for (const e of epics) {
 // threshold between non-generic core names (generic ones only ever match
 // their own exact per-project key, never fuzzy-merged).
 const parent = epics.map((_, i) => i);
-function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
-function union(x, y) { const rx = find(x), ry = find(y); if (rx !== ry) parent[rx] = ry; }
+function find(x) {
+  while (parent[x] !== x) {
+    parent[x] = parent[parent[x]];
+    x = parent[x];
+  }
+  return x;
+}
+function union(x, y) {
+  const rx = find(x),
+    ry = find(y);
+  if (rx !== ry) parent[rx] = ry;
+}
 
 const byExactKey = new Map();
 epics.forEach((e, i) => {
@@ -97,7 +119,11 @@ function pickDisplayName(members) {
     const coreTokens = members[0].core.split(" ").filter(Boolean);
     const casingVotes = coreTokens.map(() => new Map());
     for (const m of members) {
-      const rawTokens = m.summary.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter(Boolean);
+      const rawTokens = m.summary
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
       const originalTokens = m.summary.split(/\s+/).filter(Boolean);
       coreTokens.forEach((tok, ti) => {
         const idx = rawTokens.indexOf(tok);
@@ -118,7 +144,8 @@ function pickDisplayName(members) {
   // Otherwise (fuzzy-matched cluster of genuinely differently-worded
   // epics, or a singleton) prefer the shortest, plainest original summary.
   const sorted = [...members].sort((a, b) => {
-    const la = a.summary.trim().length, lb = b.summary.trim().length;
+    const la = a.summary.trim().length,
+      lb = b.summary.trim().length;
     if (la !== lb) return la - lb;
     return a.summary.localeCompare(b.summary);
   });
@@ -138,7 +165,9 @@ for (const members of clusters.values()) {
   const displayName = pickDisplayName(members);
   let id = slugify(displayName) || "project";
   let suffix = 2;
-  while (usedIds.has(id)) { id = `${slugify(displayName)}-${suffix++}`; }
+  while (usedIds.has(id)) {
+    id = `${slugify(displayName)}-${suffix++}`;
+  }
   usedIds.add(id);
 
   const recentCutoff = Date.parse("2026-06-01T00:00:00Z");

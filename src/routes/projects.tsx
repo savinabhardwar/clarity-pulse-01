@@ -34,6 +34,7 @@ import { QueryBoundary } from "@/components/dashboard/query-state";
 import {
   useProjects,
   useProjectDetail,
+  useProjectAllocations,
   usePeople,
   toHealth,
   toPriorityLabel,
@@ -42,8 +43,6 @@ import {
   type ProjectRow,
   type PersonRow,
 } from "@/data/queries";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/supabase";
 
 // The tabs map 1:1 onto v_projects_overview.project_space (migration 0020),
 // so every current project lands in exactly one tab -- no gaps, no overlap.
@@ -102,32 +101,6 @@ function daysSince(iso: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 }
 
-// v_person_allocations is keyed for "this person's projects" (see queries.ts),
-// so it has no person name column -- fetch it by project_id here and cross
-// reference names/roles/bandwidth from usePeople() (already loaded once for
-// the whole page) rather than adding a second, project-shaped view.
-function useProjectAllocations(projectId: string | undefined) {
-  return useQuery({
-    queryKey: ["project-allocations", projectId ?? ""],
-    enabled: !!projectId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_person_allocations")
-        .select("*")
-        .eq("project_id", projectId);
-      if (error) throw new Error(error.message);
-      return data as {
-        person_id: string;
-        project_id: string;
-        project_name: string;
-        project_color: string | null;
-        pct: number;
-        hours: number;
-      }[];
-    },
-  });
-}
-
 const activityIcon: Record<string, typeof Activity> = {
   released: Rocket,
   completed: CheckCircle2,
@@ -153,9 +126,7 @@ function ProjectsPage() {
   // telephony clusters are board-specific ops and voice-platform tickets
   // auto-clustered into their own "project" each, and were drowning out the
   // product initiatives on a single combined list.
-  const currentProjects = allProjects.filter(
-    (p) => p.is_current && p.project_space === view,
-  );
+  const currentProjects = allProjects.filter((p) => p.is_current && p.project_space === view);
   // COLLAPSED is a UI state, not a project reference, so it selects nothing.
   const selected = project === COLLAPSED ? "" : project;
   // A deep-linked ?project=slug that isn't in the current tab's set (e.g.
@@ -276,7 +247,8 @@ function ProjectCard({
   // stay visible rather than being silently dropped by a filter that
   // can't actually evaluate them.
   const delivered = (detail.data?.delivered ?? []).filter(
-    (d) => (!since && !until) || !d.date || ((!since || d.date >= since) && (!until || d.date <= until)),
+    (d) =>
+      (!since && !until) || !d.date || ((!since || d.date >= since) && (!until || d.date <= until)),
   );
 
   return (
@@ -416,7 +388,9 @@ function ProjectCard({
                     ))}
                     {delivered.length === 0 && (
                       <p className="text-sm text-muted-foreground">
-                        {since ? "Nothing delivered in this date range." : "Nothing marked as delivered yet."}
+                        {since
+                          ? "Nothing delivered in this date range."
+                          : "Nothing marked as delivered yet."}
                       </p>
                     )}
                   </div>

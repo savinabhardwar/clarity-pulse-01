@@ -121,6 +121,38 @@ export function usePersonAllocations(personId: string | undefined) {
   });
 }
 
+export interface AllocationRow {
+  person_id: string;
+  project_id: string;
+  project_name: string;
+  project_color: string | null;
+  pct: number;
+  hours: number;
+}
+
+// Per-person allocations aren't on v_people_overview (that view is a flat
+// rollup); pages that need them for many people at once (Overview's
+// attention/capacity sections) fetch the whole view in bulk rather than
+// N+1 querying per card.
+export function useAllPersonAllocations() {
+  return useQuery({
+    queryKey: ["all-person-allocations"],
+    queryFn: async () =>
+      unwrap<AllocationRow[]>(await supabase.from("v_person_allocations").select("*")),
+  });
+}
+
+export function useProjectAllocations(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["project-allocations", projectId ?? ""],
+    enabled: !!projectId,
+    queryFn: async () =>
+      unwrap<AllocationRow[]>(
+        await supabase.from("v_person_allocations").select("*").eq("project_id", projectId),
+      ),
+  });
+}
+
 // ---------- Org-wide ----------
 export function useOrgMetrics() {
   return useQuery({
@@ -172,7 +204,10 @@ export function useRecentActivity(since?: string | null) {
   return useQuery({
     queryKey: ["recent-activity", since ?? "all"],
     queryFn: async () => {
-      let query = supabase.from("v_recent_activity").select("*").order("occurred_at", { ascending: false });
+      let query = supabase
+        .from("v_recent_activity")
+        .select("*")
+        .order("occurred_at", { ascending: false });
       query = since ? query.gte("occurred_at", since).limit(100) : query.limit(15);
       return unwrap(await query);
     },
@@ -183,6 +218,25 @@ export function useTopRisks() {
   return useQuery({
     queryKey: ["top-risks"],
     queryFn: async () => unwrap(await supabase.from("v_top_risks").select("*")),
+  });
+}
+
+// Tracked sprints still open past their planned end date -- shown as the
+// "Sprints Overrunning" banner cell on Overview. Kept here (not inline on
+// the route) so it shares one cache entry with any other consumer of the
+// same count.
+export function useSprintOverrunCount() {
+  return useQuery({
+    queryKey: ["sprint-overrun-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("risks")
+        .select("*", { count: "exact", head: true })
+        .eq("category", "sprint_overrun")
+        .eq("status", "open");
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
   });
 }
 

@@ -9,7 +9,9 @@ function matchBlocks(a, b) {
   }
 
   function findLongestMatch(alo, ahi, blo, bhi) {
-    let besti = alo, bestj = blo, bestsize = 0;
+    let besti = alo,
+      bestj = blo,
+      bestsize = 0;
     let j2len = new Map();
     for (let i = alo; i < ahi; i++) {
       const newj2len = new Map();

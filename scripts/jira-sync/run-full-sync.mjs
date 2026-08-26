@@ -22,7 +22,10 @@ async function getLastWatermark() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     const { rows } = await withRetry(
-      () => pool.query(`select watermark_after from sync_runs where status = 'success' order by finished_at desc limit 1`),
+      () =>
+        pool.query(
+          `select watermark_after from sync_runs where status = 'success' order by finished_at desc limit 1`,
+        ),
       { label: "getLastWatermark", isRetryable: isRetryablePgError },
     );
     // pg returns timestamptz columns as Date objects, not ISO strings --
@@ -30,13 +33,14 @@ async function getLastWatermark() {
     const watermark = rows[0]?.watermark_after;
     return watermark instanceof Date ? watermark.toISOString() : (watermark ?? null);
   } catch (err) {
-    // Only a genuinely first-ever run (sync_runs table/rows don't exist
-    // yet) should fall back to a full historical fetch -- a real
-    // connectivity failure (already retried above and still failing)
-    // must surface, not be silently treated as "first run" and trigger
-    // an unnecessary full-history re-fetch.
-    if (isRetryablePgError(err)) throw err;
-    return null;
+    // Only a genuinely first-ever run (sync_runs table doesn't exist yet,
+    // 42P01 undefined_table) should fall back to a full historical
+    // fetch. ANY other error (connectivity already retried above, a
+    // permissions problem, a malformed query...) must surface, not be
+    // silently treated as "first run" and trigger an unnecessary and
+    // dangerously broad full-history re-fetch.
+    if (err.code === "42P01") return null;
+    throw err;
   } finally {
     await pool.end();
   }
@@ -52,13 +56,19 @@ function validateEnv() {
   const required = ["JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "DATABASE_URL"];
   const missing = required.filter((k) => !process.env[k]);
   if (missing.length > 0) {
-    throw new Error(`[run-full-sync] missing required environment variable(s): ${missing.join(", ")}`);
+    throw new Error(
+      `[run-full-sync] missing required environment variable(s): ${missing.join(", ")}`,
+    );
   }
 }
 
 async function main() {
   validateEnv();
-  const syncType = process.argv.includes("--full") ? "full" : process.argv.includes("--incremental") ? "incremental" : "manual";
+  const syncType = process.argv.includes("--full")
+    ? "full"
+    : process.argv.includes("--incremental")
+      ? "incremental"
+      : "manual";
   console.log(`[run-full-sync] starting ${syncType} sync`);
 
   const watermark = syncType === "incremental" ? await getLastWatermark() : null;
@@ -107,7 +117,9 @@ async function main() {
 function runScript(scriptPath) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [scriptPath], { stdio: "inherit" });
-    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${scriptPath} exited with code ${code}`))));
+    child.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`${scriptPath} exited with code ${code}`)),
+    );
   });
 }
 

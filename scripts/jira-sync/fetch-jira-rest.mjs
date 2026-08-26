@@ -66,7 +66,10 @@ async function jiraSearchPage({ jql, fields, maxResults, nextPageToken }) {
       }
       return res.json();
     },
-    { label: `Jira search (jql=${jql.slice(0, 60)}...)`, isRetryable: (err) => isRetryableHttpStatus(err.status) },
+    {
+      label: `Jira search (jql=${jql.slice(0, 60)}...)`,
+      isRetryable: (err) => isRetryableHttpStatus(err.status),
+    },
   );
 }
 
@@ -99,7 +102,13 @@ function slimIssue(issue) {
     estimateSeconds: f.timeoriginalestimate ?? null,
     remainingSeconds: f.timeestimate ?? null,
     spentSeconds: f.timespent ?? 0,
-    parent: f.parent ? { key: f.parent.key, summary: f.parent.fields?.summary, issuetype: f.parent.fields?.issuetype?.name } : null,
+    parent: f.parent
+      ? {
+          key: f.parent.key,
+          summary: f.parent.fields?.summary,
+          issuetype: f.parent.fields?.issuetype?.name,
+        }
+      : null,
     labels: f.labels ?? [],
     worklogs: (f.worklog?.worklogs ?? []).map((w) => ({
       id: w.id,
@@ -173,12 +182,33 @@ async function fetchInWindowIssues(trackedSprints) {
   const clause = trackedSprints
     .map((s) => JIRA_PROJECTS.find((p) => p.key === s.jiraProjectKey))
     .filter(Boolean)
-    .map((p, i) => `(project = "${p.name}" AND Sprint = "${trackedSprints[i].name}" AND issuetype != Epic)`)
+    .map(
+      (p, i) =>
+        `(project = "${p.name}" AND Sprint = "${trackedSprints[i].name}" AND issuetype != Epic)`,
+    )
     .join(" OR ");
   if (!clause) return [];
   const issues = await jiraSearch({
     jql: clause,
-    fields: ["summary", "status", "issuetype", "priority", "assignee", "reporter", "created", "updated", "resolutiondate", "timeoriginalestimate", "timeestimate", "timespent", "parent", "project", "worklog", "comment", "labels"],
+    fields: [
+      "summary",
+      "status",
+      "issuetype",
+      "priority",
+      "assignee",
+      "reporter",
+      "created",
+      "updated",
+      "resolutiondate",
+      "timeoriginalestimate",
+      "timeestimate",
+      "timespent",
+      "parent",
+      "project",
+      "worklog",
+      "comment",
+      "labels",
+    ],
   });
   return issues.map(slimIssue);
 }
@@ -209,7 +239,15 @@ async function fetchHistory({ sinceIso, limit = 500 }) {
     : `project in (${projectClause}) AND issuetype != Epic AND resolution is not EMPTY AND parent is not EMPTY ORDER BY resolutiondate DESC`;
   const issues = await jiraSearch({
     jql,
-    fields: ["summary", "issuetype", "resolutiondate", "timespent", "assignee", "parent", "project"],
+    fields: [
+      "summary",
+      "issuetype",
+      "resolutiondate",
+      "timespent",
+      "assignee",
+      "parent",
+      "project",
+    ],
     maxResults: sinceIso ? 100 : Math.min(limit, 100),
   });
   const slim = issues.map((issue) => ({
@@ -219,8 +257,12 @@ async function fetchHistory({ sinceIso, limit = 500 }) {
     issuetype: issue.fields.issuetype.name,
     resolutiondate: issue.fields.resolutiondate,
     spentSeconds: issue.fields.timespent ?? 0,
-    assignee: issue.fields.assignee ? { accountId: issue.fields.assignee.accountId, name: issue.fields.assignee.displayName } : null,
-    parent: issue.fields.parent ? { key: issue.fields.parent.key, summary: issue.fields.parent.fields?.summary } : null,
+    assignee: issue.fields.assignee
+      ? { accountId: issue.fields.assignee.accountId, name: issue.fields.assignee.displayName }
+      : null,
+    parent: issue.fields.parent
+      ? { key: issue.fields.parent.key, summary: issue.fields.parent.fields?.summary }
+      : null,
   }));
   return sinceIso ? slim : slim.slice(0, limit);
 }
@@ -233,7 +275,10 @@ export async function fetchAll({ historyWatermark } = {}) {
   mkdirSync(CACHE_DIR, { recursive: true });
 
   const trackedSprints = await fetchTrackedSprints();
-  writeFileSync(path.join(CACHE_DIR, "tracked-sprints.json"), JSON.stringify(trackedSprints, null, 2));
+  writeFileSync(
+    path.join(CACHE_DIR, "tracked-sprints.json"),
+    JSON.stringify(trackedSprints, null, 2),
+  );
 
   const issues = await fetchInWindowIssues(trackedSprints);
   writeJsonl(path.join(CACHE_DIR, "issues.raw.jsonl"), issues);
@@ -246,16 +291,26 @@ export async function fetchAll({ historyWatermark } = {}) {
   // this file. This file previously tried to "append to the existing
   // cache" for incremental runs, which silently did nothing in CI since
   // cache/ is gitignored and every checkout starts empty.
-  const history = await fetchHistory({ sinceIso: historyWatermark, limit: historyWatermark ? undefined : 500 });
+  const history = await fetchHistory({
+    sinceIso: historyWatermark,
+    limit: historyWatermark ? undefined : 500,
+  });
   writeJsonl(path.join(CACHE_DIR, "history.raw.jsonl"), history);
 
-  return { trackedSprints, issueCount: issues.length, epicCount: epics.length, historyCount: history.length };
+  return {
+    trackedSprints,
+    issueCount: issues.length,
+    epicCount: epics.length,
+    historyCount: history.length,
+  };
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  fetchAll().then((summary) => console.log("Fetched:", summary)).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  fetchAll()
+    .then((summary) => console.log("Fetched:", summary))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 }

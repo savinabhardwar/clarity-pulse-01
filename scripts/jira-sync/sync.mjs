@@ -26,7 +26,11 @@ function summarizeCluster(cluster) {
 
 function readJsonl(file) {
   if (!existsSync(file)) return [];
-  return readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  return readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
 }
 function readJson(file) {
   return JSON.parse(readFileSync(file, "utf8"));
@@ -57,7 +61,7 @@ function statusCategoryKeyToDb(key) {
 }
 
 async function run({ syncType = "manual", asOf = new Date() } = {}) {
-  const pool = makePool();
+  const adminPool = makePool();
   // This first query is where the 2026-08-05 incident actually failed
   // ("password authentication failed for user postgres") -- a manual
   // rerun minutes later succeeded with the identical secret, confirming
@@ -66,7 +70,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
   // failing the entire daily sync and waiting for someone to notice.
   const syncRun = await withRetry(
     () =>
-      pool.query(
+      adminPool.query(
         `insert into sync_runs (started_at, status, sync_type, watermark_before) values (now(), 'running', $1, null) returning id`,
         [syncType],
       ),
@@ -75,7 +79,18 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
   const syncRunId = syncRun.rows[0].id;
   let recordsProcessed = 0;
 
+  // Every write below goes through ONE connection inside a single
+  // transaction: the derived tables are full of delete-then-insert
+  // sequences (risks, standouts, project_contributors,
+  // project_updates/features...), and without this a crash mid-run left
+  // the DB half-updated -- e.g. open risks deleted but replacements never
+  // inserted. The transaction makes any failure roll back to the previous
+  // day's consistent state.
+  const tx = await adminPool.connect();
+  const pool = tx; // all db.mjs helpers just call .query(), so the client slots in unchanged
+
   try {
+    await pool.query("begin");
     const issues = readJsonl(CACHE("issues.raw.jsonl"));
     const epicsRaw = readJsonl(CACHE("epics.raw.jsonl"));
     const history = readJsonl(CACHE("history.raw.jsonl"));
@@ -92,19 +107,27 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     const { rows: accountAliasRows } = await pool.query(
       "select alias_jira_account_id, canonical_jira_account_id from person_account_aliases",
     );
-    const canonicalAccountId = new Map(accountAliasRows.map((a) => [a.alias_jira_account_id, a.canonical_jira_account_id]));
+    const canonicalAccountId = new Map(
+      accountAliasRows.map((a) => [a.alias_jira_account_id, a.canonical_jira_account_id]),
+    );
     if (canonicalAccountId.size > 0) {
       const remap = (person) => {
-        if (person && canonicalAccountId.has(person.accountId)) person.accountId = canonicalAccountId.get(person.accountId);
+        if (person && canonicalAccountId.has(person.accountId))
+          person.accountId = canonicalAccountId.get(person.accountId);
       };
       for (const issue of issues) {
         remap(issue.assignee);
         remap(issue.reporter);
-        for (const wl of issue.worklogs || []) if (canonicalAccountId.has(wl.authorAccountId)) wl.authorAccountId = canonicalAccountId.get(wl.authorAccountId);
-        for (const c of issue.comments || []) if (canonicalAccountId.has(c.authorAccountId)) c.authorAccountId = canonicalAccountId.get(c.authorAccountId);
+        for (const wl of issue.worklogs || [])
+          if (canonicalAccountId.has(wl.authorAccountId))
+            wl.authorAccountId = canonicalAccountId.get(wl.authorAccountId);
+        for (const c of issue.comments || [])
+          if (canonicalAccountId.has(c.authorAccountId))
+            c.authorAccountId = canonicalAccountId.get(c.authorAccountId);
       }
       for (const h of history) remap(h.assignee);
-      for (const t of teamsSeed) if (canonicalAccountId.has(t.accountId)) t.accountId = canonicalAccountId.get(t.accountId);
+      for (const t of teamsSeed)
+        if (canonicalAccountId.has(t.accountId)) t.accountId = canonicalAccountId.get(t.accountId);
     }
     const projectsClustered = readJson(GENERATED("projects.json")).projects;
     const trackedSprints = readJson(CACHE("tracked-sprints.json"));
@@ -117,17 +140,38 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       { conflictColumns: ["jira_key"] },
     );
     const jiraProjectIdByKey = new Map(
-      (await pool.query("select id, jira_key from jira_projects")).rows.map((r) => [r.jira_key, r.id]),
+      (await pool.query("select id, jira_key from jira_projects")).rows.map((r) => [
+        r.jira_key,
+        r.id,
+      ]),
     );
 
     // ---- 2. teams + people ----
     const teamNames = [...new Set(teamsSeed.map((t) => t.team))];
-    await upsert(pool, "teams", teamNames.map((name) => ({ name })), { conflictColumns: ["name"] });
-    const teamIdByName = new Map((await pool.query("select id, name from teams")).rows.map((r) => [r.name, r.id]));
+    await upsert(
+      pool,
+      "teams",
+      teamNames.map((name) => ({ name })),
+      { conflictColumns: ["name"] },
+    );
+    const teamIdByName = new Map(
+      (await pool.query("select id, name from teams")).rows.map((r) => [r.name, r.id]),
+    );
 
     const peopleFromIssues = new Map();
     for (const issue of issues) {
-      for (const person of [issue.assignee, issue.reporter, ...(issue.worklogs || []).map((w) => ({ accountId: w.authorAccountId, name: w.authorName })), ...(issue.comments || []).map((c) => ({ accountId: c.authorAccountId, name: c.authorName }))]) {
+      for (const person of [
+        issue.assignee,
+        issue.reporter,
+        ...(issue.worklogs || []).map((w) => ({
+          accountId: w.authorAccountId,
+          name: w.authorName,
+        })),
+        ...(issue.comments || []).map((c) => ({
+          accountId: c.authorAccountId,
+          name: c.authorName,
+        })),
+      ]) {
         if (person && person.accountId) peopleFromIssues.set(person.accountId, person.name);
       }
     }
@@ -143,7 +187,9 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         role: null,
         team_id: t ? teamIdByName.get(t.team) : null,
         team_guessed: t ? t.guessed : true,
-        team_guess_reason: t ? t.guessReason : "No sprint ticket data for this person in the current tracked window",
+        team_guess_reason: t
+          ? t.guessReason
+          : "No sprint ticket data for this person in the current tracked window",
         active: true,
         excluded: false,
         updated_at: new Date(),
@@ -185,7 +231,12 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     // top of this function, so every issue/worklog/comment/teamsSeed
     // entry here already uses canonical accountIds -- this is a plain
     // 1:1 lookup, no further merge logic needed.
-    const personIdByAccount = new Map((await pool.query("select id, jira_account_id from people")).rows.map((r) => [r.jira_account_id, r.id]));
+    const personIdByAccount = new Map(
+      (await pool.query("select id, jira_account_id from people")).rows.map((r) => [
+        r.jira_account_id,
+        r.id,
+      ]),
+    );
     recordsProcessed += peopleRows.length;
 
     // ---- 3. sprints (tracked only, for now) ----
@@ -216,7 +267,15 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     }
     await upsert(pool, "sprints", sprintRows, {
       conflictColumns: ["jira_sprint_id"],
-      updateColumns: ["name", "state", "start_date", "end_date", "goal", "is_tracked", "updated_at"],
+      updateColumns: [
+        "name",
+        "state",
+        "start_date",
+        "end_date",
+        "goal",
+        "is_tracked",
+        "updated_at",
+      ],
     });
     const sprintIdByProjectKey = new Map();
     {
@@ -248,13 +307,18 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       conflictColumns: ["slug"],
       updateColumns: ["name", "is_current", "updated_at"],
     });
-    const projectIdBySlug = new Map((await pool.query("select id, slug from projects")).rows.map((r) => [r.slug, r.id]));
+    const projectIdBySlug = new Map(
+      (await pool.query("select id, slug from projects")).rows.map((r) => [r.slug, r.id]),
+    );
     recordsProcessed += projectRows.length;
 
     const pjpRows = [];
     for (const p of projectsClustered) {
       for (const jk of p.jiraProjects) {
-        pjpRows.push({ project_id: projectIdBySlug.get(p.id), jira_project_id: jiraProjectIdByKey.get(jk) });
+        pjpRows.push({
+          project_id: projectIdBySlug.get(p.id),
+          jira_project_id: jiraProjectIdByKey.get(jk),
+        });
       }
     }
     await pool.query("delete from project_jira_projects");
@@ -274,12 +338,16 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     // where those corrections actually get re-applied so they survive a
     // re-sync instead of being silently overwritten by the next
     // auto-clustering pass.
-    const { rows: overrideRows } = await pool.query("select epic_jira_key, forced_project_slug from project_overrides");
+    const { rows: overrideRows } = await pool.query(
+      "select epic_jira_key, forced_project_slug from project_overrides",
+    );
     for (const o of overrideRows) {
       if (projectIdBySlug.has(o.forced_project_slug)) {
         epicToProjectSlug.set(o.epic_jira_key, o.forced_project_slug);
       } else {
-        console.warn(`[sync] project_overrides: unknown target slug "${o.forced_project_slug}" for epic ${o.epic_jira_key}, skipping`);
+        console.warn(
+          `[sync] project_overrides: unknown target slug "${o.forced_project_slug}" for epic ${o.epic_jira_key}, skipping`,
+        );
       }
     }
 
@@ -298,7 +366,9 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       conflictColumns: ["jira_key"],
       updateColumns: ["project_id", "status", "status_category", "resolved_at", "updated_at"],
     });
-    const epicIdByKey = new Map((await pool.query("select id, jira_key from epics")).rows.map((r) => [r.jira_key, r.id]));
+    const epicIdByKey = new Map(
+      (await pool.query("select id, jira_key from epics")).rows.map((r) => [r.jira_key, r.id]),
+    );
     recordsProcessed += epicRows.length;
 
     // ---- 4.5. untrack tickets that fell out of their project's
@@ -323,11 +393,19 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     }
     for (const [projectKey, sprintId] of sprintIdByProjectKey) {
       const currentKeys = issueKeysByProject.get(projectKey) ?? new Set();
-      const { rows: stillTracked } = await pool.query(`select jira_key from tickets where sprint_id = $1`, [sprintId]);
+      const { rows: stillTracked } = await pool.query(
+        `select jira_key from tickets where sprint_id = $1`,
+        [sprintId],
+      );
       const toUntrack = stillTracked.map((r) => r.jira_key).filter((key) => !currentKeys.has(key));
       if (toUntrack.length) {
-        await pool.query(`update tickets set sprint_id = null where jira_key = any($1)`, [toUntrack]);
-        console.log(`[sync] untracked ${toUntrack.length} ticket(s) no longer in ${projectKey}'s tracked sprint:`, toUntrack.join(", "));
+        await pool.query(`update tickets set sprint_id = null where jira_key = any($1)`, [
+          toUntrack,
+        ]);
+        console.log(
+          `[sync] untracked ${toUntrack.length} ticket(s) no longer in ${projectKey}'s tracked sprint:`,
+          toUntrack.join(", "),
+        );
       }
     }
 
@@ -360,8 +438,8 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       status: t.status,
       status_category: statusCategoryKeyToDb(t.statusCategory),
       priority: t.priority ? t.priority.toLowerCase() : null,
-      assignee_person_id: t.assignee ? personIdByAccount.get(t.assignee.accountId) ?? null : null,
-      reporter_person_id: t.reporter ? personIdByAccount.get(t.reporter.accountId) ?? null : null,
+      assignee_person_id: t.assignee ? (personIdByAccount.get(t.assignee.accountId) ?? null) : null,
+      reporter_person_id: t.reporter ? (personIdByAccount.get(t.reporter.accountId) ?? null) : null,
       original_estimate_seconds: t.estimateSeconds,
       remaining_estimate_seconds: t.remainingSeconds,
       time_spent_seconds: t.spentSeconds || 0,
@@ -375,13 +453,27 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     await upsert(pool, "tickets", ticketRows, {
       conflictColumns: ["jira_key"],
       updateColumns: [
-        "epic_id", "sprint_id", "summary", "status", "status_category", "priority",
-        "assignee_person_id", "reporter_person_id", "original_estimate_seconds",
-        "remaining_estimate_seconds", "time_spent_seconds", "labels", "updated_at",
-        "resolved_at", "is_blocked", "last_synced_at",
+        "epic_id",
+        "sprint_id",
+        "summary",
+        "status",
+        "status_category",
+        "priority",
+        "assignee_person_id",
+        "reporter_person_id",
+        "original_estimate_seconds",
+        "remaining_estimate_seconds",
+        "time_spent_seconds",
+        "labels",
+        "updated_at",
+        "resolved_at",
+        "is_blocked",
+        "last_synced_at",
       ],
     });
-    const ticketIdByKey = new Map((await pool.query("select id, jira_key from tickets")).rows.map((r) => [r.jira_key, r.id]));
+    const ticketIdByKey = new Map(
+      (await pool.query("select id, jira_key from tickets")).rows.map((r) => [r.jira_key, r.id]),
+    );
     recordsProcessed += ticketRows.length;
 
     const worklogRows = [];
@@ -402,7 +494,9 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         commentRows.push({
           jira_comment_id: c.authorAccountId + "-" + c.created, // slim cache doesn't carry Jira's comment id; created+author is unique enough here
           ticket_id: ticketId,
-          author_person_id: c.authorAccountId ? personIdByAccount.get(c.authorAccountId) ?? null : null,
+          author_person_id: c.authorAccountId
+            ? (personIdByAccount.get(c.authorAccountId) ?? null)
+            : null,
           created_at: c.created,
           body_excerpt: c.body,
         });
@@ -423,7 +517,9 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     recordsProcessed += worklogRows.length + commentRows.length;
 
     // ---- 6. metrics: person_metrics, risks, standouts, board_health ----
-    const epicToProjectId = new Map([...epicToProjectSlug.entries()].map(([k, slug]) => [k, projectIdBySlug.get(slug)]));
+    const epicToProjectId = new Map(
+      [...epicToProjectSlug.entries()].map(([k, slug]) => [k, projectIdBySlug.get(slug)]),
+    );
     const { personMetrics, risks, standouts, orgBoardHealth } = computeMetrics({
       asOf,
       trackedSprints,
@@ -433,33 +529,42 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       adjustments: {},
     });
 
-    const personMetricRows = personMetrics.map((m) => ({
-      person_id: personIdByAccount.get(m.accountId),
-      bandwidth_hours: m.bandwidthHours,
-      utilisation_pct: m.utilisationPct,
-      pace_pct: m.pacePct,
-      pace_target_hours: m.paceTargetHours,
-      hours_logged: m.hoursLogged,
-      estimated_hours: m.estimatedHours,
-      sprint_target_hours: m.sprintTargetHours,
-      velocity: m.velocity,
-      estimate_accuracy: m.estimateAccuracy,
-      estimate_coverage: m.estimateCoverage,
-      closed_without_logging: m.closedWithoutLogging,
-      worklog_count: m.worklogCount,
-      comment_count: m.commentCount,
-      idle_workdays: m.idleWorkdays,
-      dark_wip_count: m.darkWipCount,
-      avg_log_lag_days: m.avgLogLagDays,
-      health: m.health,
-      risk_flags: m.riskFlags,
-      target_hours_is_fallback: m.targetHoursIsFallback,
-      overallocation_reason: m.overallocationReason,
-      computed_at: new Date(),
-    })).filter((r) => r.person_id);
-    await upsert(pool, "person_metrics", personMetricRows, {
+    const personMetricRows = personMetrics
+      .map((m) => ({
+        person_id: personIdByAccount.get(m.accountId),
+        bandwidth_hours: m.bandwidthHours,
+        utilisation_pct: m.utilisationPct,
+        pace_pct: m.pacePct,
+        pace_target_hours: m.paceTargetHours,
+        hours_logged: m.hoursLogged,
+        estimated_hours: m.estimatedHours,
+        sprint_target_hours: m.sprintTargetHours,
+        velocity: m.velocity,
+        estimate_accuracy: m.estimateAccuracy,
+        estimate_coverage: m.estimateCoverage,
+        closed_without_logging: m.closedWithoutLogging,
+        worklog_count: m.worklogCount,
+        comment_count: m.commentCount,
+        idle_workdays: m.idleWorkdays,
+        dark_wip_count: m.darkWipCount,
+        avg_log_lag_days: m.avgLogLagDays,
+        health: m.health,
+        risk_flags: m.riskFlags,
+        target_hours_is_fallback: m.targetHoursIsFallback,
+        overallocation_reason: m.overallocationReason,
+        computed_at: new Date(),
+        // Tags the history row with this run so (person_id, sync_run_id)
+        // can enforce per-run idempotency -- a retried insert can't double-
+        // append the same snapshot.
+        sync_run_id: syncRunId,
+      }))
+      .filter((r) => r.person_id);
+    // person_metrics has no sync_run_id column -- strip it before the
+    // live-snapshot upsert; only the history insert below uses it.
+    const metricLiveRows = personMetricRows.map(({ sync_run_id, ...rest }) => rest);
+    await upsert(pool, "person_metrics", metricLiveRows, {
       conflictColumns: ["person_id"],
-      updateColumns: Object.keys(personMetricRows[0] || {}).filter((c) => c !== "person_id"),
+      updateColumns: Object.keys(metricLiveRows[0] || {}).filter((c) => c !== "person_id"),
     });
     recordsProcessed += personMetricRows.length;
     // Append-only copy so the date-range filter on People/Team Health/
@@ -478,35 +583,37 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
           category: "sprint_overrun",
           severity: overdueDays > 7 ? "high" : "medium",
           title: `${s.name} (${s.jiraProjectKey}) is ${overdueDays} day(s) past its planned end date and still open`,
-          recommendation: "Close out or re-scope this sprint before planning the next one — utilisation and pace figures for this team are measured against the original window and will read as overrun until it's closed.",
+          recommendation:
+            "Close out or re-scope this sprint before planning the next one — utilisation and pace figures for this team are measured against the original window and will read as overrun until it's closed.",
           projectSlug: null,
           identifiedAt: asOf,
         });
       }
     }
 
-    const riskRows = risks
-      .map((r) => ({
-        category: r.category,
-        severity: r.severity,
-        title: r.title,
-        recommendation: r.recommendation,
-        person_id: r.accountId ? personIdByAccount.get(r.accountId) ?? null : null,
-        project_id: r.projectSlug ? projectIdBySlug.get(r.projectSlug) ?? null : null,
-        ticket_id: null,
-        identified_at: r.identifiedAt,
-        status: "open",
-        computed_at: new Date(),
-      }));
+    const riskRows = risks.map((r) => ({
+      category: r.category,
+      severity: r.severity,
+      title: r.title,
+      recommendation: r.recommendation,
+      person_id: r.accountId ? (personIdByAccount.get(r.accountId) ?? null) : null,
+      project_id: r.projectSlug ? (projectIdBySlug.get(r.projectSlug) ?? null) : null,
+      ticket_id: null,
+      identified_at: r.identifiedAt,
+      status: "open",
+      computed_at: new Date(),
+    }));
     await replaceComputed(pool, "risks", riskRows, { scopeColumn: "status", scopeValue: "open" });
 
-    const standoutRows = standouts.map((s) => ({
-      title: s.title,
-      person_id: personIdByAccount.get(s.accountId),
-      detail: s.detail,
-      rank: s.rank,
-      computed_at: new Date(),
-    })).filter((r) => r.person_id);
+    const standoutRows = standouts
+      .map((s) => ({
+        title: s.title,
+        person_id: personIdByAccount.get(s.accountId),
+        detail: s.detail,
+        rank: s.rank,
+        computed_at: new Date(),
+      }))
+      .filter((r) => r.person_id);
     await pool.query("delete from standouts");
     for (const row of standoutRows) {
       await pool.query(
@@ -519,16 +626,24 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       `insert into board_health (scope_type, scope_id, estimate_coverage_pct, blocked_tickets, dark_wip, missing_estimates, closed_without_logs, idle_engineers, avg_log_lag_days, stale_tickets, board_health_score)
        values ('org', null, $1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [
-        orgBoardHealth.estimateCoveragePct, orgBoardHealth.blockedTickets, orgBoardHealth.darkWip,
-        orgBoardHealth.missingEstimates, orgBoardHealth.closedWithoutLogs, orgBoardHealth.idleEngineers,
-        orgBoardHealth.avgLogLagDays, orgBoardHealth.staleTickets, orgBoardHealth.boardHealthScore,
+        orgBoardHealth.estimateCoveragePct,
+        orgBoardHealth.blockedTickets,
+        orgBoardHealth.darkWip,
+        orgBoardHealth.missingEstimates,
+        orgBoardHealth.closedWithoutLogs,
+        orgBoardHealth.idleEngineers,
+        orgBoardHealth.avgLogLagDays,
+        orgBoardHealth.staleTickets,
+        orgBoardHealth.boardHealthScore,
       ],
     );
 
     // ---- 7. project_contributors (current-sprint allocation) ----
     const contributorRows = [];
     for (const [slug, projectId] of projectIdBySlug) {
-      const projectTickets = issues.filter((t) => t.parent && epicToProjectSlug.get(t.parent.key) === slug);
+      const projectTickets = issues.filter(
+        (t) => t.parent && epicToProjectSlug.get(t.parent.key) === slug,
+      );
       const byPerson = new Map();
       for (const t of projectTickets) {
         if (!t.assignee) continue;
@@ -566,7 +681,9 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     // *different* epics' closed tickets, not within one epic's backlog.
     await pool.query("delete from project_updates");
     for (const [slug, projectId] of projectIdBySlug) {
-      const projectTickets = issues.filter((t) => t.parent && epicToProjectSlug.get(t.parent.key) === slug);
+      const projectTickets = issues.filter(
+        (t) => t.parent && epicToProjectSlug.get(t.parent.key) === slug,
+      );
       if (projectTickets.length === 0) continue;
       const byEpic = new Map();
       for (const t of projectTickets) {
@@ -579,12 +696,21 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         const progress = Math.round((100 * done) / group.tickets.length);
         const { rows } = await pool.query(
           `insert into project_updates (project_id, name, summary, progress) values ($1,$2,$3,$4) returning id`,
-          [projectId, group.name, `${group.tickets.length} ticket(s) in ${epicKey} this sprint`, progress],
+          [
+            projectId,
+            group.name,
+            `${group.tickets.length} ticket(s) in ${epicKey} this sprint`,
+            progress,
+          ],
         );
         const updateId = rows[0].id;
         for (const t of group.tickets) {
           const ticketId = ticketIdByKey.get(t.key);
-          if (ticketId) await pool.query(`insert into project_update_tickets (project_update_id, ticket_id) values ($1,$2) on conflict do nothing`, [updateId, ticketId]);
+          if (ticketId)
+            await pool.query(
+              `insert into project_update_tickets (project_update_id, ticket_id) values ($1,$2) on conflict do nothing`,
+              [updateId, ticketId],
+            );
         }
       }
     }
@@ -608,16 +734,26 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         // from this durable table instead of the live `tickets` row,
         // which the closed-sprint purge (purge-closed-sprint-tickets.mjs)
         // deletes -- a person's completed-work history must survive that.
-        assignee_person_id: h.assignee ? personIdByAccount.get(h.assignee.accountId) ?? null : null,
+        assignee_person_id: h.assignee
+          ? (personIdByAccount.get(h.assignee.accountId) ?? null)
+          : null,
         updated_at: new Date(),
       }));
     await upsert(pool, "resolved_ticket_history", historyRows, {
       conflictColumns: ["jira_key"],
-      updateColumns: ["summary", "issuetype", "resolution_date", "spent_seconds", "parent_epic_key", "assignee_person_id", "updated_at"],
+      updateColumns: [
+        "summary",
+        "issuetype",
+        "resolution_date",
+        "spent_seconds",
+        "parent_epic_key",
+        "assignee_person_id",
+        "updated_at",
+      ],
     });
 
     const { rows: allHistoryRowsRaw } = await pool.query(
-      "select jira_key as key, summary, resolution_date as resolutiondate, spent_seconds as \"spentSeconds\", parent_epic_key from resolved_ticket_history",
+      'select jira_key as key, summary, resolution_date as resolutiondate, spent_seconds as "spentSeconds", parent_epic_key from resolved_ticket_history',
     );
 
     // resolved_ticket_history is a permanent, all-time archive (by
@@ -642,7 +778,9 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     // hatch. The key prefix is always present and always correct. A row
     // whose board has no currently tracked sprint is kept rather than
     // silently dropped.
-    const currentSprintStartByProjectKey = new Map(trackedSprints.map((s) => [s.jiraProjectKey, s.startDate]));
+    const currentSprintStartByProjectKey = new Map(
+      trackedSprints.map((s) => [s.jiraProjectKey, s.startDate]),
+    );
     const allHistoryRows = allHistoryRowsRaw.filter((h) => {
       const projectKey = h.key.split("-")[0];
       const sprintStart = currentSprintStartByProjectKey.get(projectKey);
@@ -660,22 +798,38 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
     }
     for (const [slug, tickets] of historyByProject) {
       const projectId = projectIdBySlug.get(slug);
-      const clusters = clusterTicketTitles(tickets.map((t) => ({ summary: t.summary, epicKey: t.epicKey, key: t.key })));
+      const clusters = clusterTicketTitles(
+        tickets.map((t) => ({ summary: t.summary, epicKey: t.epicKey, key: t.key })),
+      );
       for (const cluster of clusters) {
         const hours = cluster.tickets.reduce((s, t) => {
           const full = tickets.find((x) => x.key === t.key);
           return s + (full?.spentSeconds || 0) / 3600;
         }, 0);
-        const dates = cluster.tickets.map((t) => tickets.find((x) => x.key === t.key)?.resolutiondate).filter(Boolean).sort();
+        const dates = cluster.tickets
+          .map((t) => tickets.find((x) => x.key === t.key)?.resolutiondate)
+          .filter(Boolean)
+          .sort();
         const completionDate = dates[dates.length - 1] || null;
         const { rows } = await pool.query(
           `insert into project_features (project_id, name, description, completion_sprint, completion_date, hours) values ($1,$2,$3,$4,$5,$6) returning id`,
-          [projectId, cluster.name, summarizeCluster(cluster), null, completionDate, Math.round(hours * 10) / 10],
+          [
+            projectId,
+            cluster.name,
+            summarizeCluster(cluster),
+            null,
+            completionDate,
+            Math.round(hours * 10) / 10,
+          ],
         );
         const featureId = rows[0].id;
         for (const t of cluster.tickets) {
           const ticketId = ticketIdByKey.get(t.key);
-          if (ticketId) await pool.query(`insert into project_feature_tickets (project_feature_id, ticket_id) values ($1,$2) on conflict do nothing`, [featureId, ticketId]);
+          if (ticketId)
+            await pool.query(
+              `insert into project_feature_tickets (project_feature_id, ticket_id) values ($1,$2) on conflict do nothing`,
+              [featureId, ticketId],
+            );
         }
       }
     }
@@ -684,12 +838,21 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       `update sync_runs set finished_at = now(), status = 'success', records_processed = $1, watermark_after = $2 where id = $3`,
       [recordsProcessed, asOf, syncRunId],
     );
+    await pool.query("commit");
     console.log(`Sync complete. Records processed: ${recordsProcessed}`);
   } catch (err) {
-    await pool.query(`update sync_runs set finished_at = now(), status = 'failed', error_message = $1 where id = $2`, [String(err.stack || err), syncRunId]);
+    // Roll back the half-finished sync first, THEN record the failure via
+    // the admin pool (the tx client is in an aborted state and the
+    // sync_runs insert itself must survive the rollback anyway).
+    await pool.query("rollback").catch(() => {});
+    await adminPool.query(
+      `update sync_runs set finished_at = now(), status = 'failed', error_message = $1 where id = $2`,
+      [String(err.stack || err), syncRunId],
+    );
     throw err;
   } finally {
-    await pool.end();
+    tx.release();
+    await adminPool.end();
   }
 }
 
@@ -703,7 +866,11 @@ function hashSprintId(projectKey, name) {
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  const syncType = process.argv.includes("--full") ? "full" : process.argv.includes("--incremental") ? "incremental" : "manual";
+  const syncType = process.argv.includes("--full")
+    ? "full"
+    : process.argv.includes("--incremental")
+      ? "incremental"
+      : "manual";
   run({ syncType }).catch((err) => {
     console.error(err);
     process.exit(1);

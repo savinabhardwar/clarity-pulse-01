@@ -45,7 +45,9 @@ export function GlobalSearch() {
   // the same destination routes.
   const q = query.trim().toLowerCase();
   const matchedProjects = projects
-    .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.purpose ?? "").toLowerCase().includes(q))
+    .filter(
+      (p) => !q || p.name.toLowerCase().includes(q) || (p.purpose ?? "").toLowerCase().includes(q),
+    )
     .slice(0, 8);
   const matchedPeople = people
     .filter(
@@ -109,7 +111,12 @@ export function GlobalSearch() {
                     <button
                       key={p.id}
                       onClick={() =>
-                        go(() => navigate({ to: "/projects", search: { project: p.slug, from: "", to: "", view: "development" } }))
+                        go(() =>
+                          navigate({
+                            to: "/projects",
+                            search: { project: p.slug, from: "", to: "", view: "development" },
+                          }),
+                        )
                       }
                       className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
                     >
@@ -131,7 +138,14 @@ export function GlobalSearch() {
                   {matchedPeople.map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => go(() => navigate({ to: "/people", search: { person: p.id, q: "", from: "", to: "" } }))}
+                      onClick={() =>
+                        go(() =>
+                          navigate({
+                            to: "/people",
+                            search: { person: p.id, q: "", from: "", to: "" },
+                          }),
+                        )
+                      }
                       className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
                     >
                       <span>{p.name}</span>

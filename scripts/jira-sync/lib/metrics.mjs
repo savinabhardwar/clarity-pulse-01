@@ -19,7 +19,14 @@ function hasWord(status, word) {
  * @param {Array} input.teamSeed        [{accountId, name, team, guessed, guessReason}]
  * @param {object} input.adjustments    { [accountId]: { leaveDaysThisSprint, excluded } }
  */
-export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, teamSeed, adjustments = {} }) {
+export function computeMetrics({
+  asOf,
+  trackedSprints,
+  issues,
+  epicToProjectId,
+  teamSeed,
+  adjustments = {},
+}) {
   const sprintByProject = new Map(trackedSprints.map((s) => [s.jiraProjectKey, s]));
   const teamByAccount = new Map(teamSeed.map((t) => [t.accountId, t]));
 
@@ -47,7 +54,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // actually has, until sprints across projects share the same
     // start/end dates.
     const ticketCountByProject = new Map();
-    for (const t of tickets) ticketCountByProject.set(t.project, (ticketCountByProject.get(t.project) || 0) + 1);
+    for (const t of tickets)
+      ticketCountByProject.set(t.project, (ticketCountByProject.get(t.project) || 0) + 1);
     const projectsTouched = [...ticketCountByProject.keys()];
     const FALLBACK_SPRINT_WORKDAYS = 10; // assumed 2-week sprint when no tracked dates exist
 
@@ -71,9 +79,13 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // default absent any real date to go on.
     const matchedAnySprint = referenceSprint !== null;
     const targetHoursIsFallback = !matchedAnySprint;
-    const totalWorkdays = matchedAnySprint ? referenceSprint.totalWorkdays : FALLBACK_SPRINT_WORKDAYS;
+    const totalWorkdays = matchedAnySprint
+      ? referenceSprint.totalWorkdays
+      : FALLBACK_SPRINT_WORKDAYS;
     const elapsedWorkdays = matchedAnySprint ? referenceSprint.elapsedWorkdays : 0;
-    const remainingWorkdays = matchedAnySprint ? referenceSprint.remainingWorkdays : FALLBACK_SPRINT_WORKDAYS;
+    const remainingWorkdays = matchedAnySprint
+      ? referenceSprint.remainingWorkdays
+      : FALLBACK_SPRINT_WORKDAYS;
 
     const leaveDaysTotal = Math.min(adj.leaveDaysThisSprint || 0, totalWorkdays);
     const leaveDaysToDate = Math.min(adj.leaveDaysThisSprint || 0, elapsedWorkdays);
@@ -86,7 +98,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     //   pace right now", a secondary check meaningful mid-sprint.
     let sprintTargetHours = HOURS_PER_WORKDAY_SPRINT * Math.max(totalWorkdays - leaveDaysTotal, 0);
     let paceTargetHours = HOURS_PER_WORKDAY_SPRINT * Math.max(elapsedWorkdays - leaveDaysToDate, 0);
-    if (sprintTargetHours === 0) sprintTargetHours = HOURS_PER_WORKDAY_SPRINT * FALLBACK_SPRINT_WORKDAYS;
+    if (sprintTargetHours === 0)
+      sprintTargetHours = HOURS_PER_WORKDAY_SPRINT * FALLBACK_SPRINT_WORKDAYS;
     if (paceTargetHours === 0) paceTargetHours = sprintTargetHours; // sprint just started or fallback
 
     // ---- Remaining capacity: forward-looking, for bandwidth --
@@ -94,7 +107,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     // still outstanding" -- not "target minus logged so far". An
     // already-ended (overrun) sprint naturally contributes 0 here,
     // unlike the full-sprint target above.
-    const remainingCapacityHours = HOURS_PER_WORKDAY_SPRINT * Math.max(remainingWorkdays - leaveDaysRemaining, 0);
+    const remainingCapacityHours =
+      HOURS_PER_WORKDAY_SPRINT * Math.max(remainingWorkdays - leaveDaysRemaining, 0);
     const assignedRemainingWorkHours = tickets
       .filter((t) => t.statusCategory !== "done")
       .reduce((s, t) => s + (t.remainingSeconds || 0) / 3600, 0);
@@ -164,11 +178,16 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
                 )) /
                 withEstimateAndSpent.length,
           );
-    const estimateCoverage = Math.round((100 * tickets.filter((t) => t.estimateSeconds > 0).length) / (tickets.length || 1));
-    const closedWithoutLogging = done.filter((t) => (t.estimateSeconds || 0) > 0 && (t.spentSeconds || 0) === 0).length;
+    const estimateCoverage = Math.round(
+      (100 * tickets.filter((t) => t.estimateSeconds > 0).length) / (tickets.length || 1),
+    );
+    const closedWithoutLogging = done.filter(
+      (t) => (t.estimateSeconds || 0) > 0 && (t.spentSeconds || 0) === 0,
+    ).length;
 
     let commentCount = 0;
-    for (const t of tickets) commentCount += (t.comments || []).filter((c) => c.authorAccountId === accountId).length;
+    for (const t of tickets)
+      commentCount += (t.comments || []).filter((c) => c.authorAccountId === accountId).length;
 
     // ---- Idle days: working days since this person's most recent
     // worklog OR comment on any of their in-window tickets. ----
@@ -199,24 +218,31 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     });
 
     const utilisationPct = Math.round((100 * hoursLogged) / sprintTargetHours);
-    const bandwidthHours = Math.round((remainingCapacityHours - assignedRemainingWorkHours) * 10) / 10;
+    const bandwidthHours =
+      Math.round((remainingCapacityHours - assignedRemainingWorkHours) * 10) / 10;
     const pacePct = Math.round((100 * hoursLogged) / paceTargetHours);
     const avgLogLagDays = logLagCount ? Math.round((10 * logLagDaysSum) / logLagCount) / 10 : null;
 
     const riskFlags = [];
     if (utilisationPct > 100) riskFlags.push("Exceeded planned capacity");
-    if (darkWip.length > 0) riskFlags.push(`Dark WIP on ${darkWip.length} ticket${darkWip.length > 1 ? "s" : ""}`);
-    if (projectsTouched.length >= 3) riskFlags.push(`Split across ${projectsTouched.length} projects`);
+    if (darkWip.length > 0)
+      riskFlags.push(`Dark WIP on ${darkWip.length} ticket${darkWip.length > 1 ? "s" : ""}`);
+    if (projectsTouched.length >= 3)
+      riskFlags.push(`Split across ${projectsTouched.length} projects`);
     if (estimateCoverage < 80) riskFlags.push("Estimate coverage below 80%");
-    if (idleWorkdays !== null && idleWorkdays >= 2) riskFlags.push(`${idleWorkdays} idle working day${idleWorkdays > 1 ? "s" : ""}`);
+    if (idleWorkdays !== null && idleWorkdays >= 2)
+      riskFlags.push(`${idleWorkdays} idle working day${idleWorkdays > 1 ? "s" : ""}`);
     const longBlocked = tickets.find((t) => hasWord(t.status, "block"));
     if (longBlocked) {
       const days = workdaysBetween(new Date(longBlocked.updated), asOf);
       if (days >= 5) riskFlags.push(`Blocked ${days} working days on ${longBlocked.key}`);
     }
 
-    const highSeverityCount = riskFlags.filter((f) => f.includes("Exceeded") || f.includes("Blocked")).length;
-    const health = highSeverityCount > 0 ? "at_risk" : riskFlags.length > 0 ? "needs_attention" : "on_track";
+    const highSeverityCount = riskFlags.filter(
+      (f) => f.includes("Exceeded") || f.includes("Blocked"),
+    ).length;
+    const health =
+      highSeverityCount > 0 ? "at_risk" : riskFlags.length > 0 ? "needs_attention" : "on_track";
 
     // A concrete, human reason for crossing 100% -- someone touching
     // several projects still has one reference sprint's worth of target
@@ -271,7 +297,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
         category: "overallocated",
         severity: utilisationPct > 130 ? "high" : "medium",
         title: `${person?.name || accountId} is at ${utilisationPct}% of planned capacity`,
-        recommendation: "Re-balance upcoming work or confirm the overage is expected for this sprint.",
+        recommendation:
+          "Re-balance upcoming work or confirm the overage is expected for this sprint.",
         accountId,
         identifiedAt: asOf,
       });
@@ -281,7 +308,8 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
         category: "dark_wip",
         severity: darkWip.length >= 3 ? "high" : "medium",
         title: `${person?.name || accountId} has ${darkWip.length} in-progress ticket(s) with no worklog or comment`,
-        recommendation: "Ask for a status update or worklog before relying on this ticket's progress.",
+        recommendation:
+          "Ask for a status update or worklog before relying on this ticket's progress.",
         accountId,
         identifiedAt: asOf,
       });
@@ -292,14 +320,29 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
   const standouts = [];
   const byVelocity = [...personMetrics].sort((a, b) => b.velocity - a.velocity);
   if (byVelocity[0]?.velocity > 0) {
-    standouts.push({ title: "Most Tickets Closed", accountId: byVelocity[0].accountId, detail: `${byVelocity[0].velocity} tickets closed this window`, rank: 1 });
+    standouts.push({
+      title: "Most Tickets Closed",
+      accountId: byVelocity[0].accountId,
+      detail: `${byVelocity[0].velocity} tickets closed this window`,
+      rank: 1,
+    });
   }
-  const byAccuracy = personMetrics.filter((p) => p.estimateAccuracy !== null).sort((a, b) => b.estimateAccuracy - a.estimateAccuracy);
+  const byAccuracy = personMetrics
+    .filter((p) => p.estimateAccuracy !== null)
+    .sort((a, b) => b.estimateAccuracy - a.estimateAccuracy);
   if (byAccuracy[0]) {
-    standouts.push({ title: "Best Estimate Accuracy", accountId: byAccuracy[0].accountId, detail: `${byAccuracy[0].estimateAccuracy}% estimate accuracy`, rank: 1 });
+    standouts.push({
+      title: "Best Estimate Accuracy",
+      accountId: byAccuracy[0].accountId,
+      detail: `${byAccuracy[0].estimateAccuracy}% estimate accuracy`,
+      rank: 1,
+    });
   }
   const byHygiene = [...personMetrics].sort(
-    (a, b) => b.estimateCoverage - a.estimateCoverage || a.darkWipCount - b.darkWipCount || b.commentCount - a.commentCount,
+    (a, b) =>
+      b.estimateCoverage - a.estimateCoverage ||
+      a.darkWipCount - b.darkWipCount ||
+      b.commentCount - a.commentCount,
   );
   if (byHygiene[0]) {
     standouts.push({
@@ -311,19 +354,34 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
   }
   const byHours = [...personMetrics].sort((a, b) => b.hoursLogged - a.hoursLogged);
   if (byHours[0]) {
-    standouts.push({ title: "Highest Logged Effort", accountId: byHours[0].accountId, detail: `${byHours[0].hoursLogged}h logged this window`, rank: 1 });
+    standouts.push({
+      title: "Highest Logged Effort",
+      accountId: byHours[0].accountId,
+      detail: `${byHours[0].hoursLogged}h logged this window`,
+      rank: 1,
+    });
   }
 
   // ---- Org-level board health ----
-  const avgEstimateCoverage = Math.round(personMetrics.reduce((s, p) => s + p.estimateCoverage, 0) / (personMetrics.length || 1));
+  const avgEstimateCoverage = Math.round(
+    personMetrics.reduce((s, p) => s + p.estimateCoverage, 0) / (personMetrics.length || 1),
+  );
   const totalDarkWip = personMetrics.reduce((s, p) => s + p.darkWipCount, 0);
-  const blockedTickets = issues.filter((t) => hasWord(t.status, "block") && t.statusCategory !== "done").length;
-  const missingEstimates = issues.filter((t) => !t.estimateSeconds && t.statusCategory !== "done").length;
+  const blockedTickets = issues.filter(
+    (t) => hasWord(t.status, "block") && t.statusCategory !== "done",
+  ).length;
+  const missingEstimates = issues.filter(
+    (t) => !t.estimateSeconds && t.statusCategory !== "done",
+  ).length;
   const closedWithoutLogsTotal = personMetrics.reduce((s, p) => s + p.closedWithoutLogging, 0);
   const idleEngineers = personMetrics.filter((p) => p.idleWorkdays >= 2).length;
   const staleTickets = issues.filter((t) => {
     if (t.statusCategory === "done") return false;
-    const lastTouch = [t.updated, ...(t.worklogs || []).map((w) => w.created), ...(t.comments || []).map((c) => c.created)]
+    const lastTouch = [
+      t.updated,
+      ...(t.worklogs || []).map((w) => w.created),
+      ...(t.comments || []).map((c) => c.created),
+    ]
       .map((d) => new Date(d))
       .sort((a, b) => b - a)[0];
     return workdaysBetween(lastTouch, asOf) >= 5;
@@ -339,7 +397,9 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
   const blockedRatioPct = (100 * blockedTickets) / openTicketCount;
   const darkWipRatioPct = (100 * totalDarkWip) / openTicketCount;
   const boardHealthScore = Math.round(
-    avgEstimateCoverage * 0.5 + (100 - Math.min(100, blockedRatioPct)) * 0.25 + (100 - Math.min(100, darkWipRatioPct)) * 0.25,
+    avgEstimateCoverage * 0.5 +
+      (100 - Math.min(100, blockedRatioPct)) * 0.25 +
+      (100 - Math.min(100, darkWipRatioPct)) * 0.25,
   );
 
   const orgBoardHealth = {
@@ -351,7 +411,9 @@ export function computeMetrics({ asOf, trackedSprints, issues, epicToProjectId, 
     idleEngineers,
     avgLogLagDays: (() => {
       const withLag = personMetrics.filter((p) => p.avgLogLagDays !== null);
-      return withLag.length ? Math.round((10 * withLag.reduce((s, p) => s + p.avgLogLagDays, 0)) / withLag.length) / 10 : null;
+      return withLag.length
+        ? Math.round((10 * withLag.reduce((s, p) => s + p.avgLogLagDays, 0)) / withLag.length) / 10
+        : null;
     })(),
     staleTickets,
     boardHealthScore,

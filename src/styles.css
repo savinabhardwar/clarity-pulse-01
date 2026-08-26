@@ -183,7 +183,10 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     letter-spacing: -0.02em;
   }
 }
@@ -196,7 +199,10 @@
 }
 
 @utility card-hover {
-  transition: box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease;
+  transition:
+    box-shadow 200ms ease,
+    transform 200ms ease,
+    border-color 200ms ease;
   &:hover {
     box-shadow: var(--shadow-lift);
     border-color: color-mix(in oklab, var(--color-foreground) 14%, transparent);

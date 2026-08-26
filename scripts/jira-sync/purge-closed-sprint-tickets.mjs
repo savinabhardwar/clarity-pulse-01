@@ -34,7 +34,10 @@ const GRACE_DAYS = 2;
 
 export async function purgeClosedSprintTickets(databaseUrl) {
   const { Pool } = pg;
-  const pool = new Pool({ connectionString: databaseUrl, ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false } });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false },
+  });
   try {
     // Requires a row in BOTH summary tables, not just person-level -- a
     // sprint snapshotted for people but not yet for projects (the exact
@@ -54,7 +57,9 @@ export async function purgeClosedSprintTickets(databaseUrl) {
 
     let totalDeleted = 0;
     for (const sprint of eligibleSprints) {
-      const { rowCount } = await pool.query(`delete from tickets where sprint_id = $1`, [sprint.id]);
+      const { rowCount } = await pool.query(`delete from tickets where sprint_id = $1`, [
+        sprint.id,
+      ]);
       totalDeleted += rowCount;
       console.log(
         `[purge-closed-sprint-tickets] purged ${rowCount} ticket(s) from "${sprint.name}" (closed ${new Date(sprint.end_date).toISOString()})`,
@@ -75,7 +80,9 @@ export async function purgeClosedSprintTickets(databaseUrl) {
       [GRACE_DAYS],
     );
     if (untrackedDeleted > 0) {
-      console.log(`[purge-closed-sprint-tickets] purged ${untrackedDeleted} untracked (sprint_id null) ticket(s)`);
+      console.log(
+        `[purge-closed-sprint-tickets] purged ${untrackedDeleted} untracked (sprint_id null) ticket(s)`,
+      );
     }
     totalDeleted += untrackedDeleted;
 

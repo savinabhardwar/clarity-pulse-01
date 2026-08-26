@@ -14,6 +14,10 @@
 //     OVERSIZED_TICKET_SECONDS excluded from both.
 //   - computeSprintEstimateAccuracy: judged only on tickets resolved
 //     inside the sprint window, spent time from worklogs dated inside it.
+//   - computePaceScore + computeExpectedHoursByNow: pace is logged hours
+//     against a flat 7h/workday expectation (reduced by the person's own
+//     planning_availability leave), evaluated through the sprint's end --
+//     never scaled by the person's own allocation, and never null.
 //   - computeJiraUpdateStatus: qualifies only with zero silently-pending
 //     in-progress tickets and a recent worklog/comment; "recent" here is
 //     evaluated against the sprint's OWN end date, not today, since this
@@ -25,9 +29,61 @@ import { pathToFileURL } from "node:url";
 import { workdaysBetween } from "./lib/workdays.mjs";
 
 const OVERSIZED_TICKET_SECONDS = 35 * 3600; // 5 workdays at this org's 7h/day sprint policy
+const SPRINT_DAILY_HOURS = 7; // mirrors SPRINT_DAILY_HOURS in eng-data.ts
 
 function toDate(v) {
   return v instanceof Date ? v : new Date(v);
+}
+
+function utcDayOnly(d) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+function isWeekendUtc(d) {
+  const day = d.getUTCDay();
+  return day === 0 || day === 6;
+}
+
+// Expands planning_availability rows (date RANGE, hours = PER-DAY rate
+// lost) into Map<personId, Map<utcMidnightIso, hoursLost>> -- mirrors
+// buildLeaveByPersonDay in eng-data.ts exactly, so both sides key days
+// identically.
+export function buildLeaveByPersonDay(rows) {
+  const byPerson = new Map();
+  for (const r of rows) {
+    const start = new Date(`${toDate(r.from_date).toISOString().slice(0, 10)}T00:00:00.000Z`);
+    const end = new Date(`${toDate(r.to_date).toISOString().slice(0, 10)}T00:00:00.000Z`);
+    if (end < start) continue; // malformed row (to before from) -- ignore defensively
+    const personMap = byPerson.get(r.person_id) ?? new Map();
+    byPerson.set(r.person_id, personMap);
+    const cur = new Date(start);
+    while (cur <= end) {
+      personMap.set(cur.toISOString(), (personMap.get(cur.toISOString()) ?? 0) + Number(r.hours));
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  }
+  return byPerson;
+}
+
+// The flat, person-independent expectation for how many hours a full
+// sprint "should" have taken -- SPRINT_DAILY_HOURS per workday from the
+// sprint's own start through its end, reduced by each person's recorded
+// leave. Mirrors computeExpectedHoursByNow(sprintStart, sprintEnd, ...)
+// evaluated at the instant the sprint closed, which is the right
+// retrospective reference point: mid-sprint the live app passes
+// today=now; once the sprint is over, its close IS the evaluation point.
+function expectedHoursThroughSprintEnd(sprintStart, sprintEnd, leaveHoursByDay) {
+  let expected = 0;
+  const cur = utcDayOnly(toDate(sprintStart));
+  const lastDay = utcDayOnly(toDate(sprintEnd));
+  while (cur <= lastDay) {
+    if (!isWeekendUtc(cur)) {
+      const lost = leaveHoursByDay?.get(cur.toISOString()) ?? 0;
+      expected += Math.max(SPRINT_DAILY_HOURS - lost, 0);
+    }
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return expected;
 }
 
 // Gated on EITHER table missing a row for this sprint, not just
@@ -69,7 +125,17 @@ function ticketHygieneGaps(t) {
   return gaps;
 }
 
-function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, comments, sprintStart, sprintEnd, nameBySprintId }) {
+function computeForPerson({
+  personId,
+  tickets,
+  worklogs,
+  allWorklogsForTickets,
+  comments,
+  sprintStart,
+  sprintEnd,
+  nameBySprintId,
+  leaveByPersonDay,
+}) {
   const owned = tickets.filter((t) => t.assignee_person_id === personId);
   // The board this person's own work actually lived on for this closed
   // sprint -- multiple boards close sprints on different, unaligned
@@ -87,7 +153,9 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   // it's done. Blocked tickets are excluded outright -- not actionable
   // regardless of effort, so they shouldn't count as capacity someone is
   // failing to use. Mirrors computeSprintHours in eng-data.ts.
-  const sized = owned.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS && !t.is_blocked);
+  const sized = owned.filter(
+    (t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS && !t.is_blocked,
+  );
   const sizedIds = new Set(sized.map((t) => t.id));
   const doneIds = new Set(owned.filter((t) => t.status_category === "done").map((t) => t.id));
 
@@ -107,7 +175,10 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   }
   const loggedThisSprintByTicket = new Map();
   for (const w of worklogs) {
-    loggedThisSprintByTicket.set(w.ticket_id, (loggedThisSprintByTicket.get(w.ticket_id) ?? 0) + w.seconds);
+    loggedThisSprintByTicket.set(
+      w.ticket_id,
+      (loggedThisSprintByTicket.get(w.ticket_id) ?? 0) + w.seconds,
+    );
   }
   const allocatedHours =
     sized.reduce((s, t) => {
@@ -128,17 +199,22 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
     )
     .reduce((s, w) => s + w.seconds, 0);
   const loggedHours = loggedSeconds / 3600;
-  const hasOpenWork = sized.length > 0;
 
-  // Same pace formula as computePaceScore in eng-data.ts: logged hours
-  // vs a pro-rated expectation for how far into the sprint "now" is,
-  // not the full allocation outright. For a CLOSED sprint the whole
-  // thing has already elapsed by the time this runs, so dayNumber ===
-  // totalDays and the expectation collapses to the full allocatedHours
-  // -- i.e. plain loggedHours/allocatedHours, floored at 1h to avoid
-  // dividing by zero on an empty allocation.
-  const paceDenominator = Math.max(allocatedHours, 1);
-  const paceScore = hasOpenWork ? Math.min(100, Math.round((loggedHours / paceDenominator) * 100)) : null;
+  // Same pace formula as computePaceScore + computeExpectedHoursByNow in
+  // eng-data.ts: logged hours vs a FLAT, person-independent expectation
+  // (7h per workday of the sprint, reduced by this person's own recorded
+  // leave), evaluated through the sprint's end -- NOT scaled by the
+  // person's own allocation, which let someone handed only a couple of
+  // small tickets sit at 100% Pace while barely logging any real time.
+  // Also never null (the old hasOpenWork gate is gone): "assigned nothing
+  // and logged nothing" is itself the exact under-contribution pattern
+  // this score exists to catch.
+  const expectedByNow = expectedHoursThroughSprintEnd(
+    sprintStart,
+    sprintEnd,
+    leaveByPersonDay?.get(personId),
+  );
+  const paceScore = Math.min(100, Math.round((loggedHours / Math.max(expectedByNow, 1)) * 100));
 
   // Jira Hygiene: multi-criteria check via ticketHygieneGaps, across
   // every ticket owned this sprint (open AND done -- `tickets` here was
@@ -176,12 +252,20 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   const wipTickets = owned.filter((t) => t.status_category === "indeterminate");
   const ticketsLoggedByPersonInWindow = new Set(
     worklogs
-      .filter((w) => w.author_person_id === personId && w.started_at >= sprintStart && w.started_at <= sprintEnd)
+      .filter(
+        (w) =>
+          w.author_person_id === personId &&
+          w.started_at >= sprintStart &&
+          w.started_at <= sprintEnd,
+      )
       .map((w) => w.ticket_id),
   );
   const loggingScore =
     wipTickets.length > 0
-      ? Math.round((100 * wipTickets.filter((t) => ticketsLoggedByPersonInWindow.has(t.id)).length) / wipTickets.length)
+      ? Math.round(
+          (100 * wipTickets.filter((t) => ticketsLoggedByPersonInWindow.has(t.id)).length) /
+            wipTickets.length,
+        )
       : null;
 
   // Estimate accuracy: tickets resolved inside this window, spent time
@@ -192,7 +276,11 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   // score down instead of being silently excluded), pooled across
   // tickets weighted by size.
   const doneInWindow = owned.filter(
-    (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
+    (t) =>
+      t.status_category === "done" &&
+      t.resolved_at &&
+      t.resolved_at >= sprintStart &&
+      t.resolved_at <= sprintEnd,
   );
   let matchedSeconds = 0;
   let totalSeconds = 0;
@@ -205,14 +293,12 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
   }
   const estimateScore = totalSeconds > 0 ? Math.round((matchedSeconds / totalSeconds) * 100) : null;
 
-  // Pace counts as a real 0 when null (mirrors computeOverallScore in
-  // eng-data.ts) -- "nothing to measure pace against" is exactly the
-  // failure this is meant to catch, not a free pass. Estimate accuracy/
-  // hygiene/logging stay excluded when null since "haven't finished a
-  // ticket" or "no in-progress ticket" legitimately can be blameless.
-  const paceTerm = paceScore ?? 0;
+  // Pace is always a real number now (never null), so it always counts;
+  // estimate accuracy/hygiene/logging stay excluded when null since
+  // "haven't finished a ticket" or "no in-progress ticket" legitimately
+  // can be blameless.
   const otherTerms = [estimateScore, hygieneScore, loggingScore].filter((s) => s !== null);
-  const terms = [paceTerm, ...otherTerms];
+  const terms = [paceScore, ...otherTerms];
   const rawOverallScore = Math.round(terms.reduce((a, b) => a + b, 0) / terms.length);
 
   // Jira update status, judged as of the sprint's own end date -- did
@@ -227,9 +313,13 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
     const wip = owned.filter((t) => t.status_category === "indeterminate");
     const ticketsWithWorklog = new Set(worklogs.map((w) => w.ticket_id));
     const ticketsWithComment = new Set(comments.map((c) => c.ticket_id));
-    const pending = wip.filter((t) => !ticketsWithWorklog.has(t.id) && !ticketsWithComment.has(t.id));
+    const pending = wip.filter(
+      (t) => !ticketsWithWorklog.has(t.id) && !ticketsWithComment.has(t.id),
+    );
     if (pending.length > 0) {
-      const maxDays = Math.max(...pending.map((t) => workdaysBetween(toDate(t.updated_at), sprintEnd)));
+      const maxDays = Math.max(
+        ...pending.map((t) => workdaysBetween(toDate(t.updated_at), sprintEnd)),
+      );
       jiraStatusTag = `Pending updates on ${pending.length} ticket${pending.length === 1 ? "" : "s"} (${maxDays} working day${maxDays === 1 ? "" : "s"} since last touched)`;
     } else {
       let lastActivity = null;
@@ -277,11 +367,17 @@ function computeForPerson({ personId, tickets, worklogs, allWorklogsForTickets, 
 // "was this already in flight before this sprint" signal the person-level
 // pace/allocated-hours math uses remaining_estimate_seconds for.
 function computeForProject({ tickets, sprintStart, sprintEnd }) {
-  const sized = tickets.filter((t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS);
+  const sized = tickets.filter(
+    (t) => (t.original_estimate_seconds ?? 0) <= OVERSIZED_TICKET_SECONDS,
+  );
   const hoursEstimated = sized.reduce((s, t) => s + (t.original_estimate_seconds ?? 0), 0) / 3600;
   const hoursLogged = sized.reduce((s, t) => s + (t.time_spent_seconds ?? 0), 0) / 3600;
   const ticketsCompleted = tickets.filter(
-    (t) => t.status_category === "done" && t.resolved_at && t.resolved_at >= sprintStart && t.resolved_at <= sprintEnd,
+    (t) =>
+      t.status_category === "done" &&
+      t.resolved_at &&
+      t.resolved_at >= sprintStart &&
+      t.resolved_at <= sprintEnd,
   ).length;
   const spilloverTickets = tickets.filter((t) => t.created_at && t.created_at < sprintStart).length;
   return {
@@ -295,7 +391,10 @@ function computeForProject({ tickets, sprintStart, sprintEnd }) {
 
 export async function snapshotClosedSprints(databaseUrl) {
   const { Pool } = pg;
-  const pool = new Pool({ connectionString: databaseUrl, ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false } });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false },
+  });
   let totalInserted = 0;
   try {
     const closedSprints = await findUnsnapshottedClosedSprints(pool);
@@ -304,7 +403,9 @@ export async function snapshotClosedSprints(databaseUrl) {
       return { sprintsSnapshotted: 0, rowsInserted: 0, projectRowsInserted: 0 };
     }
 
-    const { rows: people } = await pool.query(`select id from people where active and not excluded`);
+    const { rows: people } = await pool.query(
+      `select id from people where active and not excluded`,
+    );
     let totalProjectRowsInserted = 0;
 
     for (const sprint of closedSprints) {
@@ -320,7 +421,10 @@ export async function snapshotClosedSprints(databaseUrl) {
       );
       // Which literal board/sprint each person's tickets actually sat
       // in, for sprintName -- see computeForPerson.
-      const { rows: sprintRowsForGroup } = await pool.query(`select id, name from sprints where start_date = $1`, [sprintStart]);
+      const { rows: sprintRowsForGroup } = await pool.query(
+        `select id, name from sprints where start_date = $1`,
+        [sprintStart],
+      );
       const nameBySprintId = new Map(sprintRowsForGroup.map((r) => [r.id, r.name]));
       const { rows: worklogs } = await pool.query(
         `select w.ticket_id, w.author_person_id, w.started_at, w.seconds
@@ -343,6 +447,15 @@ export async function snapshotClosedSprints(databaseUrl) {
       const { rows: comments } = await pool.query(
         `select tc.ticket_id, tc.author_person_id, tc.created_at from ticket_comments tc`,
       );
+      // Leave recorded for this window (planning_availability rows
+      // overlapping it) -- reduces the flat pace expectation per day,
+      // exactly as computeExpectedHoursByNow does in the live app.
+      const { rows: leaveRows } = await pool.query(
+        `select person_id, from_date, to_date, hours from planning_availability
+         where to_date >= $1::date and from_date <= $2::date`,
+        [sprintStart, sprintEnd],
+      );
+      const leaveByPersonDay = buildLeaveByPersonDay(leaveRows);
 
       const summaryRows = people
         .map((p) => {
@@ -355,6 +468,7 @@ export async function snapshotClosedSprints(databaseUrl) {
             sprintStart,
             sprintEnd,
             nameBySprintId,
+            leaveByPersonDay,
           });
           return { personId: p.id, ...s };
         })
@@ -398,7 +512,9 @@ export async function snapshotClosedSprints(databaseUrl) {
       // Project-level: group this sprint's tickets by conceptual project
       // (via epic -> epics.project_id), same grouping the rest of the app
       // already uses for project_contributors/project_updates.
-      const { rows: epicRows } = await pool.query(`select id, project_id from epics where project_id is not null`);
+      const { rows: epicRows } = await pool.query(
+        `select id, project_id from epics where project_id is not null`,
+      );
       const projectIdByEpicId = new Map(epicRows.map((r) => [r.id, r.project_id]));
       const ticketsByProject = new Map();
       for (const t of tickets) {
@@ -414,7 +530,16 @@ export async function snapshotClosedSprints(databaseUrl) {
              (project_id, sprint_start, sprint_end, tickets_total, tickets_completed, hours_estimated, hours_logged, spillover_tickets)
            values ($1,$2,$3,$4,$5,$6,$7,$8)
            on conflict (project_id, sprint_start) do nothing`,
-          [projectId, sprintStart, sprintEnd, s.ticketsTotal, s.ticketsCompleted, s.hoursEstimated, s.hoursLogged, s.spilloverTickets],
+          [
+            projectId,
+            sprintStart,
+            sprintEnd,
+            s.ticketsTotal,
+            s.ticketsCompleted,
+            s.hoursEstimated,
+            s.hoursLogged,
+            s.spilloverTickets,
+          ],
         );
         totalProjectRowsInserted++;
       }
@@ -422,7 +547,11 @@ export async function snapshotClosedSprints(databaseUrl) {
         `[snapshot-sprint-summary] snapshotted sprint starting ${sprintStart.toISOString()} -- ${ticketsByProject.size} project(s)`,
       );
     }
-    return { sprintsSnapshotted: closedSprints.length, rowsInserted: totalInserted, projectRowsInserted: totalProjectRowsInserted };
+    return {
+      sprintsSnapshotted: closedSprints.length,
+      rowsInserted: totalInserted,
+      projectRowsInserted: totalProjectRowsInserted,
+    };
   } finally {
     await pool.end();
   }

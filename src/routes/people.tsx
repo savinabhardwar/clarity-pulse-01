@@ -84,7 +84,9 @@ function PeoplePage() {
         <div className="flex flex-wrap items-center gap-2">
           <DateRangeFilter
             value={range}
-            onChange={(v) => navigate({ search: { q, person, from: v?.from ?? "", to: v?.to ?? "" } })}
+            onChange={(v) =>
+              navigate({ search: { q, person, from: v?.from ?? "", to: v?.to ?? "" } })
+            }
           />
           <label className="flex w-full max-w-sm items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
             <Search className="size-4 text-muted-foreground" />

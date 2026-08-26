@@ -10,8 +10,12 @@ export function isWeekend(date) {
 export function workdaysBetween(fromDate, toDate) {
   if (toDate <= fromDate) return 0;
   let count = 0;
-  const cur = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate()));
-  const end = new Date(Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth(), toDate.getUTCDate()));
+  const cur = new Date(
+    Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate()),
+  );
+  const end = new Date(
+    Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth(), toDate.getUTCDate()),
+  );
   while (cur < end) {
     cur.setUTCDate(cur.getUTCDate() + 1);
     if (!isWeekend(cur)) count++;

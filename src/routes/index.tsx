@@ -29,17 +29,18 @@ import {
 } from "@/components/dashboard/primitives";
 import { QueryBoundary } from "@/components/dashboard/query-state";
 import {
+  useAllPersonAllocations,
   useOrgMetrics,
   usePeople,
   useProjects,
   useRecentActivity,
+  useSprintOverrunCount,
   useTopRisks,
   toHealth,
+  type AllocationRow,
   type PersonRow,
   type ProjectRow,
 } from "@/data/queries";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/supabase";
 
 const searchSchema = z.object({
   from: fallback(z.string(), "").default(""),
@@ -87,31 +88,8 @@ function personInitials(name: string) {
 // Per-person allocations aren't on v_people_overview (that view is a flat
 // rollup); fetch them in bulk once for the "people requiring attention"
 // and "available capacity" sections rather than N+1 querying per card.
-function useAllAllocations() {
-  return useQuery({
-    queryKey: ["all-allocations"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("v_person_allocations").select("*");
-      if (error) throw new Error(error.message);
-      return data;
-    },
-  });
-}
-
-function useSprintOverrunCount() {
-  return useQuery({
-    queryKey: ["sprint-overrun-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("risks")
-        .select("*", { count: "exact", head: true })
-        .eq("category", "sprint_overrun")
-        .eq("status", "open");
-      if (error) throw new Error(error.message);
-      return count ?? 0;
-    },
-  });
-}
+// (Hook lives in data/queries.ts so Projects' per-project variant shares
+// the same query-key namespace.)
 
 function Overview() {
   const { from, to } = Route.useSearch();
@@ -121,7 +99,7 @@ function Overview() {
   const orgMetrics = useOrgMetrics();
   const people = usePeople();
   const projects = useProjects();
-  const allocations = useAllAllocations();
+  const allocations = useAllPersonAllocations();
   const topRisks = useTopRisks();
   const recentActivity = useRecentActivity(since);
   const overrunCount = useSprintOverrunCount();
@@ -179,14 +157,7 @@ function OverviewBody({
   m: NonNullable<ReturnType<typeof useOrgMetrics>["data"]>;
   people: PersonRow[];
   projects: ProjectRow[];
-  allocations: {
-    person_id: string;
-    project_id: string;
-    project_name: string;
-    project_color: string | null;
-    pct: number;
-    hours: number;
-  }[];
+  allocations: AllocationRow[];
   risks: { title: string }[];
   activity: {
     occurred_at: string;

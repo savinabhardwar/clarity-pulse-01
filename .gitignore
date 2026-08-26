@@ -30,6 +30,16 @@ src/data/generated/
 
 .claude/settings.local.json
 
+# Standalone app snapshots / sibling experiments kept only in the local
+# working copy -- each is its own git repo (with its own .env.local), so
+# letting git track them would embed bare gitlinks at best.
+/team-pulse-54/
+/summit-read/
+/engineering-ethos/
+
+# Saved output of ad-hoc GitHub API debugging calls
+runs_*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

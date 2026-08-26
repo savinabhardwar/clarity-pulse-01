@@ -5,7 +5,10 @@ const { Pool } = pg;
 export function makePool() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is not set");
-  return new Pool({ connectionString, ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false } });
+  return new Pool({
+    connectionString,
+    ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false },
+  });
 }
 
 /**
@@ -58,7 +61,10 @@ export async function insertMany(pool, table, rows) {
       });
       return `(${placeholders.join(", ")})`;
     });
-    await pool.query(`insert into ${table} (${columns.join(", ")}) values ${tuples.join(", ")}`, values);
+    await pool.query(
+      `insert into ${table} (${columns.join(", ")}) values ${tuples.join(", ")}`,
+      values,
+    );
   }
 }
 
@@ -77,6 +83,9 @@ export async function replaceComputed(pool, table, rows, { scopeColumn, scopeVal
       });
       return `(${placeholders.join(", ")})`;
     });
-    await pool.query(`insert into ${table} (${columns.join(", ")}) values ${tuples.join(", ")}`, values);
+    await pool.query(
+      `insert into ${table} (${columns.join(", ")}) values ${tuples.join(", ")}`,
+      values,
+    );
   }
 }

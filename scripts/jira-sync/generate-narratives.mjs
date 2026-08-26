@@ -62,9 +62,17 @@ function monthLabel(iso) {
 function buildTimeline(project) {
   const timeline = [];
   if (project.started_at) {
-    timeline.push({ label: "Project Started", date: monthLabel(project.started_at), kind: "start" });
+    timeline.push({
+      label: "Project Started",
+      date: monthLabel(project.started_at),
+      kind: "start",
+    });
   }
-  timeline.push({ label: "Current Sprint", date: project.sprint_goal ? "In progress" : "Current sprint", kind: "current" });
+  timeline.push({
+    label: "Current Sprint",
+    date: project.sprint_goal ? "In progress" : "Current sprint",
+    kind: "current",
+  });
   if (project.roadmap_go_live) {
     timeline.push({ label: "Expected Go Live", date: project.roadmap_go_live, kind: "golive" });
   }
@@ -76,7 +84,10 @@ function buildExecRisks(project, activity) {
   if (project.health === "at_risk") {
     risks.push({ text: `${project.name} is currently off track against plan.`, severity: "high" });
   } else if (project.health === "needs_attention") {
-    risks.push({ text: `${project.name} needs attention to stay on track this sprint.`, severity: "medium" });
+    risks.push({
+      text: `${project.name} needs attention to stay on track this sprint.`,
+      severity: "medium",
+    });
   }
   if (project.blocked_tickets > 0) {
     risks.push({
@@ -167,7 +178,9 @@ async function fetchSprintActivity(pool, project, sprintStart) {
   for (const t of rows) {
     hoursLoggedSinceStart += Number(t.seconds_logged_since) / 3600;
 
-    const isOversized = t.original_estimate_seconds != null && t.original_estimate_seconds > OVERSIZED_ESTIMATE_SECONDS;
+    const isOversized =
+      t.original_estimate_seconds != null &&
+      t.original_estimate_seconds > OVERSIZED_ESTIMATE_SECONDS;
     if (isOversized) {
       if (t.status_category !== "done") needsBreakdown.push(t);
       continue; // excluded entirely from remaining hours and feature listing
@@ -177,7 +190,11 @@ async function fetchSprintActivity(pool, project, sprintStart) {
     if (t.status_category !== "done" && touchedSinceStart) {
       hoursRemainingSinceStart += Number(t.remaining_estimate_seconds || 0) / 3600;
     }
-    if (t.status_category === "done" && touchedSinceStart && deliveredThisSprint.length < MAX_FEATURES_PER_SPRINT) {
+    if (
+      t.status_category === "done" &&
+      touchedSinceStart &&
+      deliveredThisSprint.length < MAX_FEATURES_PER_SPRINT
+    ) {
       deliveredThisSprint.push(cleanFeatureName(t.summary));
     }
   }
@@ -186,7 +203,8 @@ async function fetchSprintActivity(pool, project, sprintStart) {
 }
 
 function buildNarrative(project, deliveryHistory, activity) {
-  const benefit = project.roadmap_key_benefit || project.purpose || `Supports the ${project.name} workstream.`;
+  const benefit =
+    project.roadmap_key_benefit || project.purpose || `Supports the ${project.name} workstream.`;
   const why = project.purpose || `${project.name} exists to move this workstream forward.`;
   const problem = project.roadmap_status || "Addressing an active business need.";
   const delivered =
@@ -210,7 +228,9 @@ function buildNarrative(project, deliveryHistory, activity) {
     this_sprint: thisSprint,
     next_milestone: nextMilestone,
     delivered_features_this_sprint: activity.deliveredThisSprint,
-    delivery_history: JSON.stringify(deliveryHistory.map(([sprint_name, features]) => ({ sprint_name, features }))),
+    delivery_history: JSON.stringify(
+      deliveryHistory.map(([sprint_name, features]) => ({ sprint_name, features })),
+    ),
     timeline: JSON.stringify(buildTimeline(project)),
     exec_risks: JSON.stringify(buildExecRisks(project, activity)),
     hours_logged_since_sprint_start: Math.round(activity.hoursLoggedSinceStart * 10) / 10,
@@ -237,7 +257,9 @@ function buildOrgSummary(orgMetrics, projectRows) {
   }
   sentences.push(`${orgMetrics.estimate_coverage}% of work has a documented estimate.`);
   if (orgMetrics.total_spillage_hours > 0) {
-    sentences.push(`${Math.round(orgMetrics.total_spillage_hours)}h of committed work is projected to spill into the next sprint.`);
+    sentences.push(
+      `${Math.round(orgMetrics.total_spillage_hours)}h of committed work is projected to spill into the next sprint.`,
+    );
   }
   return sentences.join(" ");
 }
@@ -298,7 +320,10 @@ async function main() {
           severity: risk.severity,
         }));
       })
-      .sort((a, b) => ({ high: 0, medium: 1, low: 2 })[a.severity] - ({ high: 0, medium: 1, low: 2 })[b.severity])
+      .sort(
+        (a, b) =>
+          ({ high: 0, medium: 1, low: 2 })[a.severity] - { high: 0, medium: 1, low: 2 }[b.severity],
+      )
       .slice(0, 5);
 
     await insertMany(pool, "org_narrative", [

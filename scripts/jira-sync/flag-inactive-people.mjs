@@ -29,7 +29,10 @@ import { pathToFileURL } from "node:url";
 
 export async function flagInactivePeople(databaseUrl) {
   const { Pool } = pg;
-  const pool = new Pool({ connectionString: databaseUrl, ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false } });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false },
+  });
   try {
     const { rows: candidates } = await pool.query(`
       select p.id, p.name
@@ -50,7 +53,10 @@ export async function flagInactivePeople(databaseUrl) {
 
     const ids = candidates.map((c) => c.id);
     await pool.query(`update people set excluded = true where id = any($1)`, [ids]);
-    console.log(`[flag-inactive-people] excluded ${candidates.length} person(s):`, candidates.map((c) => c.name).join(", "));
+    console.log(
+      `[flag-inactive-people] excluded ${candidates.length} person(s):`,
+      candidates.map((c) => c.name).join(", "),
+    );
     return { flagged: candidates.map((c) => c.name) };
   } finally {
     await pool.end();

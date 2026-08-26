@@ -1,6 +1,15 @@
 import { similarityRatio } from "./similarity.mjs";
 
-const TOKEN_STRIP = new Set(["fe", "be", "ui", "api", "frontend", "backend", "front-end", "back-end"]);
+const TOKEN_STRIP = new Set([
+  "fe",
+  "be",
+  "ui",
+  "api",
+  "frontend",
+  "backend",
+  "front-end",
+  "back-end",
+]);
 const THRESHOLD = 0.72;
 
 function normalizeTitle(title) {
@@ -20,7 +29,10 @@ function normalizeTitle(title) {
  * epic split of one feature). Returns clusters of {tickets, epicKeys}.
  */
 export function clusterTicketTitles(tickets) {
-  const normalized = tickets.map((t) => ({ ...t, _norm: normalizeTitle(t.summary) || t.summary.toLowerCase() }));
+  const normalized = tickets.map((t) => ({
+    ...t,
+    _norm: normalizeTitle(t.summary) || t.summary.toLowerCase(),
+  }));
 
   const parent = normalized.map((_, i) => i);
   const find = (x) => {
@@ -31,7 +43,8 @@ export function clusterTicketTitles(tickets) {
     return x;
   };
   const union = (x, y) => {
-    const rx = find(x), ry = find(y);
+    const rx = find(x),
+      ry = find(y);
     if (rx !== ry) parent[rx] = ry;
   };
 
@@ -50,7 +63,10 @@ export function clusterTicketTitles(tickets) {
   });
 
   return [...groups.values()].map((members) => {
-    const representative = [...members].sort((a, b) => a.summary.trim().length - b.summary.trim().length || a.summary.localeCompare(b.summary))[0];
+    const representative = [...members].sort(
+      (a, b) =>
+        a.summary.trim().length - b.summary.trim().length || a.summary.localeCompare(b.summary),
+    )[0];
     return {
       name: representative.summary.trim(),
       tickets: members,

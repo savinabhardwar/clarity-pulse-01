@@ -6,3 +6,8 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+
+# Standalone sibling snapshots (own repos, own formatting)
+/team-pulse-54
+/summit-read
+/engineering-ethos

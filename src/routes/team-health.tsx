@@ -118,15 +118,19 @@ function TeamHealth() {
         isError={!!firstError}
         error={firstError as Error | null}
       >
-        {orgMetrics.data && people.data && blockers.data && standouts.data && ticketHygiene.data && (
-          <TeamHealthBody
-            m={orgMetrics.data}
-            people={people.data}
-            blockers={blockers.data}
-            standouts={standouts.data}
-            ticketHygiene={ticketHygiene.data}
-          />
-        )}
+        {orgMetrics.data &&
+          people.data &&
+          blockers.data &&
+          standouts.data &&
+          ticketHygiene.data && (
+            <TeamHealthBody
+              m={orgMetrics.data}
+              people={people.data}
+              blockers={blockers.data}
+              standouts={standouts.data}
+              ticketHygiene={ticketHygiene.data}
+            />
+          )}
       </QueryBoundary>
     </div>
   );
@@ -335,7 +339,10 @@ function TeamHealthBody({
                     <span className="block text-xs text-muted-foreground">
                       {p.team ?? "Unassigned team"}
                       {p.team_guessed && (
-                        <span className="ml-1 font-semibold text-warning" title="Unconfirmed: team assignment">
+                        <span
+                          className="ml-1 font-semibold text-warning"
+                          title="Unconfirmed: team assignment"
+                        >
                           ⚠ unconfirmed
                         </span>
                       )}
@@ -385,7 +392,10 @@ function TeamHealthBody({
                 <div key={personName} className="card-soft p-5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
-                      <Avatar person={{ name: personName, initials: personInitials(personName) }} size="sm" />
+                      <Avatar
+                        person={{ name: personName, initials: personInitials(personName) }}
+                        size="sm"
+                      />
                       <p className="font-semibold">{personName}</p>
                     </div>
                     <Chip tone="danger">

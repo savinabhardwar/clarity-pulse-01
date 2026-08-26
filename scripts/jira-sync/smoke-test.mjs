@@ -10,7 +10,10 @@ const FRESHNESS_WINDOW_MINUTES = 30;
 
 export async function runSmokeTest(databaseUrl) {
   const { Pool } = pg;
-  const pool = new Pool({ connectionString: databaseUrl, ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false } });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false },
+  });
   const problems = [];
   try {
     const { rows: freshRows } = await pool.query(
@@ -18,7 +21,9 @@ export async function runSmokeTest(databaseUrl) {
       [FRESHNESS_WINDOW_MINUTES],
     );
     if (freshRows[0].count === 0) {
-      problems.push(`no ticket has last_synced_at within the last ${FRESHNESS_WINDOW_MINUTES} minutes -- the sync ran but wrote nothing`);
+      problems.push(
+        `no ticket has last_synced_at within the last ${FRESHNESS_WINDOW_MINUTES} minutes -- the sync ran but wrote nothing`,
+      );
     }
 
     const { rows: totalRows } = await pool.query(`select count(*)::int as count from tickets`);
@@ -30,7 +35,9 @@ export async function runSmokeTest(databaseUrl) {
       `select status from sync_runs order by started_at desc limit 1`,
     );
     if (lastRun[0]?.status !== "success") {
-      problems.push(`most recent sync_runs row has status "${lastRun[0]?.status ?? "none"}", not "success"`);
+      problems.push(
+        `most recent sync_runs row has status "${lastRun[0]?.status ?? "none"}", not "success"`,
+      );
     }
 
     return { ok: problems.length === 0, problems };

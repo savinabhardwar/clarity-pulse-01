@@ -7,7 +7,10 @@
 // credential), and Jira API rate limiting / transient 5xx responses.
 // Without this, either kind of blip fails the entire daily sync and
 // waits for a human to notice and manually rerun it.
-export async function withRetry(fn, { retries = 3, delayMs = 2000, label = "operation", isRetryable = () => true } = {}) {
+export async function withRetry(
+  fn,
+  { retries = 3, delayMs = 2000, label = "operation", isRetryable = () => true } = {},
+) {
   let lastErr;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -16,7 +19,9 @@ export async function withRetry(fn, { retries = 3, delayMs = 2000, label = "oper
       lastErr = err;
       if (attempt === retries || !isRetryable(err)) throw err;
       const wait = delayMs * 2 ** (attempt - 1);
-      console.warn(`[retry] ${label} failed (attempt ${attempt}/${retries}): ${err.message} -- retrying in ${wait}ms`);
+      console.warn(
+        `[retry] ${label} failed (attempt ${attempt}/${retries}): ${err.message} -- retrying in ${wait}ms`,
+      );
       await new Promise((r) => setTimeout(r, wait));
     }
   }

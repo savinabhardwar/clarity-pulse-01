@@ -30,10 +30,7 @@ export function DateRangeFilter({
   const from = value?.from ?? "";
   const to = value?.to ?? "";
   return (
-    <div
-      className="flex items-center gap-1.5"
-      title={disabled ? disabledReason : undefined}
-    >
+    <div className="flex items-center gap-1.5" title={disabled ? disabledReason : undefined}>
       <input
         type="date"
         value={from}
@@ -125,7 +122,13 @@ export function Chip({
     info: "bg-info-soft text-info border-info/20",
   };
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium", tones[tone], className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
+        tones[tone],
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -133,7 +136,13 @@ export function Chip({
 
 export function StatusPill({ status }: { status: string }) {
   const tone =
-    status === "Blocked" ? "danger" : status === "Done" ? "success" : status === "QA" || status === "In Review" ? "info" : "neutral";
+    status === "Blocked"
+      ? "danger"
+      : status === "Done"
+        ? "success"
+        : status === "QA" || status === "In Review"
+          ? "info"
+          : "neutral";
   return <Chip tone={tone as "danger"}>{status}</Chip>;
 }
 
@@ -142,7 +151,13 @@ export function PriorityPill({ priority }: { priority: string }) {
   return <Chip tone={tone as "danger"}>{priority}</Chip>;
 }
 
-export function Avatar({ person, size = "md" }: { person: Pick<Person, "initials" | "name">; size?: "sm" | "md" | "lg" }) {
+export function Avatar({
+  person,
+  size = "md",
+}: {
+  person: Pick<Person, "initials" | "name">;
+  size?: "sm" | "md" | "lg";
+}) {
   const sizes = { sm: "size-7 text-[10px]", md: "size-9 text-xs", lg: "size-12 text-sm" };
   return (
     <span
@@ -157,7 +172,13 @@ export function Avatar({ person, size = "md" }: { person: Pick<Person, "initials
   );
 }
 
-export function AvatarStack({ people, max = 5 }: { people: Pick<Person, "initials" | "name">[]; max?: number }) {
+export function AvatarStack({
+  people,
+  max = 5,
+}: {
+  people: Pick<Person, "initials" | "name">[];
+  max?: number;
+}) {
   const shown = people.slice(0, max);
   return (
     <div className="flex -space-x-2">
@@ -208,17 +229,32 @@ export function StatCard({
       </div>
       <p className={cn("num mt-2 text-2xl font-semibold", valueTone)}>{value}</p>
       {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
-      {footer && <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">{footer}</div>}
+      {footer && (
+        <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
 
-export function Meter({ value, tone, className }: { value: number; tone?: "success" | "warning" | "danger"; className?: string }) {
+export function Meter({
+  value,
+  tone,
+  className,
+}: {
+  value: number;
+  tone?: "success" | "warning" | "danger";
+  className?: string;
+}) {
   const t = tone ?? (value > 100 ? "danger" : value > 90 ? "warning" : "success");
   const bg = { success: "bg-success", warning: "bg-warning", danger: "bg-danger" }[t];
   return (
     <div className={cn("h-2 w-full overflow-hidden rounded-full bg-muted", className)}>
-      <div className={cn("h-full rounded-full transition-all", bg)} style={{ width: `${Math.min(100, value)}%` }} />
+      <div
+        className={cn("h-full rounded-full transition-all", bg)}
+        style={{ width: `${Math.min(100, value)}%` }}
+      />
     </div>
   );
 }
@@ -230,7 +266,10 @@ export function AllocationBar({
   segments: { label: string; pct: number; color: string; hours: number }[];
   height?: string;
 }) {
-  const total = Math.max(100, segments.reduce((s, x) => s + x.pct, 0));
+  const total = Math.max(
+    100,
+    segments.reduce((s, x) => s + x.pct, 0),
+  );
   return (
     <div className={cn("flex w-full overflow-hidden rounded-full bg-muted", height)}>
       {segments.map((s) => (
@@ -267,17 +306,37 @@ export function SectionHeading({
   );
 }
 
-export function KeyValue({ label, value, tone }: { label: string; value: ReactNode; tone?: "danger" | "warning" | "success" }) {
-  const toneClass = tone ? { danger: "text-danger", warning: "text-warning", success: "text-success" }[tone] : "text-foreground";
+export function KeyValue({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: "danger" | "warning" | "success";
+}) {
+  const toneClass = tone
+    ? { danger: "text-danger", warning: "text-warning", success: "text-success" }[tone]
+    : "text-foreground";
   return (
     <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
       <p className={cn("num mt-1 text-base font-semibold", toneClass)}>{value}</p>
     </div>
   );
 }
 
-export function PageHeader({ title, question, children }: { title: string; question: string; children?: ReactNode }) {
+export function PageHeader({
+  title,
+  question,
+  children,
+}: {
+  title: string;
+  question: string;
+  children?: ReactNode;
+}) {
   return (
     <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
