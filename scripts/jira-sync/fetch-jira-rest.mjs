@@ -231,18 +231,31 @@ async function fetchEpics() {
   }));
 }
 
-/** Incremental: fetch history resolved strictly after `sinceIso`. Full: fetch the most recent `limit`. */
+/**
+ * Incremental: fetch history updated strictly after `sinceIso`. Full: fetch the most recently updated `limit`.
+ *
+ * Filters on statusCategory = Done, NOT `resolution is not EMPTY` -- several
+ * boards' workflows never set Jira's Resolution field on the way to Done
+ * (confirmed live: ACX's board leaves it empty), so the old resolution-based
+ * filter permanently excluded those tickets from resolved_ticket_history no
+ * matter how many syncs ran. statusCategory = Done catches every genuinely
+ * finished ticket regardless of that field. Cursored on `updated` (always
+ * populated) rather than `resolutiondate` (frequently null on exactly the
+ * tickets this filter now needs to catch) for the same reason -- see the
+ * resolutiondate fallback below.
+ */
 async function fetchHistory({ sinceIso, limit = 500 }) {
   const projectClause = JIRA_PROJECTS.map((p) => `"${p.name}"`).join(", ");
   const jql = sinceIso
-    ? `project in (${projectClause}) AND issuetype != Epic AND resolution is not EMPTY AND parent is not EMPTY AND resolutiondate > "${sinceIso.slice(0, 16).replace("T", " ")}" ORDER BY resolutiondate ASC`
-    : `project in (${projectClause}) AND issuetype != Epic AND resolution is not EMPTY AND parent is not EMPTY ORDER BY resolutiondate DESC`;
+    ? `project in (${projectClause}) AND issuetype != Epic AND statusCategory = Done AND parent is not EMPTY AND updated > "${sinceIso.slice(0, 16).replace("T", " ")}" ORDER BY updated ASC`
+    : `project in (${projectClause}) AND issuetype != Epic AND statusCategory = Done AND parent is not EMPTY ORDER BY updated DESC`;
   const issues = await jiraSearch({
     jql,
     fields: [
       "summary",
       "issuetype",
       "resolutiondate",
+      "updated",
       "timespent",
       "assignee",
       "parent",
@@ -255,7 +268,11 @@ async function fetchHistory({ sinceIso, limit = 500 }) {
     project: issue.fields.project.key,
     summary: issue.fields.summary,
     issuetype: issue.fields.issuetype.name,
-    resolutiondate: issue.fields.resolutiondate,
+    // Falls back to `updated` when Jira's Resolution field was never set --
+    // see this function's doc comment. Still a genuine "when this was
+    // finished" signal (statusCategory = Done already guarantees that),
+    // just not Jira's own resolution timestamp.
+    resolutiondate: issue.fields.resolutiondate ?? issue.fields.updated,
     spentSeconds: issue.fields.timespent ?? 0,
     assignee: issue.fields.assignee
       ? { accountId: issue.fields.assignee.accountId, name: issue.fields.assignee.displayName }
