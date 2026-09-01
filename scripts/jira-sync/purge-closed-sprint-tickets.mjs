@@ -45,10 +45,22 @@ export async function purgeClosedSprintTickets(databaseUrl) {
     // findUnsnapshottedClosedSprints) must never be purged, since that
     // would delete the only source data project-level history could ever
     // be computed from.
+    // is_tracked = false -- a sprint whose board just hasn't been closed
+    // in Jira yet (a real, common overrun: see sync.mjs's sprint_overrun
+    // narrative) stays end_date-in-the-past AND is_tracked = true
+    // indefinitely, since fetchTrackedSprints keeps reporting it as the
+    // project's active sprint until a real new one starts. Purging by
+    // end_date age alone deleted that project's only live, still-being-
+    // worked tickets out from under it -- found live: TEAMSANKYA's board
+    // read as completely empty (17 tickets purged) while its sprint was
+    // still open in Jira. Requiring is_tracked = false means only a
+    // sprint that's been genuinely superseded by a newer tracked sprint
+    // for its project is eligible.
     const { rows: eligibleSprints } = await pool.query(
       `select distinct s.id, s.name, s.start_date, s.end_date
        from sprints s
        where s.end_date < now() - make_interval(days => $1)
+         and s.is_tracked = false
          and exists (select 1 from person_sprint_summaries pss where pss.sprint_start = s.start_date)
          and exists (select 1 from project_sprint_summaries pjs where pjs.sprint_start = s.start_date)
          and exists (select 1 from tickets tk where tk.sprint_id = s.id)`,
