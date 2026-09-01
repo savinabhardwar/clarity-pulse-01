@@ -1,6 +1,14 @@
 import { workdaysBetween } from "./workdays.mjs";
 
-const HOURS_PER_WORKDAY_SPRINT = 8; // 8h/workday -> 80h per person per 2-week (10-workday) sprint
+// 7h/workday -> 70h per person per 2-week (10-workday) sprint -- this org's
+// actual capacity policy (see supabase/migrations/0029_sprint_scoped_hours.sql
+// and 0028_executive_compass_capacity.sql, both already on 7h/day). This
+// constant was wrongly set to 8, which put engineering-ethos's bandwidth/pace
+// targets out of step with team-pulse-54 and summit-read for the same person
+// at the same moment (found live: sourav.sarkar's bandwidth read 64h here vs
+// the correct 56h once team-pulse-54's separate off-by-one day-count bug was
+// also fixed -- see emp-engine.ts).
+const HOURS_PER_WORKDAY_SPRINT = 7;
 
 function toDate(s) {
   return s ? new Date(s) : null;
@@ -47,7 +55,7 @@ export function computeMetrics({
     if (adj.excluded) continue;
 
     // A person has ONE job's worth of capacity, and each tracked sprint
-    // is independently a full 8h/day commitment (not weighted down by
+    // is independently a full 7h/day commitment (not weighted down by
     // ticket count). When someone touches more than one currently-active
     // sprint, the one with the FEWEST remaining workdays is their
     // reference sprint -- the most conservative "one calendar" a person
@@ -111,6 +119,7 @@ export function computeMetrics({
       HOURS_PER_WORKDAY_SPRINT * Math.max(remainingWorkdays - leaveDaysRemaining, 0);
     const assignedRemainingWorkHours = tickets
       .filter((t) => t.statusCategory !== "done")
+      .filter((t) => t.status?.toLowerCase() !== "testing")
       .reduce((s, t) => s + (t.remainingSeconds || 0) / 3600, 0);
 
     // ---- Hours logged: sum of worklog seconds credited to this person
