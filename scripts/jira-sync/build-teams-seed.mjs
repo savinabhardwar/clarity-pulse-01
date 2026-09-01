@@ -21,6 +21,10 @@ const PROJECT_NAMES = {
   AA: "Agent Assist",
   KH: "Knowledge Hub",
   AV: "AVANI",
+  LT: "Line Tester",
+  BL: "Billing",
+  MR: "MI Reporting",
+  FR: "Forecasting",
 };
 
 const people = counts.map((c) => {

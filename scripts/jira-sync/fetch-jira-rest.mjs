@@ -37,6 +37,19 @@ const JIRA_PROJECTS = [
   { key: "AA", name: "Agent Assist" },
   { key: "KH", name: "Knowledge Hub" },
   { key: "AV", name: "AVANI" },
+  { key: "LT", name: "Line Tester" },
+  // Jira's real project name has a trailing space ("Billing "), which
+  // silently broke every JQL query using `project = "Billing"` -- it
+  // matched nothing, so BL never actually got fetched despite being in
+  // this list. Using the key here avoids depending on that stray
+  // whitespace ever being fixed (or re-broken) on the Jira side.
+  { key: "BL", name: "BL" },
+  // Jira has a second, long-stale project also literally named "MI
+  // Reporting" (key MI, last activity April) -- JQL `project = "MI
+  // Reporting"` matches by exact name and silently resolved to that one
+  // instead of this one. Using the key here disambiguates unambiguously.
+  { key: "MR", name: "MR" },
+  { key: "FR", name: "Forecasting" },
 ];
 
 function authHeader() {

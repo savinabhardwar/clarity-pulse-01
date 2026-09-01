@@ -53,6 +53,10 @@ const JIRA_PROJECTS = [
   { key: "AA", name: "Agent Assist" },
   { key: "KH", name: "Knowledge Hub" },
   { key: "AV", name: "AVANI" },
+  { key: "LT", name: "Line Tester" },
+  { key: "BL", name: "BL" }, // Jira's real project name has a trailing space ("Billing ") -- see fetch-jira-rest.mjs
+  { key: "MR", name: "MR" }, // see fetch-jira-rest.mjs -- disambiguates from the stale "MI" project of the same name
+  { key: "FR", name: "Forecasting" },
 ];
 
 function statusCategoryKeyToDb(key) {
