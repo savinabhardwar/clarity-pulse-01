@@ -62,23 +62,23 @@ without checking — see open question below on pilot scope.
 
 ### Transition table (real IDs) — LT project only, verified live
 
-| From status | Transition ID | Transition name | To status | Global? |
-| --- | --- | --- | --- | --- |
-| In Progress | 11 | To Do | To Do (10227) | yes |
-| In Progress | 12 | Deprioritised | Deprioritised (10559) | yes |
-| In Progress | 21 | In Progress | In Progress (3) | yes |
-| In Progress | 31 | Done | Done (10228) | yes |
-| In Progress | 41 | Blocked | Blocked (10013) | yes |
-| In Progress | 2 | In Progress to done | Done (10228) | no |
-| In Progress | 3 | Review | Review (10267) | no |
-| In Progress | 8 | Testing | Testing (10029) | no |
-| In Progress | 9 | Blocked | Blocked (10013) | no |
-| Testing | 11 | To Do | To Do (10227) | yes |
-| Testing | 12 | Deprioritised | Deprioritised (10559) | yes |
-| Testing | 21 | In Progress | In Progress (3) | yes |
-| Testing | 31 | Done | Done (10228) | yes |
-| Testing | 41 | Blocked | Blocked (10013) | yes |
-| Testing | 10 | Done | Done (10228) | no |
+| From status | Transition ID | Transition name     | To status             | Global? |
+| ----------- | ------------- | ------------------- | --------------------- | ------- |
+| In Progress | 11            | To Do               | To Do (10227)         | yes     |
+| In Progress | 12            | Deprioritised       | Deprioritised (10559) | yes     |
+| In Progress | 21            | In Progress         | In Progress (3)       | yes     |
+| In Progress | 31            | Done                | Done (10228)          | yes     |
+| In Progress | 41            | Blocked             | Blocked (10013)       | yes     |
+| In Progress | 2             | In Progress to done | Done (10228)          | no      |
+| In Progress | 3             | Review              | Review (10267)        | no      |
+| In Progress | 8             | Testing             | Testing (10029)       | no      |
+| In Progress | 9             | Blocked             | Blocked (10013)       | no      |
+| Testing     | 11            | To Do               | To Do (10227)         | yes     |
+| Testing     | 12            | Deprioritised       | Deprioritised (10559) | yes     |
+| Testing     | 21            | In Progress         | In Progress (3)       | yes     |
+| Testing     | 31            | Done                | Done (10228)          | yes     |
+| Testing     | 41            | Blocked             | Blocked (10013)       | yes     |
+| Testing     | 10            | Done                | Done (10228)          | no      |
 
 **Mismatch found and resolved during this session.** Originally, no
 sampled project had a "Rework" status — from Testing, the only path back to
@@ -86,14 +86,14 @@ active work was straight to In Progress. The human added a real "Rework"
 status directly in Jira admin over the course of this session. Final
 verified state across all 20 tracked projects:
 
-| Workflow (identified by its status IDs) | Projects | Rework status |
-| --- | --- | --- |
-| Shared workflow (To Do `10227`, In Progress `3`, Testing `10029`, Done `10228`, Blocked `10013`, Review `10267`, Deprioritised `10559`) | LT, AA, ACX, AV, CX, FR, PBX, UM, CP, MR, QIP, AMY, KH | **Has Rework** (status `10658`, transition "test to rework" id 4). Live-confirmed on a Testing- or In-Progress-status ticket, with matching transition IDs (11/12/21/31/41/4/10, or the extended 8-transition In-Progress set 11/12/21/31/41/2/3/8/9), for LT/AA/ACX/AV/CX/FR/PBX/UM/CP/MR/QIP/AMY/KH. KA and BL share the same core status IDs on other tickets but had **no ticket currently in In Progress or Testing** at check time (2026-09-18) — transitions not directly confirmed, treat as high-confidence, not fully proven. |
-| TT's own workflow (`10162`–`10197`) | TT | **Correction to this doc's earlier entry:** TT was previously listed under the shared workflow above — that was wrong. Live-verified 2026-09-18: TT has entirely distinct status IDs (In Progress `10162`, Testing `10194`, Blocked `10196`, Review `10195`, Done `10163`, Cant Do `10197`, Deprioritised `10625`) and its own transition set from Testing: `completed`(3)→Testing itself(10194, oddly categorized "To Do" — self-referential/no-op-looking transition, verify before relying on it), `Blocked`(4)→10196, `Cannot be done`(5)→10163("Cant Do", despite the label pointing at the Done-category status id), `Changes Done`(7)→10195(Review), `Done`(12)→10163. **No Rework transition exists for TT** — this reopens task 4.4's TT exclusion question, since the original doc had TT *inside* the Rework-supporting shared group. TT is Rework-less like TEAM/TEAMSANKYA, not Rework-having like the shared group; policy/automation must treat TT the same as TEAM/TEAMSANKYA for the Rework-dependent rule, not the same as LT. |
-| TI's own workflow (`10164`–`10169`, `10592`) | TI | **Correction to this doc's earlier entry:** the status-ID range and Rework transition details for TI and TRG below were swapped in the original write-up. Re-verified live 2026-09-18 against TI-2192 (Testing): TI's Rework status is `10660`, reached via transition **id 21** ("rework"). Other TI transitions from Testing: `Blocked`(3)→10167, `Deprioritised`(20)→10592, `Done`(31)→10166, `Cannot Test`(7)→10169("Cant Do"), `Testing complete`(9)→10166(Done), `redo`(18)→10164(To Do). |
-| TRG's own workflow (`10335`–`10349`, `10454`) | TRG | **Correction to this doc's earlier entry** (see TI row above — ranges/IDs were swapped). Re-verified live 2026-09-18 against TRG-1413 (Testing): TRG's Rework status is `10659`, reached via transition **id 6** ("rework"). Other TRG transitions from Testing: `TESTING`(2)→10347(self), `REVIEW`(3)→10348, `CAN'T DO`(4)→10349, `To Do`(11)→10338, `In Progress`(21)→10339, `Done`(31)→10340, `Blocked`(5)→10454. |
-| TEAMSANKYA's own workflow (`10335`–`10337`, `10344`–`10346`, `10386`) | TEAMSANKYA | **No Rework — deliberately excluded from scope for now** (human's explicit call). Re-confirmed live 2026-09-18 against TEAMSANKYA-817 (In Progress): available transitions are `TESTING`(2)→10344, `REVIEW`(3)→10345, `CAN'T DO`(4)→10346, `Blocked`(5)→10386, `To Do`(11)→10335, `In Progress`(21)→10336, `Done`(31)→10337 — no rework transition present, confirming the exclusion. |
-| TEAM's own workflow (`10341`–`10353`) | TEAM | **No Rework — deliberately excluded from scope for now** (human's explicit call). Has its own "Start Testing" transition and Testing status, just no Rework. Not re-verified this session beyond a To-Do-status sample (TEAM-1158) — no ticket in a further-along status was available to pull a fuller transition list. |
+| Workflow (identified by its status IDs)                                                                                                 | Projects                                               | Rework status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared workflow (To Do `10227`, In Progress `3`, Testing `10029`, Done `10228`, Blocked `10013`, Review `10267`, Deprioritised `10559`) | LT, AA, ACX, AV, CX, FR, PBX, UM, CP, MR, QIP, AMY, KH | **Has Rework** (status `10658`, transition "test to rework" id 4). Live-confirmed on a Testing- or In-Progress-status ticket, with matching transition IDs (11/12/21/31/41/4/10, or the extended 8-transition In-Progress set 11/12/21/31/41/2/3/8/9), for LT/AA/ACX/AV/CX/FR/PBX/UM/CP/MR/QIP/AMY/KH. KA and BL share the same core status IDs on other tickets but had **no ticket currently in In Progress or Testing** at check time (2026-09-18) — transitions not directly confirmed, treat as high-confidence, not fully proven.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| TT's own workflow (`10162`–`10197`)                                                                                                     | TT                                                     | **Correction to this doc's earlier entry:** TT was previously listed under the shared workflow above — that was wrong. Live-verified 2026-09-18: TT has entirely distinct status IDs (In Progress `10162`, Testing `10194`, Blocked `10196`, Review `10195`, Done `10163`, Cant Do `10197`, Deprioritised `10625`) and its own transition set from Testing: `completed`(3)→Testing itself(10194, oddly categorized "To Do" — self-referential/no-op-looking transition, verify before relying on it), `Blocked`(4)→10196, `Cannot be done`(5)→10163("Cant Do", despite the label pointing at the Done-category status id), `Changes Done`(7)→10195(Review), `Done`(12)→10163. **No Rework transition exists for TT** — this reopens task 4.4's TT exclusion question, since the original doc had TT _inside_ the Rework-supporting shared group. TT is Rework-less like TEAM/TEAMSANKYA, not Rework-having like the shared group; policy/automation must treat TT the same as TEAM/TEAMSANKYA for the Rework-dependent rule, not the same as LT. |
+| TI's own workflow (`10164`–`10169`, `10592`)                                                                                            | TI                                                     | **Correction to this doc's earlier entry:** the status-ID range and Rework transition details for TI and TRG below were swapped in the original write-up. Re-verified live 2026-09-18 against TI-2192 (Testing): TI's Rework status is `10660`, reached via transition **id 21** ("rework"). Other TI transitions from Testing: `Blocked`(3)→10167, `Deprioritised`(20)→10592, `Done`(31)→10166, `Cannot Test`(7)→10169("Cant Do"), `Testing complete`(9)→10166(Done), `redo`(18)→10164(To Do).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| TRG's own workflow (`10335`–`10349`, `10454`)                                                                                           | TRG                                                    | **Correction to this doc's earlier entry** (see TI row above — ranges/IDs were swapped). Re-verified live 2026-09-18 against TRG-1413 (Testing): TRG's Rework status is `10659`, reached via transition **id 6** ("rework"). Other TRG transitions from Testing: `TESTING`(2)→10347(self), `REVIEW`(3)→10348, `CAN'T DO`(4)→10349, `To Do`(11)→10338, `In Progress`(21)→10339, `Done`(31)→10340, `Blocked`(5)→10454.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| TEAMSANKYA's own workflow (`10335`–`10337`, `10344`–`10346`, `10386`)                                                                   | TEAMSANKYA                                             | **No Rework — deliberately excluded from scope for now** (human's explicit call). Re-confirmed live 2026-09-18 against TEAMSANKYA-817 (In Progress): available transitions are `TESTING`(2)→10344, `REVIEW`(3)→10345, `CAN'T DO`(4)→10346, `Blocked`(5)→10386, `To Do`(11)→10335, `In Progress`(21)→10336, `Done`(31)→10337 — no rework transition present, confirming the exclusion.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| TEAM's own workflow (`10341`–`10353`)                                                                                                   | TEAM                                                   | **No Rework — deliberately excluded from scope for now** (human's explicit call). Has its own "Start Testing" transition and Testing status, just no Rework. Not re-verified this session beyond a To-Do-status sample (TEAM-1158) — no ticket in a further-along status was available to pull a fuller transition list.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Important — the TI/TRG status-ID ranges and Rework transition IDs above are corrected from an earlier version of this document, which had them swapped between the two projects.** If any code, config, or notes elsewhere already reference the old (incorrect) TI/TRG transition IDs, they must be updated before task 4.1 (Policy Engine) is implemented against them. Likewise, **TT was moved out of the shared-workflow/Rework-having group** it was previously listed under — anything that assumed TT supports a Testing→Rework transition is wrong and must be corrected to treat TT like TEAM/TEAMSANKYA (no Rework) instead.
 
@@ -121,6 +121,7 @@ Rework, before task 4.4 ships.
 **Inherited from existing production code, not independently re-verified by
 me against the field API.** `scripts/jira-sync/fetch-jira-rest.mjs` and
 `project-compass` both already read these successfully in production:
+
 - `customfield_10020` — Sprint field (used across all tracked projects)
 - `customfield_10690` — QA Assignee (added for ACX's same-ticket Dev+QA
   tracking, Sept 2026, but the field/screen is instance-global — comment in
@@ -229,6 +230,7 @@ table above).
 
 **Still open, not blocking Gate 0 but needed before task 4.1 ships policy
 rules for these projects:**
+
 - **KA and BL** — no ticket was in In Progress or Testing at check time
   (2026-09-18), so their transition IDs are still only inferred from shared
   status IDs on other tickets, not directly confirmed. Re-check when either
@@ -372,11 +374,11 @@ multiple repos (e.g. separate `-ui`/`-api` repos, sometimes more). Confirmed
 mapping, by human sign-off (not name-pattern guessing) for the following
 tracked Jira projects:
 
-| Jira key | Repo(s) |
-| --- | --- |
-| LT | `line-tester` (confirmed correct over two other similarly-named candidates: `automated-line-testing-api`/`-ui`, which are older and not in current use) |
-| AMY | `dograh` |
-| KA | `keyboardless-agent-backend`, `keyboardless-streaming-speech-services`, `keyboardless-sortformer` |
+| Jira key | Repo(s)                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LT       | `line-tester` (confirmed correct over two other similarly-named candidates: `automated-line-testing-api`/`-ui`, which are older and not in current use) |
+| AMY      | `dograh`                                                                                                                                                |
+| KA       | `keyboardless-agent-backend`, `keyboardless-streaming-speech-services`, `keyboardless-sortformer`                                                       |
 
 **Human-confirmed 2026-09-18** (previously pattern-matched by repo name only,
 now signed off as correct, no corrections needed): CP → `cxpass-ui`, `cxpass-api`; AA →
@@ -494,8 +496,8 @@ open item for whoever implements task 4.4/8, not blocking Phase 0.
 **Human decision:** **round-robin** across the eligible QA pool for a given
 project. Each time an issue enters Testing, the automation assigns the next
 person in that project's list (cycling back to the start after the last),
-per `CLAUDE.md` §11 / §3a — the automation decides *when* and picks *from a
-given list*, never *who is eligible*.
+per `CLAUDE.md` §11 / §3a — the automation decides _when_ and picks _from a
+given list_, never _who is eligible_.
 
 ### What "unavailable" means (leave, other project, etc.)
 
@@ -558,6 +560,7 @@ in `.dev.vars` (gitignored), not committed.
 
 `GET /v1beta/models/gemini-3.8-flash` → **200**, confirms the model exists
 and returns real metadata:
+
 - `inputTokenLimit`: **1,048,576** tokens
 - `outputTokenLimit`: **65,536** tokens
 - `supportedGenerationMethods`: `generateContent`, `countTokens`,
@@ -578,14 +581,15 @@ applies equally to 3.6-flash.
 **Four consecutive live attempts against `gemini-3.8-flash:generateContent`
 (2026-09-18) all returned `503 UNAVAILABLE`** — "This model is currently
 experiencing high demand" — both with `response_mime_type: application/json`
-+ `response_schema` (structured output) and with a plain unstructured prompt.
-This is not an auth or account problem: the same key against a **sibling
-model, `gemini-3.6-flash`, succeeded immediately (200)** with a normal
-response. A third model, `gemini-2.5-flash`, returned **404** with a
-message that it's "no longer available to new users" and points at
-`gemini-3.6-flash` as the replacement — useful confirmation that the
-model-naming landscape has moved since this plan was drafted, but not
-directly about 3.8.
+
+- `response_schema` (structured output) and with a plain unstructured prompt.
+  This is not an auth or account problem: the same key against a **sibling
+  model, `gemini-3.6-flash`, succeeded immediately (200)** with a normal
+  response. A third model, `gemini-2.5-flash`, returned **404** with a
+  message that it's "no longer available to new users" and points at
+  `gemini-3.6-flash` as the replacement — useful confirmation that the
+  model-naming landscape has moved since this plan was drafted, but not
+  directly about 3.8.
 
 **This means task 0.7 is only partially closed.** What's confirmed: the
 endpoint shape, auth method, and model metadata for `gemini-3.8-flash` are
@@ -613,7 +617,7 @@ it isn't ready to build on today.
 appears unreliable right now, independent of model.** Re-testing after the
 switch, `response_schema` (JSON-mode) requests against **`gemini-3.6-flash`**
 failed **4/4 times** with the same `503 UNAVAILABLE`, while plain
-(unstructured) `generateContent` calls to the *same model*, run in between
+(unstructured) `generateContent` calls to the _same model_, run in between
 the structured-output attempts, succeeded reliably (200) every time. This
 isolates the failure to structured output specifically, not general model
 availability. **This is a real open item for task 6.1**, not a transient

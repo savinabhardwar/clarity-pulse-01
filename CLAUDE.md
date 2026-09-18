@@ -31,18 +31,18 @@ directly triggers a Jira mutation, stop — that is a design violation.
 
 ## 2. Target stack (zero cost, free tiers only)
 
-| Layer | Tool | Notes |
-|---|---|---|
-| Database | Supabase (free project) | Postgres + pgvector + Row Level Security |
-| Webhook ingestion | Cloudflare Workers | Free plan |
-| Event queue | **Cloudflare Queues (free plan)** | Ingest Workers produce; a consumer Worker processes. See below |
-| Scheduled jobs | Cloudflare Cron Triggers | Free plan — only **5 cron triggers/account**, budget carefully (see `docs/constraints.md`) |
-| LLM | **Gemini 3.6 Flash (free tier)** | Google AI Studio API. See §2a. Switched from 3.8 Flash 2026-09-18 — see `docs/discovery.md` §0.7 |
-| LLM fallback | **None** | If Gemini is down, queue and wait. Do not add a second provider |
-| Embeddings | Gemini embedding model (free tier) or a lightweight open model via Supabase Edge Functions → pgvector | Confirm in task 0.7 |
-| Feature flags / kill switch | Cloudflare KV | |
-| UI (Control Centre) | Cloudflare Pages | |
-| CI/CD | GitHub Actions + `wrangler deploy` | Personal repo |
+| Layer                       | Tool                                                                                                  | Notes                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Database                    | Supabase (free project)                                                                               | Postgres + pgvector + Row Level Security                                                         |
+| Webhook ingestion           | Cloudflare Workers                                                                                    | Free plan                                                                                        |
+| Event queue                 | **Cloudflare Queues (free plan)**                                                                     | Ingest Workers produce; a consumer Worker processes. See below                                   |
+| Scheduled jobs              | Cloudflare Cron Triggers                                                                              | Free plan — only **5 cron triggers/account**, budget carefully (see `docs/constraints.md`)       |
+| LLM                         | **Gemini 3.6 Flash (free tier)**                                                                      | Google AI Studio API. See §2a. Switched from 3.8 Flash 2026-09-18 — see `docs/discovery.md` §0.7 |
+| LLM fallback                | **None**                                                                                              | If Gemini is down, queue and wait. Do not add a second provider                                  |
+| Embeddings                  | Gemini embedding model (free tier) or a lightweight open model via Supabase Edge Functions → pgvector | Confirm in task 0.7                                                                              |
+| Feature flags / kill switch | Cloudflare KV                                                                                         |                                                                                                  |
+| UI (Control Centre)         | Cloudflare Pages                                                                                      |                                                                                                  |
+| CI/CD                       | GitHub Actions + `wrangler deploy`                                                                    | Personal repo                                                                                    |
 
 **Revised 2026-09-18 — Cloudflare Queues are now free-tier** (10,000
 operations/day, confirmed and dated in `docs/constraints.md` task 0.5; this
@@ -165,10 +165,10 @@ decision, check current vendor docs and write what you found into
     client-contracted project, stop and confirm with the human. Build PII
     stripping into the retrieval pipeline. If the human later moves to a
     self-hosted model, `packages/llm` must make that a config swap.
-11. **People selection is always human-curated.** The system never decides *who*
+11. **People selection is always human-curated.** The system never decides _who_
     a person is for a role. Project Lead is configuration, set by the PM/Admin.
     QA assignment picks from a human-maintained rota (see §8) — the automation
-    chooses *when* and *from a given list*, never *who is eligible*. Do not add
+    chooses _when_ and _from a given list_, never _who is eligible_. Do not add
     skill inference, workload heuristics, or AI-driven people matching.
 
 ## 3a. Clarified interpretation of D10 (QA assignment)
@@ -187,7 +187,7 @@ This deliberately rejects the alternative reading — "human assigns each ticket
 individually" — because that makes the PM a bottleneck on every issue, which is
 the exact overhead the platform exists to remove.
 
-Project Lead is *not* part of this. It is a configuration field
+Project Lead is _not_ part of this. It is a configuration field
 (`project_configurations.project_lead_id`), changed rarely, read directly. No
 scheduled job reads it.
 
@@ -263,11 +263,11 @@ Gemini-specific notes:
   the exact path and payload shape in task 0.7 — do not assume it hasn't changed
   since your training data.
 - Prefer Gemini's **structured output / JSON mode** (`response_mime_type:
-  application/json` with `response_schema`) if available on the free tier for
+application/json` with `response_schema`) if available on the free tier for
   this model. It is far more reliable than prompting for JSON and parsing. Check
   what the current API supports before writing a parser. **Known risk, verified
   2026-09-18:** live testing found `response_schema` requests failing with `503
-  UNAVAILABLE` on 4/4 attempts, while plain (unstructured) `generateContent`
+UNAVAILABLE` on 4/4 attempts, while plain (unstructured) `generateContent`
   calls to the same model succeeded reliably in between — see `docs/discovery.md`
   §0.7. Structured output may be more failure-prone than plain generation right
   now. The `assess()` implementation must handle this failure mode explicitly

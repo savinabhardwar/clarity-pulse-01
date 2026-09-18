@@ -16,9 +16,25 @@
 // blocked/incomplete status itself.
 import { withRetry, isRetryableHttpStatus } from "../jira-sync/lib/retry.mjs";
 
-// Pin an exact model version and revisit periodically -- Google
+// Pin exact model versions and revisit periodically -- Google
 // deprecates old Gemini model ids on a rolling basis.
-const GEMINI_MODEL = "gemini-3.6-flash";
+//
+// gemini-3.6-flash is primary: verified 2026-09-18 (docs/discovery.md
+// §0.7) as the reliable one -- gemini-3.8-flash 503'd on 4/4 live
+// attempts (both plain and structured requests) while 3.6-flash served
+// normally. Do not swap the primary back to 3.8-flash on the strength of
+// that history.
+//
+// gemini-3.8-flash is kept ONLY as a same-provider fallback for 429
+// (rate-limited) specifically -- not for 503/other failures, where 3.8
+// has already shown itself to be the less reliable model. The two model
+// ids plausibly draw from separate free-tier quota buckets, so a 429 on
+// 3.6-flash is worth one attempt against 3.8-flash before giving up.
+// This is not the second-provider fallback CLAUDE.md §2 rules out ("If
+// Gemini is down, queue and wait. Do not add a second provider") --
+// it's the same provider, same account, a different model id.
+const GEMINI_MODEL_PRIMARY = "gemini-3.6-flash";
+const GEMINI_MODEL_FALLBACK = "gemini-3.8-flash";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 function buildPrompt(product, issues) {
@@ -48,9 +64,9 @@ Completed tickets:
 ${issueLines}`;
 }
 
-async function callGemini(prompt) {
+async function requestModel(model, prompt, { retries } = {}) {
   if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
   return withRetry(
     async () => {
       const res = await fetch(url, {
@@ -67,10 +83,23 @@ async function callGemini(prompt) {
       const body = await res.json();
       const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
       if (!text.trim()) throw new Error("Gemini returned an empty response");
+      console.log(`[release-notes] ${model} served the summary (reported version: ${body.modelVersion ?? "unknown"})`);
       return text;
     },
-    { label: "Gemini summarize", isRetryable: (err) => isRetryableHttpStatus(err.status) },
+    { label: `Gemini summarize (${model})`, retries, isRetryable: (err) => isRetryableHttpStatus(err.status) },
   );
+}
+
+async function callGemini(prompt) {
+  try {
+    return await requestModel(GEMINI_MODEL_PRIMARY, prompt);
+  } catch (err) {
+    if (err.status !== 429) throw err;
+    console.warn(
+      `[release-notes] ${GEMINI_MODEL_PRIMARY} exhausted retries on 429 -- trying ${GEMINI_MODEL_FALLBACK} once`,
+    );
+    return requestModel(GEMINI_MODEL_FALLBACK, prompt, { retries: 1 });
+  }
 }
 
 // Returns the raw "- **Feature Name** — sentence" markdown bullet list

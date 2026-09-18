@@ -59,18 +59,34 @@ function expectedHoursThroughSprintEnd(sprintStart, sprintEnd, leaveHoursByDay) 
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is not set");
-const pool = new pg.Pool({ connectionString: databaseUrl, ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false } });
+const pool = new pg.Pool({
+  connectionString: databaseUrl,
+  ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false },
+});
 try {
-  const { rows } = await pool.query(`select person_id, sprint_start, sprint_end, pace_score, estimate_score, hygiene_score, logging_score, overall_score, logged_hours, jira_qualifies from person_sprint_summaries`);
-  const { rows: leaveRows } = await pool.query(`select person_id, from_date, to_date, hours from planning_availability`);
+  const { rows } = await pool.query(
+    `select person_id, sprint_start, sprint_end, pace_score, estimate_score, hygiene_score, logging_score, overall_score, logged_hours, jira_qualifies from person_sprint_summaries`,
+  );
+  const { rows: leaveRows } = await pool.query(
+    `select person_id, from_date, to_date, hours from planning_availability`,
+  );
   const leaveByPersonDay = buildLeaveByPersonDay(leaveRows);
 
   let updated = 0;
   let alreadyCorrect = 0;
   for (const row of rows) {
-    const expectedByNow = expectedHoursThroughSprintEnd(row.sprint_start, row.sprint_end, leaveByPersonDay.get(row.person_id));
-    const paceScore = Math.min(100, Math.round((Number(row.logged_hours) / Math.max(expectedByNow, 1)) * 100));
-    const otherTerms = [row.estimate_score, row.hygiene_score, row.logging_score].filter((s) => s !== null);
+    const expectedByNow = expectedHoursThroughSprintEnd(
+      row.sprint_start,
+      row.sprint_end,
+      leaveByPersonDay.get(row.person_id),
+    );
+    const paceScore = Math.min(
+      100,
+      Math.round((Number(row.logged_hours) / Math.max(expectedByNow, 1)) * 100),
+    );
+    const otherTerms = [row.estimate_score, row.hygiene_score, row.logging_score].filter(
+      (s) => s !== null,
+    );
     const terms = [paceScore, ...otherTerms];
     const rawOverallScore = Math.round(terms.reduce((a, b) => a + b, 0) / terms.length);
     const overallScore = row.jira_qualifies ? rawOverallScore : Math.round(rawOverallScore * 0.5);
@@ -85,7 +101,9 @@ try {
     );
     updated++;
   }
-  console.log(`[backfill-pace-scores] rows total: ${rows.length}, updated: ${updated}, already correct: ${alreadyCorrect}`);
+  console.log(
+    `[backfill-pace-scores] rows total: ${rows.length}, updated: ${updated}, already correct: ${alreadyCorrect}`,
+  );
 } finally {
   await pool.end();
 }

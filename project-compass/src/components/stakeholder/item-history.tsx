@@ -32,7 +32,11 @@ function fieldTitle(fieldName: string | null) {
     .replace("Will Be Done By", "Will Be Done By Date")
     .replace("Required By", "Required By Date")
     .replace("Deleted At", "Deletion");
-  return fieldName === "comment" ? "Comment Updated" : fieldName === "attachments" ? "Attachments Updated" : `${label} Changed`;
+  return fieldName === "comment"
+    ? "Comment Updated"
+    : fieldName === "attachments"
+      ? "Attachments Updated"
+      : `${label} Changed`;
 }
 
 export function ItemHistoryDrawer({

@@ -33,16 +33,17 @@ const FIELD_LABELS: Record<string, string> = {
 
 function fieldLabel(field: string | null): string {
   if (!field) return "something";
-  return (
-    FIELD_LABELS[field] ??
-    field
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-  );
+  return FIELD_LABELS[field] ?? field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // Short/meaningful values worth showing inline as an old -> new chip pair.
-const SHOW_VALUE_FIELDS = new Set(["status", "priority", "status_kind", "required_by", "will_be_done_by"]);
+const SHOW_VALUE_FIELDS = new Set([
+  "status",
+  "priority",
+  "status_kind",
+  "required_by",
+  "will_be_done_by",
+]);
 
 function describe(entry: RecentActivityEntry): { text: string; showValues: boolean } {
   const who = entry.changedBy;
@@ -85,7 +86,9 @@ function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
             {entry.oldValue || "—"}
           </span>
           <ArrowRight className="size-3 text-muted-foreground" />
-          <span className="rounded bg-brand-soft px-1.5 py-0.5 text-brand">{entry.newValue || "—"}</span>
+          <span className="rounded bg-brand-soft px-1.5 py-0.5 text-brand">
+            {entry.newValue || "—"}
+          </span>
         </p>
       ) : null}
       {entry.projectName ? (

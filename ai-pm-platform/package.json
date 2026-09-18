@@ -2,7 +2,10 @@
   "name": "ai-pm-platform",
   "private": true,
   "type": "module",
-  "workspaces": ["workers/*", "packages/*"],
+  "workspaces": [
+    "workers/*",
+    "packages/*"
+  ],
   "scripts": {
     "prepare": "node scripts/install-hooks.mjs",
     "test": "node --import tsx --test \"src/**/*.test.ts\" && npm test --workspaces --if-present",

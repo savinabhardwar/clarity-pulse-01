@@ -140,12 +140,7 @@ function computeOverrunTickets(owned) {
     }));
 }
 
-const PLACEHOLDER_PATTERNS = [
-  /\[add your .*here\]/i,
-  /\btbd\b/i,
-  /\blorem ipsum\b/i,
-  /\btodo\b/i,
-];
+const PLACEHOLDER_PATTERNS = [/\[add your .*here\]/i, /\btbd\b/i, /\blorem ipsum\b/i, /\btodo\b/i];
 
 // Stripped of @mentions first -- a comment that's ONLY a couple of
 // mentions plus "please review" reads as near-empty even though the raw
@@ -161,17 +156,48 @@ function looksLikePlaceholder(text) {
 }
 
 const STOPWORDS = new Set([
-  "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "is", "are",
-  "this", "that", "with", "has", "have", "been", "be", "it", "as", "by",
-  "at", "from", "was", "were", "will", "your", "you", "please", "github",
-  "url", "pr", "link", "com", "https", "http",
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "to",
+  "of",
+  "in",
+  "on",
+  "for",
+  "is",
+  "are",
+  "this",
+  "that",
+  "with",
+  "has",
+  "have",
+  "been",
+  "be",
+  "it",
+  "as",
+  "by",
+  "at",
+  "from",
+  "was",
+  "were",
+  "will",
+  "your",
+  "you",
+  "please",
+  "github",
+  "url",
+  "pr",
+  "link",
+  "com",
+  "https",
+  "http",
 ]);
 
 function keywordsOf(text) {
   return new Set(
-    (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter(
-      (w) => w.length > 2 && !STOPWORDS.has(w),
-    ),
+    (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => w.length > 2 && !STOPWORDS.has(w)),
   );
 }
 

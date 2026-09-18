@@ -58,7 +58,7 @@ Checked 2026-09-18. Source: [Supabase Pricing](https://supabase.com/pricing).
 **10 ms** CPU time per invocation on the Free plan (wall-clock/I-O-wait time
 is not counted, only active CPU time). Cloudflare's own docs note the
 average Worker uses ~2.2 ms/request, but this is workload-dependent — a
-Gemini call's *network wait* doesn't count against this, but any JSON
+Gemini call's _network wait_ doesn't count against this, but any JSON
 parsing/validation work around it does. This is why task 6.1b processes one
 Gemini assessment per cron invocation rather than batching. Checked
 2026-09-18. Source: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/).
@@ -82,7 +82,7 @@ binding is used anywhere in this design, so its limits were not researched.
 ### KV operations (reads/writes/deletes per day)
 
 Free plan: **100,000 reads/day**, **1,000 writes/day** (to distinct keys;
-writes to the *same* key are further limited to 1/second, shared with paid
+writes to the _same_ key are further limited to 1/second, shared with paid
 plans), **1 GB** total storage per account/namespace, 25 MiB max value size.
 This is the binding constraint on the kill-switch design (task 5.2) — a
 naive "check KV on every request" pattern is fine for reads (100K/day is
@@ -184,11 +184,11 @@ decision changes.
 
 ## Change log
 
-| Date checked | What changed | Source |
-| --- | --- | --- |
-| 2026-09-18 | Supabase free plan: 500 MB DB, 7-day inactivity pause, 2 active project cap, storage/edge-function/realtime limits recorded | [Supabase Pricing](https://supabase.com/pricing) |
-| 2026-09-18 | Cloudflare Workers free plan: 100K req/day, 10ms CPU/invocation, 5 cron triggers/account | [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) |
-| 2026-09-18 | Workers KV free plan: 100K reads/day, 1K writes/day, 1GB storage | [KV limits](https://developers.cloudflare.com/kv/platform/limits/) |
-| 2026-09-18 | **Cloudflare Queues now available on Free plan** (10K ops/day) — contradicts CLAUDE.md §2's "not on the free plan" assumption; flagged for human decision | [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) |
-| 2026-09-18 | **Durable Objects (SQLite-backed) now available on Free plan** — same CLAUDE.md contradiction as Queues, partially | [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) |
-| 2026-09-18 | Gemini 3.8 Flash confirmed as a real current model; free tier marked "data used to improve products"; RPD figure (~20/day) found only in an unofficial forum source, not Google's own docs — needs re-verification in task 0.7 | [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [Rate limits](https://ai.google.dev/gemini-api/docs/rate-limits) |
+| Date checked | What changed                                                                                                                                                                                                                   | Source                                                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-18   | Supabase free plan: 500 MB DB, 7-day inactivity pause, 2 active project cap, storage/edge-function/realtime limits recorded                                                                                                    | [Supabase Pricing](https://supabase.com/pricing)                                                                                      |
+| 2026-09-18   | Cloudflare Workers free plan: 100K req/day, 10ms CPU/invocation, 5 cron triggers/account                                                                                                                                       | [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)                                                          |
+| 2026-09-18   | Workers KV free plan: 100K reads/day, 1K writes/day, 1GB storage                                                                                                                                                               | [KV limits](https://developers.cloudflare.com/kv/platform/limits/)                                                                    |
+| 2026-09-18   | **Cloudflare Queues now available on Free plan** (10K ops/day) — contradicts CLAUDE.md §2's "not on the free plan" assumption; flagged for human decision                                                                      | [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)                                                        |
+| 2026-09-18   | **Durable Objects (SQLite-backed) now available on Free plan** — same CLAUDE.md contradiction as Queues, partially                                                                                                             | [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)                                                        |
+| 2026-09-18   | Gemini 3.8 Flash confirmed as a real current model; free tier marked "data used to improve products"; RPD figure (~20/day) found only in an unofficial forum source, not Google's own docs — needs re-verification in task 0.7 | [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [Rate limits](https://ai.google.dev/gemini-api/docs/rate-limits) |

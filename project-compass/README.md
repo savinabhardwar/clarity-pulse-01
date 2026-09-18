@@ -16,13 +16,13 @@ There is NO separate module inside a project.
 
 Example projects/modules:
 
- CX Pass
+CX Pass
 
- Agent Assist
+Agent Assist
 
- Knowledge Hub
+Knowledge Hub
 
- Forecasting
+Forecasting
 
 The user selects a project/module and manages its stakeholder items.
 
@@ -40,13 +40,13 @@ Show a clean list/grid of available projects/modules.
 
 Example:
 
- CX Pass
+CX Pass
 
- Agent Assist
+Agent Assist
 
- Knowledge Hub
+Knowledge Hub
 
- Forecasting
+Forecasting
 
 Each project should be selectable.
 
@@ -54,11 +54,11 @@ Clicking a project opens its management page.
 
 Use a consistent application shell with:
 
- Left navigation/sidebar
+Left navigation/sidebar
 
- Page header
+Page header
 
- Main content area
+Main content area
 
 Keep navigation minimal and do not add unnecessary pages.
 
@@ -86,7 +86,7 @@ Show a table containing Feature items.
 
 Add a prominent:
 
-+ Add Feature
+- Add Feature
 
 button.
 
@@ -94,29 +94,29 @@ Feature Table Columns
 
 Use these columns:
 
- Summary
+Summary
 
- Description
+Description
 
- Jira Ticket Link
+Jira Ticket Link
 
- Status
+Status
 
- Priority
+Priority
 
- Comment
+Comment
 
- Created By
+Created By
 
- Required By Date
+Required By Date
 
- Will Be Done By Date
+Will Be Done By Date
 
- Attach Document
+Attach Document
 
- Actions
+Actions
 
- History
+History
 
 Use realistic sample records so the table is populated when the application loads.
 
@@ -126,7 +126,7 @@ Use the exact same structure as Features, but display Implementation items.
 
 Button:
 
-+ Add Implementation
+- Add Implementation
 
 Use realistic sample implementation records.
 
@@ -136,25 +136,25 @@ The Add button must open a side drawer or modal without leaving the current page
 
 Fields:
 
- Summary
+Summary
 
- Description
+Description
 
- Jira Ticket Link
+Jira Ticket Link
 
- Status
+Status
 
- Priority
+Priority
 
- Comment
+Comment
 
- Created By
+Created By
 
- Required By Date
+Required By Date
 
- Will Be Done By Date
+Will Be Done By Date
 
- Attach Document
+Attach Document
 
 Use appropriate controls for each field.
 
@@ -164,29 +164,29 @@ The status dropdown must contain both Jira statuses and additional stakeholder s
 
 Include these stakeholder statuses:
 
- To Do
+To Do
 
- In Progress
+In Progress
 
- Waiting for Spec
+Waiting for Spec
 
- Waiting for confirmation
+Waiting for confirmation
 
- Deprioritised
+Deprioritised
 
- Reviewing Requirements
+Reviewing Requirements
 
- Done
+Done
 
 Also include realistic Jira statuses such as:
 
- To Do
+To Do
 
- In Progress
+In Progress
 
- In Review
+In Review
 
- Done
+Done
 
 Clearly support both types of statuses in the UI.
 
@@ -196,11 +196,11 @@ Provide a simple priority dropdown.
 
 Use:
 
- High
+High
 
- Medium
+Medium
 
- Low
+Low
 
 The form must have:
 
@@ -215,23 +215,23 @@ Implement working frontend CRUD interactions using local/mock state.
 
 Every item must support:
 
- Create
+Create
 
- View
+View
 
- Edit
+Edit
 
- Delete
+Delete
 
 Use a three-dot Actions menu for each row.
 
 Actions:
 
- View
+View
 
- Edit
+Edit
 
- Delete
+Delete
 
 Delete must show a confirmation dialog before removing the item.
 
@@ -241,25 +241,25 @@ Clicking View or the Summary should open a detail side drawer.
 
 Show all information for the selected item:
 
- Summary
+Summary
 
- Description
+Description
 
- Jira Ticket Link
+Jira Ticket Link
 
- Status
+Status
 
- Priority
+Priority
 
- Comment
+Comment
 
- Created By
+Created By
 
- Required By Date
+Required By Date
 
- Will Be Done By Date
+Will Be Done By Date
 
- Attachments
+Attachments
 
 Provide Edit and Delete actions.
 
@@ -316,9 +316,9 @@ Status
 
 Multi-select status filter containing:
 
- Jira statuses
+Jira statuses
 
- Stakeholder statuses
+Stakeholder statuses
 
 Date Range
 
@@ -336,11 +336,11 @@ The Attach Document field should support a simple file-upload UI.
 
 After uploading, show:
 
- File name
+File name
 
- File type
+File type
 
- File size
+File size
 
 Allow the user to remove the attachment.
 
@@ -352,29 +352,29 @@ Populate the application with realistic sample data.
 
 Include enough records to demonstrate:
 
- Multiple projects
+Multiple projects
 
- Features
+Features
 
- Implementation items
+Implementation items
 
- Different statuses
+Different statuses
 
- Different priorities
+Different priorities
 
- Jira ticket links
+Jira ticket links
 
- Comments
+Comments
 
- Different users
+Different users
 
- Required dates
+Required dates
 
- Will Be Done By dates
+Will Be Done By dates
 
- Attachments
+Attachments
 
- Audit history
+Audit history
 
 Do not leave the interface empty.
 
@@ -384,27 +384,27 @@ Create a polished, modern enterprise SaaS interface.
 
 Use:
 
- Clean sidebar
+Clean sidebar
 
- Professional typography
+Professional typography
 
- White/light neutral background
+White/light neutral background
 
- Subtle borders
+Subtle borders
 
- Compact data tables
+Compact data tables
 
- Clear status badges
+Clear status badges
 
- Priority indicators
+Priority indicators
 
- Consistent spacing
+Consistent spacing
 
- Modal/drawer interactions
+Modal/drawer interactions
 
- Clear primary buttons
+Clear primary buttons
 
- Responsive layout
+Responsive layout
 
 The application should look like a production-ready internal stakeholder management tool, not a basic CRUD demo.
 
@@ -416,49 +416,49 @@ BUILD EVERYTHING NOW IN ONE GO.
 
 Do NOT:
 
- Create a plan first
+Create a plan first
 
- Explain what you are going to build
+Explain what you are going to build
 
- Ask for clarification
+Ask for clarification
 
- Build only the landing page
+Build only the landing page
 
- Build only the table
+Build only the table
 
- Create placeholder pages
+Create placeholder pages
 
- Split the implementation into phases
+Split the implementation into phases
 
- Leave TODOs
+Leave TODOs
 
- Leave major interactions unimplemented
+Leave major interactions unimplemented
 
- Add unnecessary features
+Add unnecessary features
 
 Directly implement the complete UI and all specified interactions in this generation.
 
 The final result should allow me to immediately:
 
- Select a project/module.
+Select a project/module.
 
- Open Features or Implementation.
+Open Features or Implementation.
 
- Search and filter items.
+Search and filter items.
 
- Add an item.
+Add an item.
 
- View an item.
+View an item.
 
- Edit an item.
+Edit an item.
 
- Delete an item.
+Delete an item.
 
- Upload/remove an attachment.
+Upload/remove an attachment.
 
- Open the audit history using the clock icon.
+Open the audit history using the clock icon.
 
- See realistic sample data.
+See realistic sample data.
 
 Do not add features that are not specified in this prompt. Keep the scope strictly to this stakeholder management application.
 

@@ -7,18 +7,18 @@ Defines the one internal event shape every ingest Worker normalizes into.
 
 ## Normalized event shape
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `source` |  |  |
-| `event_type` |  |  |
-| `project_id` |  |  |
-| `entity_type` |  |  |
-| `entity_id` |  |  |
-| `actor` |  |  |
-| `timestamp` |  |  |
-| `payload` |  |  |
-| `correlation_id` |  |  |
-| provider event ID (dedup key) |  |  |
+| Field                         | Type | Notes |
+| ----------------------------- | ---- | ----- |
+| `source`                      |      |       |
+| `event_type`                  |      |       |
+| `project_id`                  |      |       |
+| `entity_type`                 |      |       |
+| `entity_id`                   |      |       |
+| `actor`                       |      |       |
+| `timestamp`                   |      |       |
+| `payload`                     |      |       |
+| `correlation_id`              |      |       |
+| provider event ID (dedup key) |      |       |
 
 ---
 

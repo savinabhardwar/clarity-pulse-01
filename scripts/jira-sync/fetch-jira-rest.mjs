@@ -124,7 +124,8 @@ function slimIssue(issue) {
     // seconds like the native estimate fields -- converted to seconds at
     // the point of use in sync.mjs so it stores/compares like every other
     // *_seconds column.
-    qaPlannedHours: typeof f[QA_PLANNED_HOURS_FIELD] === "number" ? f[QA_PLANNED_HOURS_FIELD] : null,
+    qaPlannedHours:
+      typeof f[QA_PLANNED_HOURS_FIELD] === "number" ? f[QA_PLANNED_HOURS_FIELD] : null,
     parent: f.parent
       ? {
           key: f.parent.key,

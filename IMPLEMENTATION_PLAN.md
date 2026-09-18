@@ -41,6 +41,7 @@ the contract every later phase depends on. Expect this to be mostly reading,
 API-poking, and asking questions — not coding.
 
 ### 0.1 Convert and index the source spec
+
 - **Goal:** the spec is readable and greppable.
 - **Do:** `pandoc -t markdown` the uploaded `.docx` into `docs/spec.md`. Extract
   the 30 locked decisions (D1–D30) into `docs/decisions.md` as a table.
@@ -48,6 +49,7 @@ API-poking, and asking questions — not coding.
 - **Done when:** `docs/spec.md` and `docs/decisions.md` exist and are complete.
 
 ### 0.2 Map the real Jira configuration
+
 - **Goal:** know the actual workflow, not the idealized one.
 - **Do:** against the real Jira instance, record: project keys; issue types;
   **exact** status names; **transition IDs** for every transition the automation
@@ -65,18 +67,20 @@ API-poking, and asking questions — not coding.
   and the workflow would need editing.
 
 ### 0.3 Map the Requirements Gathering App
+
 - **Goal:** know how requirements get in and how we link back.
 - **Do:** document its data model, the fields available per requirement, whether
   it can emit webhooks or must be polled, its auth model, and whether we can
   write back a Jira link / clarification request to it.
 - **Check:** this is the source of truth for requirements (D22) — if it cannot
-  emit events *and* cannot be polled, the whole ingestion design changes. Find
+  emit events _and_ cannot be polled, the whole ingestion design changes. Find
   out before designing.
 - **Done when:** documented in `docs/discovery.md`, including the ingestion mode
   (webhook vs. poll) we will actually use.
 - **Ask if:** there is no API at all.
 
 ### 0.4 Map Git provider and QA source
+
 - **Goal:** know the PR/commit event contracts and where QA results live.
 - **Do:** confirm the Git provider, repos in scope, DEV branch names, available
   webhook events (branch create, push, PR opened/merged), and the signature
@@ -89,6 +93,7 @@ API-poking, and asking questions — not coding.
 - **Done when:** both documented; evidence storage location decided.
 
 ### 0.4b Capture the QA rota inputs
+
 - **Goal:** know who can be assigned QA, per project, before building assignment.
 - **Do:** from the human, record per project: the eligible QA people, how duty
   rotates (if at all), what "unavailable" looks like (leave, other project), and
@@ -104,6 +109,7 @@ API-poking, and asking questions — not coding.
   than a single on-duty selection — that changes the schema in task 2.2b.
 
 ### 0.5 Verify free-tier constraints
+
 - **Goal:** no design built on a limit that doesn't exist.
 - **Do:** check current docs for Supabase free-project limits (DB size, the
   inactivity-pause behaviour and its window) and Cloudflare free-plan limits
@@ -117,6 +123,7 @@ API-poking, and asking questions — not coding.
 - **Done when:** `docs/constraints.md` exists with dated, sourced numbers.
 
 ### 0.6 Write the event contracts
+
 - **Goal:** one normalized internal event schema.
 - **Do:** for each source, map its real payload to the internal event vocabulary
   from spec §8. Define the normalized event shape: `source`, `event_type`,
@@ -127,9 +134,10 @@ API-poking, and asking questions — not coding.
 - **Done when:** `docs/event-contracts.md` and `docs/field-mapping.md` complete.
 
 ### 0.7 Verify Gemini 3.6 Flash API access
+
 - **Revised 2026-09-18:** target model switched from `gemini-3.8-flash` to
   `gemini-3.6-flash`. Live testing found 3.8-flash returning `503
-  UNAVAILABLE` on every attempt (structured and plain), while a production
+UNAVAILABLE` on every attempt (structured and plain), while a production
   script already in this repo (`scripts/release-notes/summarize.mjs`) has
   been running successfully against `gemini-3.6-flash` — human decision to
   switch rather than wait on 3.8. See `docs/discovery.md` §0.7 for the full
@@ -186,6 +194,7 @@ API-poking, and asking questions — not coding.
      it explicitly, not assume it was a one-off.
 
 > ### Gate 0 — passed 2026-09-18, with two follow-ups carried forward (see
+>
 > task 0.7 above; both non-blocking per human decision)
 > `docs/discovery.md`, `constraints.md`, `field-mapping.md`, `event-contracts.md`
 > all exist. Every Jira transition the automation needs has a real ID. No
@@ -197,6 +206,7 @@ API-poking, and asking questions — not coding.
 # Phase 1 — Repo and infrastructure skeleton
 
 ### 1.1 Initialize the monorepo
+
 - **Revised 2026-09-18:** the repo root is already `tanstack_start_ts` (its
   own `package.json`/`vite.config`/`tsconfig.json`/CI scripts) — confirmed
   live, not assumed. This project's own workspace lives entirely under a new
@@ -216,6 +226,7 @@ API-poking, and asking questions — not coding.
   scripts.
 
 ### 1.2 Provision Supabase
+
 - **Do:** create **a new, separate free Supabase project** — human-confirmed
   2026-09-18 not to reuse the existing root `supabase/` project in this repo
   (which is `team-pulse-54`'s live backend, 68 migrations already in it, per
@@ -234,12 +245,13 @@ API-poking, and asking questions — not coding.
 **Done — 2026-09-18.** Human created the project and handed over credentials
 directly in chat (URL, anon key, service_role key, DB password). Verified
 live, not assumed:
+
 - Project ref `yfrhgvkjroliiaojevdj` (decoded from the JWT keys), URL
   `https://yfrhgvkjroliiaojevdj.supabase.co`.
 - **`service_role` key confirmed working** against `/rest/v1/` (200,
   returned the PostgREST OpenAPI spec). **The legacy JWT `anon` key was
   rejected** — `401 "Only the service_role API key can be used for this
-  endpoint"`. This project appears to have Supabase's newer key-format
+endpoint"`. This project appears to have Supabase's newer key-format
   defaults, matching what `docs/discovery.md` §0.3 already found for
   `project-compass`'s separate Supabase project (`sb_publishable_...`
   format). Not blocking — Workers use `service_role` per `CLAUDE.md`/task
@@ -251,7 +263,7 @@ live, not assumed:
   contains characters (`#`, `@`, `&`) requiring URL-encoding in the
   connection string — used as given, not re-derived.
 - **`pgvector` enabled and confirmed**: `create extension if not exists
-  vector` succeeded, `pg_extension` confirms version `0.8.2` installed. This
+vector` succeeded, `pg_extension` confirms version `0.8.2` installed. This
   is a DB-level flag only — no PM Brain tables were created (still deferred
   to Phase 7 per the 2026-09-18 scope decision).
 - Credentials stored in `ai-pm-platform/.dev.vars` (gitignored, confirmed
@@ -264,6 +276,7 @@ live, not assumed:
   one of these two first.
 
 ### 1.3 Wire Cloudflare
+
 - **Do:** `wrangler` config for one hello-world Worker, a KV namespace for
   feature flags. No Workers AI binding — inference does not run on Cloudflare.
   Deploy it.
@@ -274,6 +287,7 @@ Cloudflare Workers` template) and the account ID was fetched live via
 `GET /client/v4/accounts` (one account, `22e527436f21fe468317a74b3204c712`,
 no ambiguity). Both stored in `ai-pm-platform/.dev.vars` alongside the
 Supabase/Gemini keys.
+
 - `wrangler` and `@cloudflare/workers-types` added as devDependencies.
 - `ai-pm-platform` converted to an **npm workspaces root**
   (`workers/*`, `packages/*`) — this is the point the plan's own task 1.1
@@ -307,6 +321,7 @@ Supabase/Gemini keys.
 ### 1.4 Secrets hygiene and CI
 
 **Done — 2026-09-18.**
+
 - `.gitignore` coverage: already global from before this project existed
   (`.dev.vars`, `node_modules`, `*.local`, etc. at repo root, confirmed via
   `git check-ignore` for both `.dev.vars` files). No change needed.
@@ -323,9 +338,9 @@ Supabase/Gemini keys.
   `FAKE_API_KEY=` followed by an AWS-access-key-shaped fake value, ran
   `git commit` — blocked, exit code
   1. Then staged all of today's real `ai-pm-platform` files and ran the hook
-  directly — exit code 0, no false positives, and confirmed `.dev.vars`
-  never enters the staging area even via a directory-wide `git add` (two
-  independent layers: `.gitignore` + the hook's filename check).
+     directly — exit code 0, no false positives, and confirmed `.dev.vars`
+     never enters the staging area even via a directory-wide `git add` (two
+     independent layers: `.gitignore` + the hook's filename check).
 - **CI workflow** (`.github/workflows/ai-pm-platform-ci.yml`, created in
   task 1.1, extended here): `checks` job runs lint/typecheck/test on every
   PR and push to `main` scoped to `ai-pm-platform/**`; a new `deploy` job
@@ -360,6 +375,7 @@ Supabase/Gemini keys.
   hook, and CI deploys on merge.
 
 > ### Gate 1 — substantively passed 2026-09-18, one caveat
+>
 > Empty deployable pipeline, no secrets in the repo, CI green.
 > Deployable pipeline confirmed live (hello-world Worker deployed and
 > verified reading KV in production, task 1.3). No secrets in the repo,
@@ -373,6 +389,7 @@ Supabase/Gemini keys.
 # Phase 2 — Database schema
 
 ### 2.1 MVP tables
+
 - **Goal:** the core of spec §6, not all of it.
 - **Do:** forward-only numbered migrations for: `users`, `projects`,
   `project_configurations`, `project_members`, `requirements`,
@@ -384,6 +401,7 @@ Supabase/Gemini keys.
   zero.
 
 ### 2.2 Delivery tables
+
 - **Do:** `assignments`, `dependencies`, `branches`, `commits`,
   `pull_requests`, `qa_runs`. Defer `bugs` (D13 defers bug automation).
 - **Check:** `qa_runs` needs `cycle_number` so each QA attempt is its own row —
@@ -400,22 +418,24 @@ and they're the Twin's actual data, just not its richer query/contradiction
 layer.
 
 ### 2.2b QA rota table
+
 - **Goal:** the human control surface for QA assignment, per `CLAUDE.md` §8.
 - **Do:** one migration adding a rota per project. Suggested shape, adjust to
   what task 0.4b actually found:
 
-  | Column | Purpose |
-  |---|---|
-  | `project_id` | FK, unique — one rota per project |
-  | `eligible_user_ids` | human-maintained list of who may be assigned QA |
-  | `on_duty_user_id` | nullable; if set, assignment prefers this person |
-  | `selection_rule` | enum, e.g. `on_duty` \| `round_robin` \| `manual_only` |
-  | `last_assigned_user_id` | supports round-robin without a separate counter |
-  | `paused` | boolean; suspends auto-assignment for this project |
-  | `updated_by`, `updated_at` | so the action log can explain past assignments |
+  | Column                     | Purpose                                                |
+  | -------------------------- | ------------------------------------------------------ |
+  | `project_id`               | FK, unique — one rota per project                      |
+  | `eligible_user_ids`        | human-maintained list of who may be assigned QA        |
+  | `on_duty_user_id`          | nullable; if set, assignment prefers this person       |
+  | `selection_rule`           | enum, e.g. `on_duty` \| `round_robin` \| `manual_only` |
+  | `last_assigned_user_id`    | supports round-robin without a separate counter        |
+  | `paused`                   | boolean; suspends auto-assignment for this project     |
+  | `updated_by`, `updated_at` | so the action log can explain past assignments         |
 
   Plus a separate per-issue override: `issue_id`, `qa_user_id`, `created_by`,
   `consumed_at` (nullable).
+
 - **Check:** the override table needs `consumed_at` so an applied override is
   not re-applied on the next cron tick. Do not model overrides as a mutable
   field on the rota row. Every user id must FK to `users` and be validated as an
@@ -427,6 +447,7 @@ layer.
   person — a schedule table is a different shape and needs confirming first.
 
 ### 2.4 Constraints, indexes, idempotency keys
+
 - **Do:** foreign keys; a unique constraint supporting event deduplication
   (`source` + provider event ID); unique keys on external identifiers
   (`jira_issue_key`, PR external ID, commit hash per repo); indexes on every FK
@@ -435,18 +456,21 @@ layer.
   upsert path handles cleanly.
 
 ### 2.5 Permissions
+
 - **Do:** Row Level Security reflecting D3 and D20 — project configuration is
   PM/Admin only; automation override is PM/Admin only. Service role for Workers.
 - **Done when:** a test proves a non-admin role cannot write
   `project_configurations`.
 
 ### 2.6 Seed and fixtures
+
 - **Do:** a seed script creating one synthetic project with members, and fixture
   payloads (real shapes captured in Phase 0) for every source system.
 - **Done when:** a fresh developer can go from clone to populated local DB in one
   command.
 
 > ### Gate 2
+>
 > Records can be created, related, and queried with no AI and no integrations.
 > This matches the spec's own Phase 1 exit criteria.
 
@@ -455,18 +479,21 @@ layer.
 # Phase 3 — Event ingestion
 
 ### 3.1 Shared normalizers
+
 - **Do:** in `packages/core`, one pure normalizer per source turning a raw
   payload into the internal event shape from `docs/event-contracts.md`.
 - **Check:** pure functions, no I/O — they must be trivially unit-testable
   against the Phase 0 fixtures.
 
 ### 3.2 Signature verification
+
 - **Do:** per-source HMAC verification at the top of each ingest Worker, before
   any parsing or DB access.
 - **Done when:** a test with a tampered body and a valid-looking header is
   rejected with 401 and writes nothing.
 
 ### 3.3 Ingest Workers
+
 - **Do:** one Worker per source: verify → normalize → resolve project →
   **enqueue onto the events Cloudflare Queue** → return 2xx fast. The ingest
   Worker does **not** touch Postgres directly (revised 2026-09-18 — see
@@ -479,6 +506,7 @@ layer.
   queue at all).
 
 ### 3.3b Event queue consumer
+
 - **Goal:** decouple fast webhook acknowledgment from Postgres writes.
 - **Do:** `workers/process-events`, a Queue consumer bound to the events queue.
   For each message (or batch): dedup on provider event ID → upsert `events` →
@@ -491,6 +519,7 @@ layer.
   to retry per the configured policy, not crash-loop the whole queue.
 
 ### 3.4 Idempotency and ordering
+
 - **Do:** dedup on the provider event ID. Guard state updates against
   out-of-order delivery using source timestamps — an older event must not
   overwrite newer state.
@@ -503,6 +532,7 @@ layer.
   criterion and the most important test in the project.
 
 ### 3.5 Failure handling — Dead Letter Queue
+
 - **Do:** configure a **Dead Letter Queue (DLQ)** on the events queue for
   messages that exhaust `max_retries` (revised 2026-09-18 — this replaces the
   original hand-rolled "no Queues on the free plan" design; Queues are now
@@ -515,9 +545,10 @@ layer.
   already does. Do not silently swallow a failure.
 
 ### 3.6 Scheduler Worker
+
 - **Do:** cron-driven Worker for stale-work detection, Gemini assessment
   processing (Phase 6), the QA-rota exception check (4.4c), and (if needed
-  from 1.2) a keep-alive ping to Supabase. Event *retries* are now handled by
+  from 1.2) a keep-alive ping to Supabase. Event _retries_ are now handled by
   the queue consumer's own retry policy (3.3b), not by this Worker — its job
   here is DLQ-drain scheduling and everything that isn't event-delivery retry.
 - **Check:** stay within the free-plan cron trigger count from
@@ -527,6 +558,7 @@ layer.
   prefer one cron dispatching multiple jobs over many separate crons.
 
 > ### Gate 3
+>
 > Events from every configured source land reliably, deduplicate, survive replay
 > and reordering, and failures are visible rather than lost.
 
@@ -537,14 +569,16 @@ layer.
 No AI in this phase. This is where most of the product value sits.
 
 ### 4.1 Policy Engine
+
 - **Do:** `packages/policy` as pure functions: `(event, currentState, config) →
-  ProposedAction[]`. Encode the autonomy boundaries from spec §13 as rules —
+ProposedAction[]`. Encode the autonomy boundaries from spec §13 as rules —
   including the ones that forbid action.
 - **Check:** the engine must be able to return "not permitted" with a reason.
   Never-automate list: developer assignment, active-sprint changes, approved
   requirement edits, release decisions, bug blocking.
 
 ### 4.2 Automation Engine
+
 - **Do:** `packages/automation` — the only module that calls external APIs.
   Executes a permitted `ProposedAction`, records the result.
 - **Check:** every outbound call needs an idempotency guard, because the same
@@ -552,6 +586,7 @@ No AI in this phase. This is where most of the product value sits.
   status and skip if it's already in the target state.
 
 ### 4.3 Git ↔ Jira matching
+
 - **Do:** ranked matcher per spec §11: explicit issue key > key in branch name >
   key in PR title > key in commit message > key in PR description > semantic
   match.
@@ -561,6 +596,7 @@ No AI in this phase. This is where most of the product value sits.
   Phase 6; ship the exact-signal tiers now.
 
 ### 4.4 The workflow rules
+
 - **Do:** implement spec §12, each as an independently tested rule:
   - requirement ready → create Jira issue, persist requirement↔issue link
   - qualifying Jira comment **or** Git activity → In Progress (D6)
@@ -574,6 +610,7 @@ No AI in this phase. This is where most of the product value sits.
   PASS validation must be server-side and unbypassable.
 
 ### 4.4b QA assignment from the rota
+
 - **Goal:** assign QA automatically, from a list only the human controls.
 - **Do:** when an issue enters Testing, resolve the assignee in this order:
   1. an unconsumed per-issue override → use it, mark `consumed_at`
@@ -584,6 +621,7 @@ No AI in this phase. This is where most of the product value sits.
   Write an `assignments` row with `assignment_type = 'qa'`, and an `action_log`
   row recording which branch of the above was taken and the rota's `updated_at`
   at the time.
+
 - **Check:** read `CLAUDE.md` §3a and §8 before starting.
   - **Idempotency:** if the issue already has an active QA assignment, skip. The
     scheduler will re-evaluate this issue on later ticks and must not reassign.
@@ -599,6 +637,7 @@ No AI in this phase. This is where most of the product value sits.
   issue produces exactly one assignment.
 
 ### 4.4c Unassigned-QA exception surface
+
 - **Goal:** issues must never sit silently in Testing with no QA.
 - **Do:** a deterministic check (cron, per task 3.6) flagging any issue in
   Testing with no active QA assignment for longer than a configured threshold.
@@ -610,17 +649,20 @@ No AI in this phase. This is where most of the product value sits.
   exception rather than silence.
 
 ### 4.5 QA capture surface
+
 - **Do:** if Phase 0 found no QA system with an API, build the minimal QA form on
   Pages writing to `qa_runs`, enforcing the four PASS fields and the FAIL reason
   categories (developer defect, requirement issue, requirement change,
   dependency, environment, test data, QA issue, other).
 
 ### 4.6 Integration tests
+
 - **Do:** drive a synthetic project end to end from requirement through to Done
   and through a FAIL→rework→pass cycle, using fixtures and a mocked Jira.
 - **Done when:** the full lifecycle passes with no AI involved.
 
 > ### Gate 4
+>
 > The core workflow runs reliably with zero AI. **This is a shippable product on
 > its own** — consider running it against one real low-risk project before
 > continuing.
@@ -633,6 +675,7 @@ Do this before any AI or autonomy. The source spec puts it at Phase 11; that is
 wrong for a solo operator with no on-call.
 
 ### 5.1 AI/automation action log
+
 - **Do:** an append-only `action_log` table: trigger event, proposed action,
   policy verdict, executed y/n, external result, actor (`system`/`ai`/`user`),
   model and prompt version where relevant, and reversal status.
@@ -640,17 +683,20 @@ wrong for a solo operator with no on-call.
   reconstruct why any ticket moved.
 
 ### 5.2 Global kill switch
+
 - **Do:** a KV-backed flag checked by the Automation Engine before every
   outbound call, plus per-rule and per-project flags.
 - **Done when:** flipping the global switch stops all execution within one
   request cycle while ingestion keeps recording events. Test this, don't assume.
 
 ### 5.3 Shadow mode
+
 - **Do:** a mode where a rule evaluates and logs its intended action with full
   reasoning but does not execute.
 - **Done when:** every rule can be independently set to `off | shadow | live`.
 
 ### 5.4 Observability
+
 - **Do:** structured logging, an automation-failure surface, and counters for
   actions executed / blocked by policy / failed.
 - **Check:** also track Gemini call health — pending assessment queue depth,
@@ -658,6 +704,7 @@ wrong for a solo operator with no on-call.
   visible as a failed automation.
 
 > ### Gate 5
+>
 > Every action is attributable, reversible or overridable, observable, and
 > stoppable. Shadow mode works.
 
@@ -666,6 +713,7 @@ wrong for a solo operator with no on-call.
 # Phase 6 — AI requirement intelligence (shadow first)
 
 ### 6.1 Gemini client
+
 - **Do:** `packages/llm` implementing the `assess()` contract in `CLAUDE.md` §5,
   targeting the Gemini API endpoint documented in task 0.7.
 - **Check:**
@@ -689,6 +737,7 @@ wrong for a solo operator with no on-call.
   confirms the scheduler does not crash or block.
 
 ### 6.1b Assessment flow in the scheduler
+
 - **Do:** the scheduler Worker (cron) picks pending assessments from the
   database, calls the Gemini client (6.1), validates, writes
   `requirement_assessments`, marks done.
@@ -704,11 +753,12 @@ wrong for a solo operator with no on-call.
     requirement, skip.
 
 ### 6.2 Context retrieval and PII redaction
+
 - **Do:** build the retrieval bundle from spec §10: the requirement, relevant
   Twin state and history, PM Brain entries for that project, existing
   Epics/related work, dependencies, similar historical requirements. Run a PII
   stripping pass (names, emails, phone numbers) before building the prompt.
-- **Check:** retrieve *relevant* context, not the database. Set and enforce a
+- **Check:** retrieve _relevant_ context, not the database. Set and enforce a
   token budget **against Gemini's actual context window from task 0.7**, not a
   guessed number, and leave headroom for the response. Log what was retrieved
   alongside each assessment so decisions are explainable later. The LLM client
@@ -716,6 +766,7 @@ wrong for a solo operator with no on-call.
   refuse to send unredacted context.
 
 ### 6.3 Readiness assessment
+
 - **Do:** structured output per spec §10 — decision (`READY`,
   `NEEDS_CLARIFICATION`, `POSSIBLE_DUPLICATE`, `HUMAN_REVIEW`), confidence,
   missing information, ambiguities, contradictions, related work, duplicate
@@ -727,6 +778,7 @@ wrong for a solo operator with no on-call.
   you detect and segment this.
 
 ### 6.4 Shadow run and calibration
+
 - **Do:** run in shadow over real requirements. Build a simple review screen
   comparing AI decision to what the human actually did.
 - **Done when:** you have enough paired outcomes to propose an auto-proceed
@@ -736,6 +788,7 @@ wrong for a solo operator with no on-call.
   are cleared for third-party data exposure per `CLAUDE.md` §2b.
 
 > ### Gate 6
+>
 > Requirements are consistently routed with explainable evidence. Auto-proceed is
 > still off unless a human enabled it with calibration data in hand.
 
@@ -751,6 +804,7 @@ proven out. This is a sequencing decision, not a scope cut — nothing here is
 removed from the plan, just pushed later than originally ordered.
 
 ### 7.0 PM Brain tables (moved from the original task 2.3)
+
 - **Do:** `pm_brain_entries`, `pm_brain_links`, plus a `vector` column for
   embeddings and an appropriate index. Migrate this in alongside 7.1, not
   earlier — no code depends on these tables existing before this phase
@@ -760,6 +814,7 @@ removed from the plan, just pushed later than originally ordered.
   polymorphic side, so validate `entity_type` against an allowed list.
 
 ### 7.1 PM Brain ingestion and retrieval
+
 - **Do:** CRUD for the nine entry types (decisions, meeting notes, stakeholder
   context, risks, assumptions, hypotheses, discussions, lessons learned, project
   context), linking to operational entities, embeddings, and search by project +
@@ -768,12 +823,14 @@ removed from the plan, just pushed later than originally ordered.
   anywhere. PM Brain holds context, never operational ticket state.
 
 ### 7.2 Twin state and timeline queries
+
 - **Do:** current-state views across all four sources, plus the project event
   timeline.
 - **Done when:** the system can answer "what is happening", "what changed since
   X", and "how are these entities connected" from the DB alone.
 
 ### 7.3 Contradiction and staleness detection
+
 - **Do:** deterministic checks — Jira says Done but no PR merged; PR merged but
   ticket not in Testing; ticket In Progress with no Git activity for N days;
   issue with no requirement link; QA run with no evidence; issue in Testing with
@@ -785,6 +842,7 @@ removed from the plan, just pushed later than originally ordered.
 # Phase 8 — PM Control Centre
 
 ### 8.1 Exception-first dashboard
+
 - **Do:** Pages app with global and per-project views (D30), showing the D29
   priority order: Needs Attention, Critical Risks, Blockers, Decisions Required,
   What Changed, Project Status, Upcoming Deadlines, AI Recommendations.
@@ -792,6 +850,7 @@ removed from the plan, just pushed later than originally ordered.
   routine activity, the design has failed.
 
 ### 8.2 Evidence, overrides, and controls
+
 - **Do:** every alert links to the events and records behind it. PM/Admin
   override UI. Automation failure and dead-letter queue surface. Kill switch and
   per-rule mode controls exposed in the UI.
@@ -800,6 +859,7 @@ removed from the plan, just pushed later than originally ordered.
   which the interim control surface in `CLAUDE.md` §8 is retired.
 
 ### 8.3 Ask AI PM
+
 - **Do:** a Q&A surface over Twin + PM Brain context.
 - **Check:** read-only. It answers with citations to records; it never proposes
   an action that bypasses the Policy Engine.
@@ -822,28 +882,28 @@ Moved out of the critical path deliberately:
 
 # Known risks to keep in view
 
-| Risk | Where it bites | Mitigation already in the plan |
-|---|---|---|
-| Guessed Jira transition IDs | Silent mis-transitions in production | Gate 0; task 0.2 |
-| Webhook spoofing | Forged QA sign-off or ticket transition | Task 3.2, verified before DB access |
-| Duplicate webhook delivery | Double Jira tickets, double transitions | Tasks 2.4, 3.4 |
-| Out-of-order delivery | Newer state overwritten by older event | Task 3.4 |
-| Queue message stuck failing / DLQ fills up unnoticed | Lost events on permanent failure | Task 3.5 DLQ + `failed_events` visibility table, drained by scheduler |
-| Cron budget (5/account) too tight once Queues add DLQ-drain scheduling | A needed check silently loses its slot | Task 3.6 — one cron dispatching multiple jobs, budget tracked in `docs/constraints.md` |
-| Supabase inactivity pause | Ingestion fails quietly | Tasks 1.2, 3.6 |
-| Weak confidence calibration | Bad auto-proceed decisions | Tasks 6.3, 6.4 — shadow mode, no threshold until paired data exists |
-| Gemini free tier down or rate-limited | AI assessments stall | Task 6.1b — backlog visible, deterministic automation provably unaffected |
-| Google silently updates Flash model | Past assessments no longer comparable | `model` from response stamped per assessment (task 6.1) |
-| Free-tier data policy | Real requirement text and PM context seen by Google | `CLAUDE.md` §2b — PII stripping, per-project opt-in for NDA work |
-| Free tier deprecated or repriced | AI layer breaks with no notice | `packages/llm` abstraction allows provider swap; no second provider until needed |
-| Worker CPU ceiling hit during Gemini call | Scheduler Worker killed mid-request | Task 6.1b — one assessment per invocation, let next cron tick continue |
-| Embedding dimension changed after data exists | Full re-embed of PM Brain | Task 0.7 settles the embedding model before task 7.0 (deferred with PM Brain) |
-| Free-tier terms change | Design built on a stale limit | Task 0.5, dated entries in `constraints.md` |
-| Solo operator, no on-call | Automation misbehaves unnoticed for weeks | Phase 5 pulled forward; Phase 8.2 failure surface |
-| Stale QA rota | Work stalls in Testing with no assignee, silently | Task 4.4c exception check; rota `updated_at` in the action log |
-| Override re-applied on every cron tick | Same person reassigned repeatedly | `consumed_at` on the override row (task 2.2b) |
-| Single-QA project | Rota has no rotation and no cover | Flagged in task 0.4b before schema is built |
-| Scope creep back to 11 phases | Never ships | Backlog section; Gate 4 is a shippable product |
+| Risk                                                                   | Where it bites                                      | Mitigation already in the plan                                                         |
+| ---------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Guessed Jira transition IDs                                            | Silent mis-transitions in production                | Gate 0; task 0.2                                                                       |
+| Webhook spoofing                                                       | Forged QA sign-off or ticket transition             | Task 3.2, verified before DB access                                                    |
+| Duplicate webhook delivery                                             | Double Jira tickets, double transitions             | Tasks 2.4, 3.4                                                                         |
+| Out-of-order delivery                                                  | Newer state overwritten by older event              | Task 3.4                                                                               |
+| Queue message stuck failing / DLQ fills up unnoticed                   | Lost events on permanent failure                    | Task 3.5 DLQ + `failed_events` visibility table, drained by scheduler                  |
+| Cron budget (5/account) too tight once Queues add DLQ-drain scheduling | A needed check silently loses its slot              | Task 3.6 — one cron dispatching multiple jobs, budget tracked in `docs/constraints.md` |
+| Supabase inactivity pause                                              | Ingestion fails quietly                             | Tasks 1.2, 3.6                                                                         |
+| Weak confidence calibration                                            | Bad auto-proceed decisions                          | Tasks 6.3, 6.4 — shadow mode, no threshold until paired data exists                    |
+| Gemini free tier down or rate-limited                                  | AI assessments stall                                | Task 6.1b — backlog visible, deterministic automation provably unaffected              |
+| Google silently updates Flash model                                    | Past assessments no longer comparable               | `model` from response stamped per assessment (task 6.1)                                |
+| Free-tier data policy                                                  | Real requirement text and PM context seen by Google | `CLAUDE.md` §2b — PII stripping, per-project opt-in for NDA work                       |
+| Free tier deprecated or repriced                                       | AI layer breaks with no notice                      | `packages/llm` abstraction allows provider swap; no second provider until needed       |
+| Worker CPU ceiling hit during Gemini call                              | Scheduler Worker killed mid-request                 | Task 6.1b — one assessment per invocation, let next cron tick continue                 |
+| Embedding dimension changed after data exists                          | Full re-embed of PM Brain                           | Task 0.7 settles the embedding model before task 7.0 (deferred with PM Brain)          |
+| Free-tier terms change                                                 | Design built on a stale limit                       | Task 0.5, dated entries in `constraints.md`                                            |
+| Solo operator, no on-call                                              | Automation misbehaves unnoticed for weeks           | Phase 5 pulled forward; Phase 8.2 failure surface                                      |
+| Stale QA rota                                                          | Work stalls in Testing with no assignee, silently   | Task 4.4c exception check; rota `updated_at` in the action log                         |
+| Override re-applied on every cron tick                                 | Same person reassigned repeatedly                   | `consumed_at` on the override row (task 2.2b)                                          |
+| Single-QA project                                                      | Rota has no rotation and no cover                   | Flagged in task 0.4b before schema is built                                            |
+| Scope creep back to 11 phases                                          | Never ships                                         | Backlog section; Gate 4 is a shippable product                                         |
 
 ---
 

@@ -31,9 +31,7 @@ export function StatusBadge({ status, kind }: { status: string; kind: StatusKind
         title={resolved === "jira" ? "Jira status" : "Stakeholder status"}
         className={cn(
           "rounded px-1 py-0.5 font-mono text-[10px] font-semibold tracking-wide uppercase",
-          resolved === "jira"
-            ? "bg-jira-soft text-jira"
-            : "bg-stake-soft text-stake",
+          resolved === "jira" ? "bg-jira-soft text-jira" : "bg-stake-soft text-stake",
         )}
       >
         {resolved === "jira" ? "Jira" : "Stkh"}

@@ -32,38 +32,39 @@ Requirement submitted → context-aware LLM assessment → ready or clarificatio
 # 3. Locked Product Decisions
 
 <!-- table 1 -->
-| ID | Decision | Locked choice |
-| --- | --- | --- |
-| D1 | Requirement readiness | Context-aware LLM uses requirement + Project Twin + PM Brain + Jira/Epic context. |
-| D2 | Requirement approval | Hybrid: high-confidence straightforward requirements may auto-proceed; uncertain cases require human review. |
-| D3 | Project Configuration ownership | PM/Admin only. |
-| D4 | Cross-project people | Yes; people may belong to multiple projects. |
-| D5 | Blocked state | Yes; proper Blocked status/state. |
-| D6 | In Progress trigger | A qualifying Jira comment OR Git activity. |
-| D7 | Development progression | Event-driven, using the same activity/event principle; exact qualifying event finalized during integration design. |
-| D8 | Git/Jira matching | Support issue key, branch, PR title, commit message, PR description and semantic/context matching; exact key strongest. |
-| D9 | Testing trigger | Any associated PR merge for the ticket. |
-| D10 | QA assignment | Automatic assignment with PM/Admin override. |
-| D11 | QA PASS requirements | Test result, comments, test cases executed and evidence. |
-| D12 | QA failure reason | Mandatory reason/category. |
-| D13 | Bug blocking rules | Deferred/ignored for initial scope. |
-| D14 | Epic linking | High-confidence automatic linking with human override. |
-| D15 | Large requirement decomposition | AI recommends Epic + Stories; human approves initially. |
-| D16 | Estimation unit | Hours. |
-| D17 | Developer assignment | Human-controlled by Project Lead. |
-| D18 | Sprint planning | AI recommends; human approves; no automatic active-sprint modification initially. |
-| D19 | Project Configuration | Project, Requirements App project, Jira project, Git repository, DEV branch, Project Lead, Developers, QA Pool, workflow, QA, sprint, release and notification configuration. |
-| D20 | Automation override | PM/Admin. |
-| D21 | Backup/fallback people | No initially. |
-| D22 | Source of truth | Requirements App for requirements; Jira/workflow for delivery status; Git for coding/PR state; QA/Jira for QA outcome; PM Brain for decisions/context; Project Twin for unified history/state. |
-| D23 | Twin storage | User's own DB; compact structured model, not a full data dump. |
-| D24 | Twin scope | Only configured projects. |
-| D25 | PM Brain contents | Decisions, meeting notes, stakeholder context, risks, assumptions, hypotheses, important discussions, lessons learned and project context. |
-| D26 | PM Brain ingestion | User provides/controls the data supplied to PM Brain. |
-| D27 | Autonomy | Safe deterministic actions may be autonomous; consequential actions remain human-controlled. |
-| D28 | Requirement changes | Human approval required; AI may suggest changes. |
-| D29 | Control Centre priority | Needs attention, critical risks, blockers, decisions, what changed, project status, deadlines, AI recommendations. |
-| D30 | Control Centre views | Global plus individual project views. |
+
+| ID  | Decision                        | Locked choice                                                                                                                                                                                  |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Requirement readiness           | Context-aware LLM uses requirement + Project Twin + PM Brain + Jira/Epic context.                                                                                                              |
+| D2  | Requirement approval            | Hybrid: high-confidence straightforward requirements may auto-proceed; uncertain cases require human review.                                                                                   |
+| D3  | Project Configuration ownership | PM/Admin only.                                                                                                                                                                                 |
+| D4  | Cross-project people            | Yes; people may belong to multiple projects.                                                                                                                                                   |
+| D5  | Blocked state                   | Yes; proper Blocked status/state.                                                                                                                                                              |
+| D6  | In Progress trigger             | A qualifying Jira comment OR Git activity.                                                                                                                                                     |
+| D7  | Development progression         | Event-driven, using the same activity/event principle; exact qualifying event finalized during integration design.                                                                             |
+| D8  | Git/Jira matching               | Support issue key, branch, PR title, commit message, PR description and semantic/context matching; exact key strongest.                                                                        |
+| D9  | Testing trigger                 | Any associated PR merge for the ticket.                                                                                                                                                        |
+| D10 | QA assignment                   | Automatic assignment with PM/Admin override.                                                                                                                                                   |
+| D11 | QA PASS requirements            | Test result, comments, test cases executed and evidence.                                                                                                                                       |
+| D12 | QA failure reason               | Mandatory reason/category.                                                                                                                                                                     |
+| D13 | Bug blocking rules              | Deferred/ignored for initial scope.                                                                                                                                                            |
+| D14 | Epic linking                    | High-confidence automatic linking with human override.                                                                                                                                         |
+| D15 | Large requirement decomposition | AI recommends Epic + Stories; human approves initially.                                                                                                                                        |
+| D16 | Estimation unit                 | Hours.                                                                                                                                                                                         |
+| D17 | Developer assignment            | Human-controlled by Project Lead.                                                                                                                                                              |
+| D18 | Sprint planning                 | AI recommends; human approves; no automatic active-sprint modification initially.                                                                                                              |
+| D19 | Project Configuration           | Project, Requirements App project, Jira project, Git repository, DEV branch, Project Lead, Developers, QA Pool, workflow, QA, sprint, release and notification configuration.                  |
+| D20 | Automation override             | PM/Admin.                                                                                                                                                                                      |
+| D21 | Backup/fallback people          | No initially.                                                                                                                                                                                  |
+| D22 | Source of truth                 | Requirements App for requirements; Jira/workflow for delivery status; Git for coding/PR state; QA/Jira for QA outcome; PM Brain for decisions/context; Project Twin for unified history/state. |
+| D23 | Twin storage                    | User's own DB; compact structured model, not a full data dump.                                                                                                                                 |
+| D24 | Twin scope                      | Only configured projects.                                                                                                                                                                      |
+| D25 | PM Brain contents               | Decisions, meeting notes, stakeholder context, risks, assumptions, hypotheses, important discussions, lessons learned and project context.                                                     |
+| D26 | PM Brain ingestion              | User provides/controls the data supplied to PM Brain.                                                                                                                                          |
+| D27 | Autonomy                        | Safe deterministic actions may be autonomous; consequential actions remain human-controlled.                                                                                                   |
+| D28 | Requirement changes             | Human approval required; AI may suggest changes.                                                                                                                                               |
+| D29 | Control Centre priority         | Needs attention, critical risks, blockers, decisions, what changed, project status, deadlines, AI recommendations.                                                                             |
+| D30 | Control Centre views            | Global plus individual project views.                                                                                                                                                          |
 
 # 4. System Principles
 
@@ -198,14 +199,15 @@ id, source, event_type, project_id, entity_type, entity_id, actor_type, actor_id
 The event store is the Project Flight Recorder. Every meaningful state change should be captured as a normalized event.
 
 <!-- table 2 -->
-| Source | Initial event vocabulary |
-| --- | --- |
+
+| Source       | Initial event vocabulary                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Requirements | REQUIREMENT_CREATED, REQUIREMENT_UPDATED, REQUIREMENT_ANALYSIS_COMPLETED, REQUIREMENT_CLARIFICATION_REQUESTED, REQUIREMENT_APPROVED |
-| Jira | ISSUE_CREATED, ISSUE_UPDATED, ISSUE_STATUS_CHANGED, ISSUE_ASSIGNED, ISSUE_ESTIMATE_CHANGED, ISSUE_ADDED_TO_SPRINT |
-| Git | BRANCH_CREATED, COMMIT_CREATED, PR_CREATED, PR_UPDATED, PR_APPROVED, PR_MERGED, PR_CLOSED |
-| QA | QA_ASSIGNED, QA_STARTED, QA_FAILED, QA_PASSED, REWORK_CREATED |
-| Project | DEPENDENCY_CREATED, DEPENDENCY_RESOLVED, RISK_CREATED, RISK_RESOLVED, RELEASE_CREATED, RELEASE_UPDATED |
-| PM Brain | DECISION_CREATED, MEETING_ADDED, RISK_ADDED, CONTEXT_UPDATED |
+| Jira         | ISSUE_CREATED, ISSUE_UPDATED, ISSUE_STATUS_CHANGED, ISSUE_ASSIGNED, ISSUE_ESTIMATE_CHANGED, ISSUE_ADDED_TO_SPRINT                   |
+| Git          | BRANCH_CREATED, COMMIT_CREATED, PR_CREATED, PR_UPDATED, PR_APPROVED, PR_MERGED, PR_CLOSED                                           |
+| QA           | QA_ASSIGNED, QA_STARTED, QA_FAILED, QA_PASSED, REWORK_CREATED                                                                       |
+| Project      | DEPENDENCY_CREATED, DEPENDENCY_RESOLVED, RISK_CREATED, RISK_RESOLVED, RELEASE_CREATED, RELEASE_UPDATED                              |
+| PM Brain     | DECISION_CREATED, MEETING_ADDED, RISK_ADDED, CONTEXT_UPDATED                                                                        |
 
 # 9. Event Processing Pipeline
 
@@ -274,16 +276,17 @@ Exact identifiers can be auto-linked. Ambiguous semantic matches should be flagg
 # 12. Automation Rules
 
 <!-- table 3 -->
-| Trigger | Action |
-| --- | --- |
-| Requirement ready | Create Jira issue and preserve Requirement ↔ Jira link. |
-| High-confidence existing Epic | Link issue to Epic; allow PM/Admin override. |
-| Qualifying Jira comment or Git activity | Transition To Do → In Progress. |
-| Associated PR merged | Transition issue → Testing. |
-| Testing entered | Automatically assign eligible QA. |
-| QA PASS + mandatory fields complete | Testing → Done. |
-| QA FAIL | Testing → Rework; require failure reason. |
-| Rework + new developer activity | Re-enter In Progress and follow the normal Git/DEV/Testing cycle. |
+
+| Trigger                                 | Action                                                            |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| Requirement ready                       | Create Jira issue and preserve Requirement ↔ Jira link.           |
+| High-confidence existing Epic           | Link issue to Epic; allow PM/Admin override.                      |
+| Qualifying Jira comment or Git activity | Transition To Do → In Progress.                                   |
+| Associated PR merged                    | Transition issue → Testing.                                       |
+| Testing entered                         | Automatically assign eligible QA.                                 |
+| QA PASS + mandatory fields complete     | Testing → Done.                                                   |
+| QA FAIL                                 | Testing → Rework; require failure reason.                         |
+| Rework + new developer activity         | Re-enter In Progress and follow the normal Git/DEV/Testing cycle. |
 
 # 13. AI/Policy Safety Model
 
@@ -356,13 +359,14 @@ The Twin should be compact: store normalized state, IDs, timestamps, relationshi
 # 16. Project Twin + PM Brain + AI PM
 
 <!-- table 4 -->
-| Layer | Question answered | Primary content |
-| --- | --- | --- |
-| Project Twin | What is happening? | Structured operational state, relationships and history. |
-| PM Brain | Why / what context matters? | Decisions, meetings, stakeholder context, assumptions and lessons. |
-| AI PM | What does it mean / what should happen next? | Reasoning, prediction, recommendations and controlled actions. |
-| Policy Engine | Is the action allowed? | Rules, permissions and autonomy boundaries. |
-| Automation Engine | How do we execute it? | Jira/Git/QA/Requirements App actions. |
+
+| Layer             | Question answered                            | Primary content                                                    |
+| ----------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| Project Twin      | What is happening?                           | Structured operational state, relationships and history.           |
+| PM Brain          | Why / what context matters?                  | Decisions, meetings, stakeholder context, assumptions and lessons. |
+| AI PM             | What does it mean / what should happen next? | Reasoning, prediction, recommendations and controlled actions.     |
+| Policy Engine     | Is the action allowed?                       | Rules, permissions and autonomy boundaries.                        |
+| Automation Engine | How do we execute it?                        | Jira/Git/QA/Requirements App actions.                              |
 
 # 17. QA and Rework Model
 
@@ -419,18 +423,19 @@ The interface should focus on exceptions and decisions rather than flooding the 
 # 20. Implementation Roadmap
 
 <!-- table 5 -->
-| Phase | Focus | Deliverables |
-| --- | --- | --- |
-| Phase 1 | Core DB | users, projects, project configuration, project members, requirements, issues, events. |
-| Phase 2 | Delivery entities | Epics, sprints, assignments, dependencies, branches, commits, PRs, QA runs, bugs. |
-| Phase 3 | Event engine | Webhook/API ingestion, validation, normalization, deduplication and state updates. |
-| Phase 4 | Deterministic automation | Requirement→Jira, activity→In Progress, PR merge→Testing, QA assignment, QA PASS→Done, FAIL→Rework. |
-| Phase 5 | PM Brain | Controlled context/decision storage and links. |
-| Phase 6 | Project Twin | Current-state model, event history, relationships and contradiction detection. |
-| Phase 7 | AI Requirement Intelligence | Context-aware readiness, related work, duplicates, Epic intelligence. |
-| Phase 8 | AI delivery intelligence | Estimation, risk, scope, dependency and reporting intelligence. |
-| Phase 9 | PM Control Centre | Global/project views, exceptions, decisions, what changed and Ask AI PM. |
-| Phase 10 | Predictive + autonomy | Forecasting, bottleneck prediction, next-best-action and progressive autonomous actions. |
+
+| Phase    | Focus                       | Deliverables                                                                                        |
+| -------- | --------------------------- | --------------------------------------------------------------------------------------------------- |
+| Phase 1  | Core DB                     | users, projects, project configuration, project members, requirements, issues, events.              |
+| Phase 2  | Delivery entities           | Epics, sprints, assignments, dependencies, branches, commits, PRs, QA runs, bugs.                   |
+| Phase 3  | Event engine                | Webhook/API ingestion, validation, normalization, deduplication and state updates.                  |
+| Phase 4  | Deterministic automation    | Requirement→Jira, activity→In Progress, PR merge→Testing, QA assignment, QA PASS→Done, FAIL→Rework. |
+| Phase 5  | PM Brain                    | Controlled context/decision storage and links.                                                      |
+| Phase 6  | Project Twin                | Current-state model, event history, relationships and contradiction detection.                      |
+| Phase 7  | AI Requirement Intelligence | Context-aware readiness, related work, duplicates, Epic intelligence.                               |
+| Phase 8  | AI delivery intelligence    | Estimation, risk, scope, dependency and reporting intelligence.                                     |
+| Phase 9  | PM Control Centre           | Global/project views, exceptions, decisions, what changed and Ask AI PM.                            |
+| Phase 10 | Predictive + autonomy       | Forecasting, bottleneck prediction, next-best-action and progressive autonomous actions.            |
 
 # 21. Build Order — What to Do First
 
@@ -467,18 +472,19 @@ The interface should focus on exceptions and decisions rather than flooding the 
 # 22. Open Technical Decisions to Resolve Before Coding
 
 <!-- table 6 -->
-| Decision | Why it matters | Status |
-| --- | --- | --- |
-| Exact Jira status names and transition IDs | Automation must target the real workflow. | Need verification in Jira. |
-| Requirements App API/webhooks | Determines event ingestion and Jira creation implementation. | Need technical details. |
-| Jira deployment/API model | Determines authentication and webhook approach. | Need technical details. |
-| Git provider | Determines PR/commit webhook contracts. | Need confirmation. |
-| QA system/data source | Determines QA event ingestion and PASS/FAIL enforcement. | Need confirmation. |
-| Authentication/authorization model | Determines PM/Admin permissions and service credentials. | Need design. |
-| Event deduplication strategy | Prevents duplicate actions. | Design during implementation. |
-| Idempotency strategy | Prevents repeated Jira transitions/assignments. | Design during implementation. |
-| LLM provider/model and structured-output mechanism | Determines AI implementation details and cost/latency. | Select during AI phase. |
-| Observability/logging | Required to debug automation safely. | Required before production. |
+
+| Decision                                           | Why it matters                                               | Status                        |
+| -------------------------------------------------- | ------------------------------------------------------------ | ----------------------------- |
+| Exact Jira status names and transition IDs         | Automation must target the real workflow.                    | Need verification in Jira.    |
+| Requirements App API/webhooks                      | Determines event ingestion and Jira creation implementation. | Need technical details.       |
+| Jira deployment/API model                          | Determines authentication and webhook approach.              | Need technical details.       |
+| Git provider                                       | Determines PR/commit webhook contracts.                      | Need confirmation.            |
+| QA system/data source                              | Determines QA event ingestion and PASS/FAIL enforcement.     | Need confirmation.            |
+| Authentication/authorization model                 | Determines PM/Admin permissions and service credentials.     | Need design.                  |
+| Event deduplication strategy                       | Prevents duplicate actions.                                  | Design during implementation. |
+| Idempotency strategy                               | Prevents repeated Jira transitions/assignments.              | Design during implementation. |
+| LLM provider/model and structured-output mechanism | Determines AI implementation details and cost/latency.       | Select during AI phase.       |
+| Observability/logging                              | Required to debug automation safely.                         | Required before production.   |
 
 # 23. Non-Goals for Initial Version
 
@@ -777,17 +783,18 @@ Exit criteria: every autonomous action is attributable, policy-checked, observab
 # 27. Implementation Workstreams
 
 <!-- table 7 -->
-| Workstream | Owns | Depends On | Primary Deliverable |
-| --- | --- | --- | --- |
-| Backend / DB | PostgreSQL, APIs, entities, migrations | Phase 0 | Core platform |
-| Integrations | Requirements App, Jira, Git, QA adapters | Phase 0 | Source connectivity |
-| Event Platform | Webhooks, normalization, idempotency, retries | Backend + Integrations | Event engine |
-| Workflow Engine | Deterministic policies and actions | Event Platform | Automated lifecycle |
-| PM Brain | Context storage/retrieval | Backend + Project Twin | Context layer |
-| Project Twin | State, relationships, history, contradictions | Event Platform | Operational model |
-| AI Platform | LLM orchestration, retrieval, structured outputs | Twin + PM Brain | AI PM capabilities |
-| Control Centre | Global/project UI, exceptions, Ask AI PM | AI + Twin | PM interface |
-| Governance | Action log, approvals, policies, kill switch | Workflow + AI | Safe autonomy |
+
+| Workstream      | Owns                                             | Depends On             | Primary Deliverable |
+| --------------- | ------------------------------------------------ | ---------------------- | ------------------- |
+| Backend / DB    | PostgreSQL, APIs, entities, migrations           | Phase 0                | Core platform       |
+| Integrations    | Requirements App, Jira, Git, QA adapters         | Phase 0                | Source connectivity |
+| Event Platform  | Webhooks, normalization, idempotency, retries    | Backend + Integrations | Event engine        |
+| Workflow Engine | Deterministic policies and actions               | Event Platform         | Automated lifecycle |
+| PM Brain        | Context storage/retrieval                        | Backend + Project Twin | Context layer       |
+| Project Twin    | State, relationships, history, contradictions    | Event Platform         | Operational model   |
+| AI Platform     | LLM orchestration, retrieval, structured outputs | Twin + PM Brain        | AI PM capabilities  |
+| Control Centre  | Global/project UI, exceptions, Ask AI PM         | AI + Twin              | PM interface        |
+| Governance      | Action log, approvals, policies, kill switch     | Workflow + AI          | Safe autonomy       |
 
 # 28. MVP Definition
 

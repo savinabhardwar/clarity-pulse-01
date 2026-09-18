@@ -59,7 +59,10 @@ async function fetchStatuses(jiraBaseUrl, keys) {
   return statusByKey;
 }
 
-export async function syncStakeholderJiraStatus(databaseUrl, jiraBaseUrl = process.env.JIRA_BASE_URL) {
+export async function syncStakeholderJiraStatus(
+  databaseUrl,
+  jiraBaseUrl = process.env.JIRA_BASE_URL,
+) {
   if (!jiraBaseUrl) throw new Error("JIRA_BASE_URL not set");
   const { Pool } = pg;
   const pool = new Pool({
