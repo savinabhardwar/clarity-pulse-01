@@ -83,10 +83,16 @@ async function requestModel(model, prompt, { retries } = {}) {
       const body = await res.json();
       const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
       if (!text.trim()) throw new Error("Gemini returned an empty response");
-      console.log(`[release-notes] ${model} served the summary (reported version: ${body.modelVersion ?? "unknown"})`);
+      console.log(
+        `[release-notes] ${model} served the summary (reported version: ${body.modelVersion ?? "unknown"})`,
+      );
       return text;
     },
-    { label: `Gemini summarize (${model})`, retries, isRetryable: (err) => isRetryableHttpStatus(err.status) },
+    {
+      label: `Gemini summarize (${model})`,
+      retries,
+      isRetryable: (err) => isRetryableHttpStatus(err.status),
+    },
   );
 }
 
