@@ -22,6 +22,7 @@ function buildPrompt(product, issues) {
 
 Rules:
 - Group the tickets below into a small number of sensible themes (by feature area, or "Bug Fixes" / "Testing & Release Readiness" for maintenance work).
+- If a single feature area accounts for 5 or more of the tickets below, give it its own dedicated bullet instead of folding it into a broader theme -- don't let a large body of work get absorbed into a catch-all bullet just because it's thematically related to smaller work nearby.
 - Output ONE bullet per theme, each starting with "* **Theme Name:**" followed by a SINGLE flowing sentence that weaves together everything shipped under that theme. Do not list ticket keys or write one sentence per ticket.
 - Do not invent details not implied by the ticket summaries.
 - Output ONLY the bullet list, nothing else (no heading, no preamble).
