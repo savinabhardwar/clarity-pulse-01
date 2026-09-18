@@ -14,7 +14,9 @@ function validateEnv() {
   const required = ["JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "GEMINI_API_KEY"];
   const missing = required.filter((k) => !process.env[k]);
   if (missing.length > 0) {
-    throw new Error(`[release-notes] missing required environment variable(s): ${missing.join(", ")}`);
+    throw new Error(
+      `[release-notes] missing required environment variable(s): ${missing.join(", ")}`,
+    );
   }
 }
 
@@ -34,7 +36,9 @@ function parseArgs(argv) {
 }
 
 async function runOne({ product, parentPageId, jiraKey, lastReleaseDate }, until, dryRun) {
-  console.log(`[release-notes] ${product}: fetching ${jiraKey} issues done ${lastReleaseDate} -> ${until}`);
+  console.log(
+    `[release-notes] ${product}: fetching ${jiraKey} issues done ${lastReleaseDate} -> ${until}`,
+  );
   const issues = await fetchCompletedIssues({ jiraKey, since: lastReleaseDate, until });
   console.log(`[release-notes] ${product}: ${issues.length} completed issue(s)`);
 
@@ -71,7 +75,8 @@ async function main() {
     const row = rows.find((r) => r.product === project || r.jiraKey === project);
     const config = productConfig(row?.product ?? project);
     if (!row || !config) throw new Error(`[release-notes] no schedule row/config for "${project}"`);
-    if (!row.lastReleaseDate) throw new Error(`[release-notes] "${project}" has no Last Release Date seeded yet`);
+    if (!row.lastReleaseDate)
+      throw new Error(`[release-notes] "${project}" has no Last Release Date seeded yet`);
     due = [{ ...config, lastReleaseDate: row.lastReleaseDate }];
   } else {
     due = await findDueReleases(date);

@@ -1,9 +1,19 @@
-// Summarizes a batch of completed Jira issues into the exact bullet
-// format used by the manually-authored QIP example (Confluence page id
-// 528908289): one bold-themed bullet per topic, consolidating every
-// ticket under that theme into a single prose sentence -- not a raw
-// per-ticket list. Uses Google Gemini since this runs headlessly in
-// GitHub Actions (no Claude session/MCP access there).
+// Summarizes a batch of completed Jira issues into feature-level release
+// notes, modeled on the human-authored "QIP — Features till August 2026"
+// catalog (Confluence page id 524091395) -- one bullet per actual feature
+// ("**Feature Name** — capability description"), not one bullet per
+// theme and not one line per ticket. That catalog page also establishes
+// the convention this prompt reuses for partially-done work: "...is
+// built and being finalized this sprint" rather than describing it as
+// shipped. Uses Google Gemini since this runs headlessly in GitHub
+// Actions (no Claude session/MCP access there).
+//
+// Completeness (pending subtasks / open "Blocks" dependencies) is
+// computed deterministically in fetch-completed-issues.mjs, not left for
+// the model to infer from a ticket summary -- see CLAUDE.md hard rule 5
+// ("deterministic before intelligent"). This prompt only tells the model
+// how to phrase what's already been determined; it never decides
+// blocked/incomplete status itself.
 import { withRetry, isRetryableHttpStatus } from "../jira-sync/lib/retry.mjs";
 
 // Pin an exact model version and revisit periodically -- Google
@@ -13,19 +23,26 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 function buildPrompt(product, issues) {
   const issueLines = issues
-    .map((i) => `- [${i.issuetype}] ${i.key}: ${i.summary}`)
+    .map((i) => {
+      const flag = i.completenessNote ? ` [INCOMPLETE: ${i.completenessNote}]` : "";
+      return `- [${i.issuetype}] ${i.key}: ${i.summary}${flag}`;
+    })
     .join("\n");
-  return `You are writing release notes for the "${product}" product, in the exact style below (this is a real example from the same document set, do not deviate from this structure):
+  return `You are writing release notes for the "${product}" product, in the exact style below (this is a real excerpt from "QIP — Features till August 2026", the reference feature catalog for this document set -- do not deviate from this structure):
 
-* **CX Pass Integration:** Integrated QIP with CX Pass, including SSO login, company and user synchronization, CX Pass ID support, role validation, CX Omni Chats transcript integration, username support in extensions, and Call Care company setup.
-* **CX Pass Bug Fixes:** Resolved issues related to agent visibility, evaluation creation, team and extension display, role synchronization, resync actions, and automated evaluation creation.
+- **Standalone coaching sessions** — Schedule coaching without requiring an evaluation or dispute, for both agents and QA.
+- **Action plan tracking** — Assign individual due dates and track completion for each coaching action.
+- **AI Coaching Practice Calls** — The full practice-call experience — talk to an AI customer, see live call activity, review the transcript — is built and being finalized this sprint.
 
 Rules:
-- Group the tickets below into a small number of sensible themes (by feature area, or "Bug Fixes" / "Testing & Release Readiness" for maintenance work).
-- If a single feature area accounts for 5 or more of the tickets below, give it its own dedicated bullet instead of folding it into a broader theme -- don't let a large body of work get absorbed into a catch-all bullet just because it's thematically related to smaller work nearby.
-- Output ONE bullet per theme, each starting with "* **Theme Name:**" followed by a SINGLE flowing sentence that weaves together everything shipped under that theme. Do not list ticket keys or write one sentence per ticket.
+- Describe ONE FEATURE per bullet: "- **Feature Name** — one flowing sentence describing the capability." A feature is a user-visible capability, not a ticket -- several tickets (e.g. a design ticket, a frontend ticket, a backend/API ticket) often make up a single feature; collapse those into one bullet, don't write one bullet per ticket.
+- Do not merge multiple distinct, unrelated features into one catch-all bullet just because they sit in the same area of the product.
+- Only add a "## Feature Area" heading above a group of bullets when there are several distinct features that clearly belong together; a standalone feature needs no heading.
+- Some tickets below are marked "[INCOMPLETE: ...]" -- meaning a subtask is still open, or the ticket is blocked by another issue that isn't done yet, even though Jira shows it as Done. Never describe that feature as shipped, delivered, completed, or resolved. Instead:
+  (a) if the feature has no real user-visible progress yet, leave it out of these release notes entirely, or
+  (b) if there is genuine working progress, describe what's done and end the bullet with a clause naming what's outstanding, in the exact voice of the reference example above: "...is built and being finalized this sprint." (adapt the trailing clause to name the actual open item if useful, e.g. "...and is pending its backend integration.")
 - Do not invent details not implied by the ticket summaries.
-- Output ONLY the bullet list, nothing else (no heading, no preamble).
+- Output ONLY the bullet list (with any "## Feature Area" headings), nothing else -- no top-level title, no preamble.
 
 Completed tickets:
 ${issueLines}`;
@@ -56,8 +73,9 @@ async function callGemini(prompt) {
   );
 }
 
-// Returns the raw "* **Theme:** sentence" markdown bullet list as a
-// string -- publish.mjs converts it to Confluence storage HTML.
+// Returns the raw "- **Feature Name** — sentence" markdown bullet list
+// (with optional "## Feature Area" headings) as a string -- publish.mjs
+// converts it to Confluence storage HTML.
 export async function summarize({ product, issues }) {
   if (issues.length === 0) {
     return "* **No user-facing changes:** No tickets were completed in this period.";

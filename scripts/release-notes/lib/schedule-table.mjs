@@ -49,15 +49,16 @@ function escapeHtml(s) {
 }
 
 function renderTableHtml(rows) {
-  const header = "<tr>" + ["Product", "Jira Key", "Last Release Date", "Next Release Date"]
-    .map((h) => `<th><p>${h}</p></th>`)
-    .join("") + "</tr>";
+  const header =
+    "<tr>" +
+    ["Product", "Jira Key", "Last Release Date", "Next Release Date"]
+      .map((h) => `<th><p>${h}</p></th>`)
+      .join("") +
+    "</tr>";
   const body = rows
     .map(
       (r) =>
-        "<tr>" +
-        COLUMNS.map((c) => `<td><p>${escapeHtml(r[c] ?? "")}</p></td>`).join("") +
-        "</tr>",
+        "<tr>" + COLUMNS.map((c) => `<td><p>${escapeHtml(r[c] ?? "")}</p></td>`).join("") + "</tr>",
     )
     .join("");
   return `<table data-layout="default"><tbody>${header}${body}</tbody></table>`;

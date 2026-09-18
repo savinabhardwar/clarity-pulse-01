@@ -31,8 +31,39 @@ async function jiraSearchPage({ jql, fields, maxResults, nextPageToken }) {
       }
       return res.json();
     },
-    { label: `Jira search (jql=${jql.slice(0, 60)}...)`, isRetryable: (err) => isRetryableHttpStatus(err.status) },
+    {
+      label: `Jira search (jql=${jql.slice(0, 60)}...)`,
+      isRetryable: (err) => isRetryableHttpStatus(err.status),
+    },
   );
+}
+
+// A "Blocks" link's inward side reads "is blocked by" (confirmed against
+// getIssueLinkTypes on this instance -- id 10000, inward: "is blocked by",
+// outward: "blocks"). An issue that is Done but still has an incomplete
+// subtask, or is blocked by an issue that isn't Done, is not actually
+// finished from a feature standpoint even though its own status says so.
+// This is computed here, deterministically, from real Jira data -- not
+// left for the LLM to infer from a ticket summary (CLAUDE.md hard rule 5).
+function completenessNote(issue) {
+  const notes = [];
+
+  const openSubtasks = (issue.fields.subtasks ?? []).filter(
+    (st) => st.fields.status?.statusCategory?.key !== "done",
+  );
+  if (openSubtasks.length > 0) {
+    notes.push(`pending subtask(s): ${openSubtasks.map((st) => st.key).join(", ")}`);
+  }
+
+  const openBlockers = (issue.fields.issuelinks ?? [])
+    .filter((link) => link.type?.name === "Blocks" && link.inwardIssue)
+    .filter((link) => link.inwardIssue.fields.status?.statusCategory?.key !== "done")
+    .map((link) => link.inwardIssue.key);
+  if (openBlockers.length > 0) {
+    notes.push(`blocked by ${openBlockers.join(", ")} (still open)`);
+  }
+
+  return notes.length > 0 ? notes.join("; ") : null;
 }
 
 export async function fetchCompletedIssues({ jiraKey, since, until }) {
@@ -42,7 +73,7 @@ export async function fetchCompletedIssues({ jiraKey, since, until }) {
   do {
     const body = await jiraSearchPage({
       jql,
-      fields: ["summary", "issuetype", "assignee", "updated"],
+      fields: ["summary", "issuetype", "assignee", "updated", "subtasks", "issuelinks"],
       maxResults: 100,
       nextPageToken,
     });
@@ -56,5 +87,6 @@ export async function fetchCompletedIssues({ jiraKey, since, until }) {
     summary: issue.fields.summary,
     assignee: issue.fields.assignee?.displayName ?? null,
     updated: issue.fields.updated,
+    completenessNote: completenessNote(issue),
   }));
 }

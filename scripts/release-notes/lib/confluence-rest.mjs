@@ -33,7 +33,10 @@ async function request(path, { method = "GET", body, label } = {}) {
       }
       return res.status === 204 ? null : res.json();
     },
-    { label: label ?? `Confluence ${method} ${path}`, isRetryable: (err) => isRetryableHttpStatus(err.status) },
+    {
+      label: label ?? `Confluence ${method} ${path}`,
+      isRetryable: (err) => isRetryableHttpStatus(err.status),
+    },
   );
 }
 
@@ -51,7 +54,9 @@ export async function getPageChildren(pageId) {
     const qs = cursor ? `?limit=100&cursor=${encodeURIComponent(cursor)}` : "?limit=100";
     const body = await request(`/pages/${pageId}/children${qs}`);
     results.push(...body.results);
-    cursor = body._links?.next ? new URL(body._links.next, WIKI_BASE()).searchParams.get("cursor") : null;
+    cursor = body._links?.next
+      ? new URL(body._links.next, WIKI_BASE()).searchParams.get("cursor")
+      : null;
   } while (cursor);
   return results;
 }

@@ -6,7 +6,12 @@ function escapeHtml(s) {
 
 function formatLongDate(iso) {
   const d = new Date(`${iso}T00:00:00Z`);
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 // "24 August" -- matches the existing QIP example's title, which omits
@@ -16,21 +21,43 @@ function formatShortDate(iso) {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
 }
 
-// Converts the "* **Theme:** sentence" markdown bullet list from
-// summarize.mjs into Confluence storage HTML, matching the structure of
-// the manually-authored QIP example (page id 528908289).
+// Converts the "- **Feature Name** — sentence" markdown bullet list (with
+// optional "## Feature Area" headings) from summarize.mjs into Confluence
+// storage HTML, matching the structure of the "QIP — Features till August
+// 2026" feature catalog (page id 524091395).
+function bulletToLi(line) {
+  const m = line.match(/^[-*]\s+\*\*(.+?)\*\*\s*[—:-]\s*(.*)$/);
+  if (m) return `<li><p><strong>${escapeHtml(m[1])}</strong> — ${escapeHtml(m[2])}</p></li>`;
+  return `<li><p>${escapeHtml(line.replace(/^[-*]\s*/, ""))}</p></li>`;
+}
+
 function bulletsToHtml(markdown) {
-  const items = markdown
+  const lines = markdown
     .split("\n")
     .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const m = line.match(/^\*\s+\*\*(.+?):\*\*\s*(.*)$/);
-      if (m) return `<li><p><strong>${escapeHtml(m[1])}:</strong> ${escapeHtml(m[2])}</p></li>`;
-      return `<li><p>${escapeHtml(line.replace(/^\*\s*/, ""))}</p></li>`;
-    })
-    .join("");
-  return `<ul>${items}</ul>`;
+    .filter(Boolean);
+
+  const blocks = [];
+  let listItems = [];
+  const flushList = () => {
+    if (listItems.length > 0) {
+      blocks.push(`<ul>${listItems.join("")}</ul>`);
+      listItems = [];
+    }
+  };
+
+  for (const line of lines) {
+    const heading = line.match(/^#{2,3}\s+(.*)$/);
+    if (heading) {
+      flushList();
+      blocks.push(`<h2>${escapeHtml(heading[1])}</h2>`);
+    } else {
+      listItems.push(bulletToLi(line));
+    }
+  }
+  flushList();
+
+  return blocks.join("");
 }
 
 export function buildTitle(product, sinceIso, untilIso) {
@@ -48,18 +75,30 @@ export function buildBodyHtml(product, sinceIso, summaryMarkdown) {
 // Guards against a duplicate post if the Action retries within the same
 // day -- checks the product's parent folder for a child page with this
 // exact title before creating a new one.
-export async function publish({ spaceId, parentPageId, product, sinceIso, untilIso, summaryMarkdown, dryRun }) {
+export async function publish({
+  spaceId,
+  parentPageId,
+  product,
+  sinceIso,
+  untilIso,
+  summaryMarkdown,
+  dryRun,
+}) {
   const title = buildTitle(product, sinceIso, untilIso);
   const bodyHtml = buildBodyHtml(product, sinceIso, summaryMarkdown);
 
   if (dryRun) {
-    console.log(`\n[dry-run] would publish "${title}" under parent ${parentPageId}:\n${bodyHtml}\n`);
+    console.log(
+      `\n[dry-run] would publish "${title}" under parent ${parentPageId}:\n${bodyHtml}\n`,
+    );
     return { title, dryRun: true };
   }
 
   const existingChildren = await getPageChildren(parentPageId);
   if (existingChildren.some((c) => c.title === title)) {
-    console.warn(`[release-notes] "${title}" already exists under ${parentPageId} -- skipping publish`);
+    console.warn(
+      `[release-notes] "${title}" already exists under ${parentPageId} -- skipping publish`,
+    );
     return { title, skipped: true };
   }
 
