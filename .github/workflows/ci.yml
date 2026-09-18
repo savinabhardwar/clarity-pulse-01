@@ -28,8 +28,14 @@ jobs:
 
       - name: Pipeline tests
         # scoring-parity.test.mjs skips itself when the engineering-ethos
-        # sibling checkout isn't present, so this is safe on CI.
-        run: node --test scripts/jira-sync/__tests__/
+        # sibling checkout isn't present, so this is safe on CI. Uses
+        # `npm test` (not a duplicated raw `node --test` command) so this
+        # step never drifts from package.json's own test script again --
+        # the previous raw command passed a bare directory instead of the
+        # glob package.json already uses, which fails with MODULE_NOT_FOUND
+        # on Node 22 (silently never caught before, since Lint always
+        # failed first).
+        run: npm test
 
       - name: Build
         run: npm run build
