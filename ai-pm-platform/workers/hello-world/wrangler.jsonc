@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-pm-platform-hello-world",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  "kv_namespaces": [
+    {
+      "binding": "FEATURE_FLAGS",
+      "id": "aa148ad48b08459e9811aa3b4d29b006",
+    },
+  ],
+}

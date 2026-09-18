@@ -1,0 +1,26 @@
+{
+  "name": "ai-pm-platform",
+  "private": true,
+  "type": "module",
+  "workspaces": ["workers/*", "packages/*"],
+  "scripts": {
+    "prepare": "node scripts/install-hooks.mjs",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" && npm test --workspaces --if-present",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260918.1",
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^22.16.5",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.6",
+    "globals": "^15.15.0",
+    "prettier": "^3.7.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.56.1",
+    "wrangler": "^4.134.0"
+  }
+}
