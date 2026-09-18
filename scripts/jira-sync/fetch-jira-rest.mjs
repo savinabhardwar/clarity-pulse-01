@@ -19,6 +19,8 @@ const JIRA_BASE = process.env.JIRA_BASE_URL; // e.g. https://alldaypa.atlassian.
 const JIRA_EMAIL = process.env.JIRA_EMAIL;
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
 const SPRINT_FIELD = process.env.JIRA_SPRINT_FIELD || "customfield_10020";
+const QA_ASSIGNEE_FIELD = process.env.JIRA_QA_ASSIGNEE_FIELD || "customfield_10690";
+const QA_PLANNED_HOURS_FIELD = process.env.JIRA_QA_PLANNED_HOURS_FIELD || "customfield_10691";
 
 const JIRA_PROJECTS = [
   { key: "TEAM", name: "Team-PixelBlinders" },
@@ -115,6 +117,14 @@ function slimIssue(issue) {
     estimateSeconds: f.timeoriginalestimate ?? null,
     remainingSeconds: f.timeestimate ?? null,
     spentSeconds: f.timespent ?? 0,
+    qaAssignee: f[QA_ASSIGNEE_FIELD]
+      ? { accountId: f[QA_ASSIGNEE_FIELD].accountId, name: f[QA_ASSIGNEE_FIELD].displayName }
+      : null,
+    // Jira's Number custom field type returns plain hours (e.g. 2), not
+    // seconds like the native estimate fields -- converted to seconds at
+    // the point of use in sync.mjs so it stores/compares like every other
+    // *_seconds column.
+    qaPlannedHours: typeof f[QA_PLANNED_HOURS_FIELD] === "number" ? f[QA_PLANNED_HOURS_FIELD] : null,
     parent: f.parent
       ? {
           key: f.parent.key,
@@ -221,6 +231,13 @@ async function fetchInWindowIssues(trackedSprints) {
       "worklog",
       "comment",
       "labels",
+      // QA Assignee / QA Planned Hours -- created for ACX's same-ticket
+      // Dev+QA effort tracking (Sept 2026), but the fields themselves are
+      // instance-global and their screens are shared across ~16 projects,
+      // so any project's issues MAY carry them, not just ACX's. Harmless
+      // to request everywhere: null on issues where they're unset.
+      QA_ASSIGNEE_FIELD,
+      QA_PLANNED_HOURS_FIELD,
     ],
   });
   return issues.map(slimIssue);

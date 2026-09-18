@@ -115,6 +115,120 @@ async function findUnsnapshottedClosedSprints(pool) {
 // eng-data.ts exactly (see that function's comment for the full
 // rationale). Duplicated here rather than imported since this repo and
 // engineering-ethos are separate deploy targets with no shared package.
+// "Went over estimate": any owned ticket (open or done -- an overrun on
+// something still in flight is just as real a signal as one already
+// closed) whose all-time time_spent_seconds ended up above its own
+// original_estimate_seconds. Unscoped by OVERSIZED_TICKET_SECONDS/blocked
+// (unlike `sized` in computeForPerson) -- those exclusions exist for
+// capacity accounting, not for "did this run over," and a huge or
+// blocked-then-unblocked ticket blowing its estimate is exactly the kind
+// of thing worth surfacing here.
+function computeOverrunTickets(owned) {
+  return owned
+    .filter(
+      (t) =>
+        (t.original_estimate_seconds ?? 0) > 0 &&
+        (t.time_spent_seconds ?? 0) > t.original_estimate_seconds,
+    )
+    .map((t) => ({
+      ticketKey: t.jira_key,
+      summary: t.summary,
+      estimateHours: Math.round((t.original_estimate_seconds / 3600) * 10) / 10,
+      spentHours: Math.round((t.time_spent_seconds / 3600) * 10) / 10,
+      overrunHours:
+        Math.round(((t.time_spent_seconds - t.original_estimate_seconds) / 3600) * 10) / 10,
+    }));
+}
+
+const PLACEHOLDER_PATTERNS = [
+  /\[add your .*here\]/i,
+  /\btbd\b/i,
+  /\blorem ipsum\b/i,
+  /\btodo\b/i,
+];
+
+// Stripped of @mentions first -- a comment that's ONLY a couple of
+// mentions plus "please review" reads as near-empty even though the raw
+// word count includes the mention text.
+function isNearEmptyComment(text) {
+  const stripped = text.replace(/@\S+/g, "").trim();
+  const words = stripped.split(/\s+/).filter(Boolean);
+  return words.length < 4;
+}
+
+function looksLikePlaceholder(text) {
+  return PLACEHOLDER_PATTERNS.some((re) => re.test(text));
+}
+
+const STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "is", "are",
+  "this", "that", "with", "has", "have", "been", "be", "it", "as", "by",
+  "at", "from", "was", "were", "will", "your", "you", "please", "github",
+  "url", "pr", "link", "com", "https", "http",
+]);
+
+function keywordsOf(text) {
+  return new Set(
+    (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter(
+      (w) => w.length > 2 && !STOPWORDS.has(w),
+    ),
+  );
+}
+
+// Best-effort heuristic, not a semantic judgment: a comment of real
+// length that shares literally zero keywords with its own ticket's
+// summary is worth a human glance. Gated on >=8 words so short PR-link-
+// only comments (which legitimately share no words with the summary)
+// don't get flagged -- those are caught by isNearEmptyComment instead if
+// short enough, and are otherwise normal.
+function looksOffTopic(commentText, ticketSummary) {
+  const words = commentText.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 8) return false;
+  const commentKw = keywordsOf(commentText);
+  const summaryKw = keywordsOf(ticketSummary || "");
+  if (summaryKw.size === 0 || commentKw.size === 0) return false;
+  for (const w of summaryKw) if (commentKw.has(w)) return false;
+  return true;
+}
+
+// Flags this person's own comments (on tickets they owned this sprint,
+// posted inside the sprint window) that look like low-quality status
+// updates rather than genuine ticket-specific communication. Duplicate
+// detection is scoped to THIS person's comments this sprint (not
+// cross-person) and keyed on the exact normalized text -- a real
+// coincidental short match ("PR merged.") is unlikely at the >20-char
+// floor this checks above.
+function computeFlaggedComments(personId, commentsInWindow, ticketMetaById) {
+  const seenTextToTicket = new Map();
+  const flagged = [];
+  for (const c of commentsInWindow) {
+    if (c.author_person_id !== personId) continue;
+    const meta = ticketMetaById.get(c.ticket_id);
+    if (!meta) continue;
+    const text = c.body_excerpt || "";
+    const normalized = text.trim().toLowerCase();
+    let reason = null;
+    if (!normalized) reason = "empty comment";
+    else if (isNearEmptyComment(text)) reason = "near-empty comment";
+    else if (looksLikePlaceholder(text)) reason = "unfilled placeholder text left in";
+    else if (normalized.length > 20) {
+      const priorKey = seenTextToTicket.get(normalized);
+      if (priorKey && priorKey !== meta.jiraKey) {
+        reason = `identical to their own comment on ${priorKey} (likely copy-pasted)`;
+      } else {
+        seenTextToTicket.set(normalized, meta.jiraKey);
+      }
+    }
+    if (!reason && looksOffTopic(text, meta.summary)) {
+      reason = "shares no keywords with this ticket's summary (possibly off-topic)";
+    }
+    if (reason) {
+      flagged.push({ ticketKey: meta.jiraKey, reason, excerpt: text.slice(0, 160) });
+    }
+  }
+  return flagged.slice(0, 10);
+}
+
 function ticketHygieneGaps(t) {
   const gaps = [];
   if (!t.hasEstimate) gaps.push("no original estimate");
@@ -131,6 +245,8 @@ function computeForPerson({
   worklogs,
   allWorklogsForTickets,
   comments,
+  commentsInWindow,
+  ticketMetaById,
   sprintStart,
   sprintEnd,
   nameBySprintId,
@@ -199,6 +315,29 @@ function computeForPerson({
     )
     .reduce((s, w) => s + w.seconds, 0);
   const loggedHours = loggedSeconds / 3600;
+
+  // QA-side counterpart to allocatedHours/loggedHours above, keyed off
+  // qa_assignee_person_id instead of assignee_person_id -- the same
+  // ticket can contribute to BOTH a dev's and a QA person's row (e.g. one
+  // ticket, Shreya as Assignee + Kiran as QA Assignee), and one person can
+  // have both if they did dev work on their own tickets and QA'd someone
+  // else's this sprint. Unlike allocatedHours, this does NOT pro-rate for
+  // spillover from earlier sprints -- QA Planned Hours is a small, per-
+  // ticket number set once, not something meaningfully "already burned
+  // down" the way a multi-day dev estimate can be.
+  const qaOwned = tickets.filter((t) => t.qa_assignee_person_id === personId && !t.is_blocked);
+  const qaAllocatedHours = qaOwned.reduce((s, t) => s + (t.qa_planned_seconds ?? 0), 0) / 3600;
+  const qaOwnedIds = new Set(qaOwned.map((t) => t.id));
+  const qaLoggedSeconds = worklogs
+    .filter(
+      (w) =>
+        w.author_person_id === personId &&
+        qaOwnedIds.has(w.ticket_id) &&
+        w.started_at >= sprintStart &&
+        w.started_at <= sprintEnd,
+    )
+    .reduce((s, w) => s + w.seconds, 0);
+  const qaLoggedHours = qaLoggedSeconds / 3600;
 
   // Same pace formula as computePaceScore + computeExpectedHoursByNow in
   // eng-data.ts: logged hours vs a FLAT, person-independent expectation
@@ -307,7 +446,7 @@ function computeForPerson({
   // actually ended.
   let jiraQualifies = false;
   let jiraStatusTag = null;
-  if (owned.length === 0) {
+  if (owned.length === 0 && qaOwned.length === 0) {
     jiraStatusTag = "Nothing assigned this sprint";
   } else {
     const wip = owned.filter((t) => t.status_category === "indeterminate");
@@ -353,9 +492,13 @@ function computeForPerson({
     overallScore,
     allocatedHours: Math.round(allocatedHours * 10) / 10,
     loggedHours: Math.round(loggedHours * 10) / 10,
+    qaAllocatedHours: Math.round(qaAllocatedHours * 10) / 10,
+    qaLoggedHours: Math.round(qaLoggedHours * 10) / 10,
     jiraQualifies,
     jiraStatusTag,
     sprintName,
+    overrunTickets: computeOverrunTickets(owned),
+    flaggedComments: computeFlaggedComments(personId, commentsInWindow, ticketMetaById),
   };
 }
 
@@ -413,11 +556,14 @@ export async function snapshotClosedSprints(databaseUrl) {
       const sprintEnd = sprint.end;
 
       const { rows: tickets } = await pool.query(
-        `select id, assignee_person_id, epic_id, status_category, is_blocked, original_estimate_seconds, remaining_estimate_seconds,
+        `select id, jira_key, summary, assignee_person_id, qa_assignee_person_id, qa_planned_seconds, epic_id, status_category, is_blocked, original_estimate_seconds, remaining_estimate_seconds,
                 time_spent_seconds, resolved_at, updated_at, created_at, sprint_id
          from tickets
          where sprint_id in (select id from sprints where start_date = $1)`,
         [sprintStart],
+      );
+      const ticketMetaById = new Map(
+        tickets.map((t) => [t.id, { jiraKey: t.jira_key, summary: t.summary }]),
       );
       // Which literal board/sprint each person's tickets actually sat
       // in, for sprintName -- see computeForPerson.
@@ -447,6 +593,19 @@ export async function snapshotClosedSprints(databaseUrl) {
       const { rows: comments } = await pool.query(
         `select tc.ticket_id, tc.author_person_id, tc.created_at from ticket_comments tc`,
       );
+      // Sprint-window-scoped, WITH body text -- separate from `comments`
+      // above (unscoped, no body, only used for hygiene's "commented
+      // ever" existence check) because computeFlaggedComments needs the
+      // actual text of what this person wrote DURING this sprint on
+      // tickets they owned then, not every comment on every ticket ever.
+      const { rows: commentsInWindow } = await pool.query(
+        `select tc.ticket_id, tc.author_person_id, tc.created_at, tc.body_excerpt
+         from ticket_comments tc
+         join tickets tk on tk.id = tc.ticket_id
+         where tk.sprint_id in (select id from sprints where start_date = $1)
+           and tc.created_at >= $2 and tc.created_at <= $3`,
+        [sprintStart, sprintStart, sprintEnd],
+      );
       // Leave recorded for this window (planning_availability rows
       // overlapping it) -- reduces the flat pace expectation per day,
       // exactly as computeExpectedHoursByNow does in the live app.
@@ -465,6 +624,8 @@ export async function snapshotClosedSprints(databaseUrl) {
             worklogs,
             allWorklogsForTickets,
             comments,
+            commentsInWindow,
+            ticketMetaById,
             sprintStart,
             sprintEnd,
             nameBySprintId,
@@ -484,8 +645,9 @@ export async function snapshotClosedSprints(databaseUrl) {
         await pool.query(
           `insert into person_sprint_summaries
              (person_id, sprint_start, sprint_end, pace_score, estimate_score, hygiene_score,
-              logging_score, overall_score, allocated_hours, logged_hours, jira_qualifies, jira_status_tag, sprint_name)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+              logging_score, overall_score, allocated_hours, logged_hours, qa_allocated_hours, qa_logged_hours,
+              jira_qualifies, jira_status_tag, sprint_name, overrun_tickets, flagged_comments)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
            on conflict (person_id, sprint_start) do nothing`,
           [
             s.personId,
@@ -498,9 +660,13 @@ export async function snapshotClosedSprints(databaseUrl) {
             s.overallScore,
             s.allocatedHours,
             s.loggedHours,
+            s.qaAllocatedHours,
+            s.qaLoggedHours,
             s.jiraQualifies,
             s.jiraStatusTag,
             s.sprintName,
+            JSON.stringify(s.overrunTickets),
+            JSON.stringify(s.flaggedComments),
           ],
         );
         totalInserted++;

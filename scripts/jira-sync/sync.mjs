@@ -167,6 +167,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       for (const person of [
         issue.assignee,
         issue.reporter,
+        issue.qaAssignee,
         ...(issue.worklogs || []).map((w) => ({
           accountId: w.authorAccountId,
           name: w.authorName,
@@ -444,6 +445,8 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       priority: t.priority ? t.priority.toLowerCase() : null,
       assignee_person_id: t.assignee ? (personIdByAccount.get(t.assignee.accountId) ?? null) : null,
       reporter_person_id: t.reporter ? (personIdByAccount.get(t.reporter.accountId) ?? null) : null,
+      qa_assignee_person_id: t.qaAssignee ? (personIdByAccount.get(t.qaAssignee.accountId) ?? null) : null,
+      qa_planned_seconds: typeof t.qaPlannedHours === "number" ? Math.round(t.qaPlannedHours * 3600) : null,
       original_estimate_seconds: t.estimateSeconds,
       remaining_estimate_seconds: t.remainingSeconds,
       time_spent_seconds: t.spentSeconds || 0,
@@ -465,6 +468,8 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         "priority",
         "assignee_person_id",
         "reporter_person_id",
+        "qa_assignee_person_id",
+        "qa_planned_seconds",
         "original_estimate_seconds",
         "remaining_estimate_seconds",
         "time_spent_seconds",

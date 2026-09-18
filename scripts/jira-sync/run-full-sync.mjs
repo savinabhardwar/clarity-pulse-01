@@ -10,6 +10,7 @@ import { run as runSync } from "./sync.mjs";
 import { snapshotClosedSprints } from "./snapshot-sprint-summary.mjs";
 import { flagInactivePeople } from "./flag-inactive-people.mjs";
 import { purgeClosedSprintTickets } from "./purge-closed-sprint-tickets.mjs";
+import { syncStakeholderJiraStatus } from "./sync-stakeholder-jira-status.mjs";
 import { runSmokeTest } from "./smoke-test.mjs";
 import { withRetry, isRetryablePgError } from "./lib/retry.mjs";
 import pg from "pg";
@@ -104,6 +105,17 @@ async function main() {
   // tickets.mjs for the full eligibility rule and grace period).
   const purgeResult = await purgeClosedSprintTickets(process.env.DATABASE_URL);
   console.log("[run-full-sync] closed-sprint ticket purge:", purgeResult);
+
+  // Refreshes project-compass's stakeholder items from the linked Jira
+  // ticket's current status -- independent of everything above, so a
+  // failure here shouldn't be able to fail the rest of the sync (it
+  // queries live Jira directly, not the cache these other steps produce).
+  try {
+    const stakeholderResult = await syncStakeholderJiraStatus(process.env.DATABASE_URL);
+    console.log("[run-full-sync] stakeholder Jira status sync:", stakeholderResult);
+  } catch (err) {
+    console.error("[run-full-sync] stakeholder Jira status sync FAILED (non-fatal):", err);
+  }
 
   const smokeResult = await runSmokeTest(process.env.DATABASE_URL);
   if (!smokeResult.ok) {
