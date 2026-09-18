@@ -2,21 +2,23 @@ name: Jira sync
 
 on:
   schedule:
-    # Target: 10:00 IST daily (IST = UTC+5:30, no DST). NOT set to 04:30
-    # UTC (the literal 10:00 IST instant) -- GitHub's scheduled-workflow
-    # queue for this repo has consistently run 2h33m-3h27m late every
-    # single day since this schedule was introduced (2026-07-29 through
-    # 2026-08-05: actual executions landed 07:03-07:57 UTC every day,
-    # never near 04:30), not the "a few minutes" best-effort slip GitHub
-    # documents -- a real, stable queuing delay for this repo/account.
-    # Firing at 01:40 UTC (07:10 IST), ~2h49m (the observed average
-    # delay) before the real target, lands actual execution close to
-    # 10:00 IST given that delay. This is an empirical compensation, not
-    # a guarantee -- if the delay's magnitude shifts, this trigger time
-    # should be re-measured and adjusted (see run history:
+    # Target: 01:00 IST daily (IST = UTC+5:30, no DST), i.e. 19:30 UTC the
+    # previous day. NOT set to 19:30 UTC directly -- GitHub's
+    # scheduled-workflow queue for this repo has a real, stable queuing
+    # delay that has grown over time. Re-measured 2026-09-13 through
+    # 2026-09-18 with the cron firing at 01:40 UTC: actual executions
+    # landed 06:34-06:58 UTC, i.e. ~4h54m-5h18m late (avg ~5h01m) -- up
+    # from the ~2h49m average delay observed when this schedule was first
+    # tuned (2026-07-29 - 2026-08-05), when it targeted 10:00 IST instead.
+    # Firing at 14:29 UTC (~5h01m ahead of the 19:30 UTC target) lands
+    # actual execution close to 19:30 UTC / 01:00 IST given the current
+    # delay. This is an empirical compensation, not a guarantee -- the
+    # delay has already drifted once and will likely drift again, so if
+    # sync data starts looking stale, re-measure and re-adjust (see run
+    # history:
     # `gh api repos/OWNER/REPO/actions/workflows/jira-sync.yml/runs` and
-    # compare each schedule-triggered run's created_at against 04:30 UTC).
-    - cron: "40 1 * * *"
+    # compare each schedule-triggered run's created_at against 19:30 UTC).
+    - cron: "29 14 * * *"
   workflow_dispatch:
     inputs:
       sync_type:
