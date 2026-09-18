@@ -1,9 +1,10 @@
 // Static map of each Confluence "Release Notes" product folder -> its
 // parent page id -> the Jira project key it draws completed work from.
 // Confirmed by hand against getVisibleJiraProjects and the Confluence
-// space tree on 2026-09-11 (see the plan this shipped from). Call
-// Analyser and 17E are deliberately absent -- Call Analyser has no
-// matching Jira project, and 17E is treated as folded into Amy.
+// space tree on 2026-09-11 (see the plan this shipped from), and Billing
+// added the same way on 2026-09-18. Call Analyser and 17E are
+// deliberately absent -- Call Analyser has no matching Jira project, and
+// 17E is treated as folded into Amy.
 export const RELEASE_SCHEDULE_PAGE_ID = "529104897";
 export const RELEASE_NOTES_ROOT_PAGE_ID = "523730946";
 // Numeric id of the "Group IT Project" personal space (key
@@ -25,6 +26,7 @@ export const PRODUCTS = [
   { product: "ACX Improvements", parentPageId: "523960322", jiraKey: "ACX" },
   { product: "CX Pass", parentPageId: "523763734", jiraKey: "CP" },
   { product: "PBX Manager", parentPageId: "524681217", jiraKey: "PBX" },
+  { product: "Billing", parentPageId: "524386326", jiraKey: "BL" },
 ];
 
 export function productConfig(name) {
