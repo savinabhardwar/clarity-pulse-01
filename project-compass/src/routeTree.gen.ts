@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientRequestsRouteImport } from './routes/client-requests'
+import { Route as ApiJiraWebhookRouteImport } from './routes/api.jira-webhook'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const ClientRequestsRoute = ClientRequestsRouteImport.update({
   path: '/client-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiJiraWebhookRoute = ApiJiraWebhookRouteImport.update({
+  id: '/api/jira-webhook',
+  path: '/api/jira-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
@@ -32,30 +38,40 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/client-requests': typeof ClientRequestsRoute
+  '/api/jira-webhook': typeof ApiJiraWebhookRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/client-requests': typeof ClientRequestsRoute
+  '/api/jira-webhook': typeof ApiJiraWebhookRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/client-requests': typeof ClientRequestsRoute
+  '/api/jira-webhook': typeof ApiJiraWebhookRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/client-requests' | '/projects/$projectId'
+  fullPaths:
+    '/' | '/client-requests' | '/api/jira-webhook' | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/client-requests' | '/projects/$projectId'
-  id: '__root__' | '/' | '/client-requests' | '/projects/$projectId'
+  to: '/' | '/client-requests' | '/api/jira-webhook' | '/projects/$projectId'
+  id:
+    | '__root__'
+    | '/'
+    | '/client-requests'
+    | '/api/jira-webhook'
+    | '/projects/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientRequestsRoute: typeof ClientRequestsRoute
+  ApiJiraWebhookRoute: typeof ApiJiraWebhookRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
 }
 
@@ -75,6 +91,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/jira-webhook': {
+      id: '/api/jira-webhook'
+      path: '/api/jira-webhook'
+      fullPath: '/api/jira-webhook'
+      preLoaderRoute: typeof ApiJiraWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId': {
       id: '/projects/$projectId'
       path: '/projects/$projectId'
@@ -88,6 +111,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientRequestsRoute: ClientRequestsRoute,
+  ApiJiraWebhookRoute: ApiJiraWebhookRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -35,6 +35,19 @@ webhook ingestion) is not yet validated against what this Jira site
 actually supports/has enabled — needs direct verification in Jira admin
 (System → WebHooks), not something inferable from existing code.
 
+**Update 2026-09-22 — unrelated to this doc's ingestion design:** a Jira
+webhook subscription now exists (System → WebHooks), but it feeds
+`project-compass/src/routes/api.jira-webhook.ts` directly — a narrow,
+one-way sync of `jira:issue_updated` status back onto linked
+`stakeholder_items` rows in project-compass's own Supabase project. It is
+NOT the Cloudflare Workers ingestion pipeline this doc otherwise describes,
+does not write to the `ai-pm-platform` event tables, and should not be
+treated as validating that a general-purpose webhook is available for
+task 3.x ingestion — confirm that separately. The payload shape it assumes
+(`issue.key`, `issue.fields.status.name`) is Atlassian's documented
+`jira:issue_updated` shape but has not yet been checked against a real
+captured delivery; verify on first live webhook call and update this note.
+
 ### Dedup key
 
 If polling remains the ingestion mode: `issue.id` + `fields.updated`
