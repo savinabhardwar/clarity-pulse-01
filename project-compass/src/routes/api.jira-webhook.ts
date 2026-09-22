@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { timingSafeEqual } from "node:crypto";
 
 // Externally-reachable webhook: Jira (System -> WebHooks) calls this on issue
@@ -69,14 +69,6 @@ export const Route = createFileRoute("/api/jira-webhook")({
           // Ack so Jira doesn't retry a payload shape we'll never understand.
           return new Response("ok (skipped: unrecognized shape)", { status: 200 });
         }
-
-        const supabaseUrl = process.env["VITE_SUPABASE_URL"];
-        const supabaseAnonKey = process.env["VITE_SUPABASE_ANON_KEY"];
-        if (!supabaseUrl || !supabaseAnonKey) {
-          console.error("jira-webhook: Supabase env vars not set");
-          return new Response("Server misconfigured", { status: 500 });
-        }
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         const { data, error } = await supabase.rpc("stakeholder_items_update_status_from_jira", {
           p_jira_key: jiraKey,
