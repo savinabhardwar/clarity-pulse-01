@@ -43,10 +43,10 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          ARGS=""
-          if [ -n "${{ github.event.inputs.project }}" ]; then ARGS="$ARGS --project ${{ github.event.inputs.project }}"; fi
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
-          node scripts/release-notes/run.mjs $ARGS
+          ARGS=()
+          if [ -n "${{ github.event.inputs.project }}" ]; then ARGS+=(--project "${{ github.event.inputs.project }}"); fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/release-notes/run.mjs "${ARGS[@]}"
 
       - name: File an issue on failure
         if: failure()
