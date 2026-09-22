@@ -400,12 +400,99 @@ Supabase/Gemini keys.
 - **Done when:** migrations run clean on a fresh DB and are re-runnable from
   zero.
 
+**Done — 2026-09-21.** `ai-pm-platform/db/migrations/0001_mvp_tables.sql`
+created and applied live against the real Supabase project from task 1.2.
+All 9 tables present, verified via `information_schema.tables`. Two
+deliberate deviations from spec.md's column lists, both called out inline
+in the SQL as comments, not silent:
+- `requirement_assessments` gained `model` and `prompt_version` columns —
+  spec.md omits them, but `CLAUDE.md` §5 requires stamping the model that
+  actually served each response for auditability. A real gap between the
+  spec and the hard rules, not an invented addition.
+- `events` gained `provider_event_id` (unique on `(source,
+  provider_event_id)`) — spec.md's own `events` column list has no dedup
+  key at all, which would make the table wrong from creation, not just
+  incomplete pending task 2.4. Pulled forward from task 2.4 rather than
+  left as a known gap.
+
+`sprints` also gained `goal` (flagged as a recommended addition in
+`docs/field-mapping.md`, not spec.md). QA Assignee/Planned Hours
+(`customfield_10690`/`10691`) were deliberately **not** added to `issues` —
+that's `assignments`/the QA rota's job (task 2.2/2.2b), not a mirrored
+column.
+
+**Verified live, not assumed:**
+- `events` append-only trigger: a real `UPDATE` and `DELETE` against a row
+  both failed with the trigger's exception, confirmed by catching the
+  errors directly, not by reading the trigger definition and assuming it
+  works.
+- Dedup constraint: inserting the same `(source, provider_event_id)` twice
+  failed on the unique constraint as intended.
+- Re-runnability: dropped all 9 tables plus both trigger functions,
+  reapplied the same migration file, succeeded identically.
+
+All tables have RLS enabled with **no policies yet** (default-deny for
+anon/authenticated, service role unaffected) — a safer default than leaving
+them open until task 2.5 writes the real policies. `created_at`/`updated_at`
+applied to every table except `requirement_assessments` and `events`, which
+are append-only/versioned by design (a new row per version/event, never a
+mutated one) — `updated_at` would be actively misleading on those two.
+
 ### 2.2 Delivery tables
 
 - **Do:** `assignments`, `dependencies`, `branches`, `commits`,
   `pull_requests`, `qa_runs`. Defer `bugs` (D13 defers bug automation).
 - **Check:** `qa_runs` needs `cycle_number` so each QA attempt is its own row —
   this is what makes rework measurable. Don't collapse it to one row per issue.
+
+**Done — 2026-09-22.** `ai-pm-platform/db/migrations/0002_delivery_tables.sql`
+created and applied live against the real Supabase project. All 6 tables
+present (`assignments`, `dependencies`, `branches`, `commits`,
+`pull_requests`, `qa_runs`); `bugs` deferred per D13, matching the task.
+
+**Deviations from spec.md's column lists, all inline-commented:**
+- `assignments` gained a partial unique index
+  `(issue_id, assignment_type) where active` — enforces task 4.4b's
+  idempotency requirement ("if the issue already has an active QA
+  assignment, skip") at the DB level rather than trusting application
+  logic alone.
+- `branches` gained `unique (repository, branch_name)` — not in spec.md,
+  but branches have no other external identifier and CLAUDE.md hard rule 4
+  requires idempotent upserts on every event path; same reasoning as
+  `events.provider_event_id` in migration 0001.
+- `commits`/`pull_requests` gained `unique (repository, commit_hash)` /
+  `unique (repository, external_pr_id)` — these were already explicitly
+  named in task 2.4's own wording ("commit hash per repo", "PR external
+  ID"), so added now rather than left as a known gap until task 2.4.
+- `qa_runs.evidence` is `jsonb`, not a single text/url column — encodes
+  `docs/discovery.md` §0.4's human decision that evidence accepts any of a
+  file upload, a URL, or freeform text, potentially more than one, not an
+  either/or single field.
+- `qa_runs` has two `CHECK` constraints encoding D11 and D12 directly at
+  the DB level: PASS requires `test_result`, `comments`,
+  `test_cases_executed`, and at least one evidence entry; FAIL requires a
+  `failure_reason` from the exact category list task 4.5 already
+  enumerates (`developer_defect`, `requirement_issue`,
+  `requirement_change`, `dependency`, `environment`, `test_data`,
+  `qa_issue`, `other`). Matches task 4.4's own instruction that "PASS
+  validation must be server-side and unbypassable."
+
+**Verified live, not assumed** — a script inserted real rows and confirmed
+every constraint actually fires: PASS rejected without required fields,
+accepted with them; FAIL rejected without a reason and with an invalid
+category, accepted with a valid one; a second active QA assignment on the
+same issue rejected; a self-referencing dependency rejected. Re-runnability
+re-confirmed by dropping all 15 tables (both migrations) and both trigger
+functions, then reapplying 0001 and 0002 in order — identical result.
+
+**One unrelated thing caught and reverted, not committed:** running these
+verification scripts from the repo root caused `npm install` (triggered
+incidentally, not by anything migration-related) to add a stray
+`context-mem` devDependency to the **root** `package.json`/
+`package-lock.json` — almost certainly a side effect of the `context-mem`
+MCP server configured in `.mcp.json`. Reverted via `git checkout --
+package.json package-lock.json` before anything was staged. Root app
+untouched, as required.
 
 **Scope change (human-confirmed 2026-09-18):** the PM Brain tables task that
 used to sit here as 2.3 (`pm_brain_entries`, `pm_brain_links`, embeddings) is
