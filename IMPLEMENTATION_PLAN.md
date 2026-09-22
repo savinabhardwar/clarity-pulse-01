@@ -620,7 +620,49 @@ migrations from a dropped schema.
 - **Done when:** a test proves a non-admin role cannot write
   `project_configurations`.
 
-### 2.6 Seed and fixtures
+**Done — 2026-09-22, after asking a real decision first.** Nothing in this
+project had ever decided how a human authenticates to this database — no
+Supabase Auth wiring, no link from `users` to `auth.users`, no login flow
+(Phase 8's Control Centre doesn't exist yet). Asked the human before
+guessing at that contract (per this session's standing instruction and
+`CLAUDE.md` §3 rule 2's spirit): build the minimal real wiring now, not
+defer indefinitely.
+`ai-pm-platform/db/migrations/0005_rls_project_configurations.sql`:
+- `users.auth_user_id uuid unique references auth.users(id)` — links our
+  internal `users` to Supabase Auth. Nullable: not every tracked person
+  (e.g. someone only known as a Jira assignee) necessarily has login
+  access.
+- `users.role` gained a `CHECK (role in ('member', 'pm', 'admin'))` —
+  wasn't constrained before; needed so the RLS check below can't silently
+  no-op on a typo'd role string.
+- `current_app_user_role()`, a `SECURITY DEFINER` helper resolving
+  `auth.uid()` to a role. Needed specifically because `users` itself has
+  RLS enabled with no policies (default-deny) — a plain lookup would be
+  blocked by the very table it's checking, for the same non-privileged
+  role the policy is trying to gate. Standard Supabase pattern for this.
+- Four policies on `project_configurations` (select/insert/update/delete),
+  all gated on `current_app_user_role() in ('pm', 'admin')` — matches D3
+  ("PM/Admin only" ownership) for both read and write, nothing broader.
+
+**Verified live with real rigor, not a service_role-bypass shortcut:**
+created two actual `auth.users` rows (admin, member) with matching internal
+`users` rows, then simulated exactly what PostgREST does at request time —
+`set_config('request.jwt.claims', ...)` + `SET LOCAL ROLE authenticated`
+inside a transaction, rolled back after each check. Confirmed: the member
+role's `INSERT` was rejected by the RLS policy itself (not a permission
+error elsewhere), the member role's `SELECT` returned 0 rows (RLS-filtered,
+not an error), and the admin role's `INSERT` succeeded. Re-runnability
+re-confirmed across all five migrations (0001–0005) from a dropped schema.
+
+**Deliberately narrow scope, not expanded beyond what was asked:** no read
+policies were added for any other table (they're still RLS-enabled,
+zero-policy, default-deny for anon/authenticated — safe, just inaccessible
+to non-service-role callers until a real need defines the policy). No
+project-membership-based read policy was added to `project_configurations`
+either, even though "can a project member at least read their own
+project's config" is a reasonable future question — D3 says PM/Admin
+*owns* config, and task 2.5 only asked to prove non-admins can't write it,
+so broader read access wasn't invented here.
 
 - **Do:** a seed script creating one synthetic project with members, and fixture
   payloads (real shapes captured in Phase 0) for every source system.
