@@ -664,15 +664,66 @@ project's config" is a reasonable future question — D3 says PM/Admin
 *owns* config, and task 2.5 only asked to prove non-admins can't write it,
 so broader read access wasn't invented here.
 
+### 2.6 Seed and fixtures
+
 - **Do:** a seed script creating one synthetic project with members, and fixture
   payloads (real shapes captured in Phase 0) for every source system.
 - **Done when:** a fresh developer can go from clone to populated local DB in one
   command.
 
-> ### Gate 2
+**Done — 2026-09-22.** `npm run db:setup` (= `migrate && seed`) is the one
+command. Built a small idempotent migration runner
+(`ai-pm-platform/db/migrate.ts`, not explicitly asked for but necessary —
+without one, "one command" would mean a developer manually running 5 SQL
+files in the right order) tracked via a `_migrations` table, plus
+`ai-pm-platform/db/seed/seed.ts` which upserts one synthetic project
+("Demo Project", code `DEMO`) with 4 members across the role spectrum
+(admin, pm, developer, qa) on natural unique keys — safe to rerun.
+
+**Verified live, not assumed:** dropped the entire schema (all 18 tables
+plus the migration-tracking table and 3 trigger functions), ran
+`npm run db:setup` once from that truly empty state — 5 migrations
+applied, project seeded. Ran it a second time — 0 new migrations, same
+project id returned (real idempotency, not just "didn't crash").
+
+**Fixtures** (`ai-pm-platform/db/seed/fixtures/`, provenance documented in
+that directory's own `README.md`, not duplicated here) — for task 3.1's
+normalizer tests to run against, not inserted by the seed script:
+- `jira-issue.json` — a **real, live-fetched** Jira issue (LT-43), then
+  **anonymized**: it originally contained two real people's names and a
+  real `@adpcx.com` email address, caught before committing (a Bash
+  permission classifier flagged the initial inspection attempt as
+  "Sensitive-Source Provenance," which was the right call). Replaced
+  `accountId`/`displayName`/`emailAddress`/`avatarUrls` — including the
+  ones embedded in `self` URL query strings, which a first-pass field-only
+  replacement missed — with fixture placeholders. All structural content
+  (field names, real status/issuetype IDs) is untouched.
+- `requirements-app-item.json` — synthetic values, real field names/types
+  (verified against project-compass's actual migrations).
+- `github-pull-request.json`/`github-push.json` — synthetic, following
+  GitHub's documented webhook shapes, **not live-fetched**: real API calls
+  against `alldayPA/line-tester` returned 404 this session.
+  **New finding, not resolved here:** GitHub org access has narrowed since
+  Phase 0 — `docs/discovery.md` documented 431 visible repos including
+  `line-tester`; only 3 repos are visible now and `line-tester` isn't one
+  of them. Worth investigating before task 3.2 (Git ingestion) needs real
+  webhook verification.
+- `qa-run.json` — synthetic, matches our own `qa_runs` schema; no external
+  QA system exists to capture a real payload from.
+
+**One unrelated thing noticed, deliberately left alone:** while working,
+`docs/event-contracts.md` and `project-compass/src/routeTree.gen.ts`
+showed uncommitted changes I didn't make — real, in-progress work from
+another session (a Jira webhook route added to project-compass, with a
+note that a webhook subscription now exists but feeds project-compass
+directly, not this platform's ingestion pipeline). Left both untouched and
+uncommitted; not mine to stage or take credit for.
+
+> ### Gate 2 — passed 2026-09-22
 >
 > Records can be created, related, and queried with no AI and no integrations.
-> This matches the spec's own Phase 1 exit criteria.
+> This matches the spec's own Phase 1 exit criteria. Verified end to end via
+> `npm run db:setup` from a dropped schema.
 
 ---
 

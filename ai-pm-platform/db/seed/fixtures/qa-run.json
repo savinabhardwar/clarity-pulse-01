@@ -1,0 +1,13 @@
+{
+  "_fixture_note": "No external QA system exists to capture a real payload from (docs/discovery.md §0.4: 'QA results have nowhere formal today'). This matches our own qa_runs table shape (migration 0002) instead -- the minimal QA form (task 4.5) is this data's origin, not an external API.",
+  "cycle_number": 1,
+  "status": "pass",
+  "test_result": "All CSV export scenarios verified: empty table, 500+ rows, special characters in cell values.",
+  "comments": "No regressions found on existing export formats.",
+  "test_cases_executed": "TC-104, TC-105, TC-106 (3 cases)",
+  "evidence": [
+    { "type": "url", "value": "https://example.com/qa-evidence/lt-43-export-test.mp4" },
+    { "type": "text", "value": "Verified against Chrome 128 and Firefox 130." }
+  ],
+  "failure_reason": null
+}

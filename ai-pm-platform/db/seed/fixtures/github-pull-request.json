@@ -1,0 +1,27 @@
+{
+  "_fixture_note": "Shape follows GitHub's publicly documented pull_request webhook event (standard product behavior, not org-specific -- see docs/event-contracts.md's 'Git provider' section for why this doesn't need live verification). All names/URLs below are placeholders, not real GitHub data -- live PR fetches against alldayPA/line-tester failed with 404 this session (org access has narrowed since Phase 0's discovery.md, which documented 431 visible repos; only 3 are visible now, and line-tester isn't one of them -- flagged separately, not fixed here).",
+  "action": "closed",
+  "number": 128,
+  "pull_request": {
+    "id": 1234567890,
+    "number": 128,
+    "state": "closed",
+    "title": "LT-43 Add CSV export button to report view",
+    "body": "Implements LT-43. Exports the current report table as CSV.",
+    "html_url": "https://github.com/alldayPA/line-tester/pull/128",
+    "user": { "login": "fixture-dev-1", "id": 900001 },
+    "head": { "ref": "feature/lt-43-csv-export", "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0" },
+    "base": { "ref": "development", "sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1" },
+    "merged": true,
+    "merged_at": "2026-09-20T14:32:00Z",
+    "merged_by": { "login": "fixture-dev-2", "id": 900002 },
+    "created_at": "2026-09-19T09:10:00Z",
+    "updated_at": "2026-09-20T14:32:00Z"
+  },
+  "repository": {
+    "id": 555001,
+    "name": "line-tester",
+    "full_name": "alldayPA/line-tester",
+    "html_url": "https://github.com/alldayPA/line-tester"
+  }
+}

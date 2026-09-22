@@ -1,0 +1,319 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10010.requestTypePractice",
+  "id": "43703",
+  "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703",
+  "key": "LT-43",
+  "fields": {
+    "statuscategorychangedate": "2026-09-22T11:18:30.777+0100",
+    "issuetype": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10008",
+      "id": "10008",
+      "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+      "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10315?size=medium",
+      "name": "Story",
+      "subtask": false,
+      "avatarId": 10315,
+      "hierarchyLevel": 0
+    },
+    "parent": {
+      "id": "42952",
+      "key": "LT-3",
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issue/42952",
+      "fields": {
+        "summary": "Line tester Sprint 1",
+        "status": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+          "description": "",
+          "iconUrl": "https://alldaypa.atlassian.net/",
+          "name": "To Do",
+          "id": "10227",
+          "statusCategory": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+            "id": 2,
+            "key": "new",
+            "colorName": "blue-gray",
+            "name": "To Do"
+          }
+        },
+        "priority": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+          "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+          "name": "Medium",
+          "id": "3"
+        },
+        "issuetype": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10000",
+          "id": "10000",
+          "description": "A collection of related bugs, stories, and tasks.",
+          "iconUrl": "https://alldaypa.atlassian.net/images/icons/issuetypes/epic.svg",
+          "name": "Epic",
+          "subtask": false,
+          "hierarchyLevel": 1
+        }
+      }
+    },
+    "timespent": null,
+    "customfield_10591": null,
+    "customfield_10030": null,
+    "project": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/project/10480",
+      "id": "10480",
+      "key": "LT",
+      "name": "Line Tester",
+      "projectTypeKey": "software",
+      "simplified": false,
+      "avatarUrls": {
+        "48x48": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421",
+        "24x24": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=small",
+        "16x16": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=xsmall",
+        "32x32": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=medium"
+      }
+    },
+    "customfield_10031": null,
+    "customfield_10032": null,
+    "customfield_10033": null,
+    "fixVersions": [],
+    "aggregatetimespent": 10800,
+    "customfield_10034": null,
+    "statusCategory": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+      "id": 2,
+      "key": "new",
+      "colorName": "blue-gray",
+      "name": "To Do"
+    },
+    "customfield_10035": null,
+    "resolution": null,
+    "customfield_10037": null,
+    "customfield_10027": null,
+    "customfield_10028": null,
+    "customfield_10029": null,
+    "customfield_10624": null,
+    "customfield_10306": null,
+    "resolutiondate": null,
+    "workratio": 0,
+    "watches": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/watchers",
+      "watchCount": 1,
+      "isWatching": true
+    },
+    "lastViewed": null,
+    "created": "2026-09-07T16:12:57.348+0100",
+    "customfield_10020": [
+      {
+        "id": 1986,
+        "name": "LR Sprint 1",
+        "state": "closed",
+        "boardId": 517,
+        "goal": "",
+        "startDate": "2026-08-31T19:34:00.000Z",
+        "endDate": "2026-09-10T23:00:00.000Z",
+        "completeDate": "2026-09-14T06:01:42.545Z"
+      },
+      {
+        "id": 2167,
+        "name": "LR Sprint 2",
+        "state": "active",
+        "boardId": 517,
+        "goal": "",
+        "startDate": "2026-09-14T06:02:56.852Z",
+        "endDate": "2026-09-24T23:00:00.000Z"
+      }
+    ],
+    "customfield_10021": null,
+    "customfield_10022": null,
+    "customfield_10023": null,
+    "priority": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+      "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+      "name": "Medium",
+      "id": "3"
+    },
+    "customfield_10024": null,
+    "customfield_10025": null,
+    "labels": [],
+    "customfield_10026": null,
+    "customfield_10016": null,
+    "customfield_10017": null,
+    "customfield_10657": null,
+    "customfield_10019": "0|i01j5i:z",
+    "timeestimate": 25200,
+    "aggregatetimeoriginalestimate": 36000,
+    "versions": [],
+    "issuelinks": [],
+    "assignee": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-1",
+      "accountId": "fixture-account-1",
+      "avatarUrls": {
+        "48x48": "https://example.com/avatar-placeholder-48x48.png",
+        "24x24": "https://example.com/avatar-placeholder-24x24.png",
+        "16x16": "https://example.com/avatar-placeholder-16x16.png",
+        "32x32": "https://example.com/avatar-placeholder-32x32.png"
+      },
+      "displayName": "Fixture Person 1",
+      "active": true,
+      "timeZone": "Europe/London",
+      "accountType": "atlassian"
+    },
+    "updated": "2026-09-22T11:18:30.777+0100",
+    "status": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+      "description": "",
+      "iconUrl": "https://alldaypa.atlassian.net/",
+      "name": "To Do",
+      "id": "10227",
+      "statusCategory": {
+        "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+        "id": 2,
+        "key": "new",
+        "colorName": "blue-gray",
+        "name": "To Do"
+      }
+    },
+    "components": [],
+    "timeoriginalestimate": 25200,
+    "customfield_10690": null,
+    "customfield_10691": null,
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Users need an at-a-glance view of line health and recurring problems, separable by ACX client.\n\nAcceptance criteria:\n- Summary tiles show success rate over a selected period.\n- Failures are broken down by stage.\n- Failures are broken down by client, with a client filter available.\n- A repeat-offender list is shown for DDIs failing repeatedly.\n- A trend-over-time view is available."
+            }
+          ]
+        }
+      ]
+    },
+    "customfield_10010": null,
+    "customfield_10014": "LT-3",
+    "customfield_10015": null,
+    "timetracking": {
+      "originalEstimate": "1d",
+      "remainingEstimate": "1d",
+      "originalEstimateSeconds": 25200,
+      "remainingEstimateSeconds": 25200
+    },
+    "customfield_10005": null,
+    "customfield_10006": null,
+    "customfield_10007": null,
+    "security": null,
+    "customfield_10008": null,
+    "customfield_10207": null,
+    "attachment": [],
+    "aggregatetimeestimate": 25200,
+    "customfield_10009": null,
+    "summary": "FE-7 — Reporting dashboard",
+    "creator": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+      "accountId": "fixture-account-2",
+      "emailAddress": "fixture.person2@example.com",
+      "avatarUrls": {
+        "48x48": "https://example.com/avatar-placeholder-48x48.png",
+        "24x24": "https://example.com/avatar-placeholder-24x24.png",
+        "16x16": "https://example.com/avatar-placeholder-16x16.png",
+        "32x32": "https://example.com/avatar-placeholder-32x32.png"
+      },
+      "displayName": "Fixture Person 2",
+      "active": true,
+      "timeZone": "Europe/London",
+      "accountType": "atlassian"
+    },
+    "subtasks": [
+      {
+        "id": "44094",
+        "key": "LT-51",
+        "self": "https://alldaypa.atlassian.net/rest/api/3/issue/44094",
+        "fields": {
+          "summary": "UI- Reporting dashboard",
+          "status": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/status/10029",
+            "description": "",
+            "iconUrl": "https://alldaypa.atlassian.net/images/icons/statuses/generic.png",
+            "name": "Testing",
+            "id": "10029",
+            "statusCategory": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/4",
+              "id": 4,
+              "key": "indeterminate",
+              "colorName": "yellow",
+              "name": "In Progress"
+            }
+          },
+          "priority": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+            "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+            "name": "Medium",
+            "id": "3"
+          },
+          "issuetype": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10198",
+            "id": "10198",
+            "description": "A small piece of work that's part of a larger task.",
+            "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10316?size=medium",
+            "name": "Sub-task",
+            "subtask": true,
+            "avatarId": 10316,
+            "hierarchyLevel": -1
+          }
+        }
+      }
+    ],
+    "customfield_10240": [],
+    "reporter": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+      "accountId": "fixture-account-2",
+      "emailAddress": "fixture.person2@example.com",
+      "avatarUrls": {
+        "48x48": "https://example.com/avatar-placeholder-48x48.png",
+        "24x24": "https://example.com/avatar-placeholder-24x24.png",
+        "16x16": "https://example.com/avatar-placeholder-16x16.png",
+        "32x32": "https://example.com/avatar-placeholder-32x32.png"
+      },
+      "displayName": "Fixture Person 2",
+      "active": true,
+      "timeZone": "Europe/London",
+      "accountType": "atlassian"
+    },
+    "aggregateprogress": {
+      "progress": 10800,
+      "total": 36000,
+      "percent": 30
+    },
+    "customfield_10000": "{}",
+    "customfield_10001": null,
+    "customfield_10002": [],
+    "customfield_10003": null,
+    "customfield_10004": null,
+    "customfield_10038": null,
+    "environment": null,
+    "duedate": null,
+    "progress": {
+      "progress": 0,
+      "total": 25200,
+      "percent": 0
+    },
+    "votes": {
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/votes",
+      "votes": 0,
+      "hasVoted": false
+    },
+    "comment": {
+      "comments": [],
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703/comment",
+      "maxResults": 0,
+      "total": 0,
+      "startAt": 0
+    },
+    "worklog": {
+      "startAt": 0,
+      "maxResults": 20,
+      "total": 0,
+      "worklogs": []
+    }
+  }
+}
