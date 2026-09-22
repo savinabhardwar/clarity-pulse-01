@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-pm-platform-ingest-requirements",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  // NOT DEPLOYED as of 2026-09-22 -- see the note at the top of
+  // src/index.ts. Same cron-budget reasoning as ingest-jira: no
+  // standalone trigger, exposed over HTTP for task 3.6's consolidated
+  // scheduler to call once this is actually deployable.
+  "queues": {
+    "producers": [
+      {
+        "queue": "ai-pm-platform-events",
+        "binding": "EVENTS_QUEUE",
+      },
+    ],
+  },
+}

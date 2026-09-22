@@ -830,6 +830,62 @@ Worker that enforces it before any DB access is 3.3's job.
   providers don't retry forever; log the ignore (dropped events never reach the
   queue at all).
 
+**Done — 2026-09-22, for 2 of 3 sources; the third is genuinely blocked, not
+skipped.** Real infrastructure, not just code: created the
+`ai-pm-platform-events` Cloudflare Queue live (`wrangler queues create`).
+
+- **`workers/ingest-git`** — a true webhook receiver, exactly as this task
+  describes: verify (task 3.2's `verifyWebhookSignature`) → normalize →
+  resolve project → enqueue → 2xx. Deployed and tested **live against the
+  real deployed Worker**, not mocked: a ping event returns 200, an
+  unconfigured repo resolves-to-null and returns 200 without reaching the
+  queue (D24), a tampered body with a valid-looking signature returns 401
+  (task 3.2's literal wording, now proven end to end through a real
+  Worker, not just the crypto primitive), and a request with no signature
+  header returns 401. Also proved the full success path for real: mapped
+  the seeded Demo Project to `alldayPA/line-tester` temporarily, sent a
+  signed push event, confirmed 200 with no exception, reverted the mapping
+  after.
+  **A real bug found and fixed via live testing, not caught by unit tests
+  or local repro:** passing the bare `fetch` reference as `fetchImpl`
+  caused `TypeError: Illegal invocation` in the deployed Worker (lost
+  `this` binding) — Node has no such restriction, so this only surfaced by
+  actually deploying and hitting the real endpoint, confirmed via
+  `wrangler tail`. Fixed with an arrow-function wrapper; documented inline
+  so the same mistake doesn't get repeated in `ingest-jira`.
+- **`workers/ingest-jira`** — **not a webhook receiver**: real,
+  live-verified fact is zero Jira webhooks configured (`docs/discovery.md`
+  §0.2), so this polls instead, gated behind a shared trigger secret
+  rather than task 3.2's HMAC (there's no inbound webhook to verify a
+  signature on). **Deliberately claims no standalone cron trigger** —
+  `docs/constraints.md`'s 5-cron-trigger-per-account budget is real and
+  tight, and task 3.6 (Scheduler Worker) is where consolidation is
+  designed to happen; this exposes its polling logic over HTTP instead,
+  ready for 3.6 to call. Deployed and tested **live against the real
+  Jira API**: temporarily mapped Demo Project to `LT`, triggered a poll
+  with a 30-day window, got `{"enqueued":33}` back — real issues, really
+  normalized, really queued, not a synthetic fixture.
+- **`workers/ingest-requirements` — code exists, NOT deployed.** This
+  platform has no working credential for project-compass's separate
+  Supabase project at all (`docs/discovery.md` §0.3: write access was
+  *agreed*, but no credential — not even read — has actually been issued).
+  Deploying a Worker whose only real invocation would immediately fail
+  isn't useful verification, so this ships as reviewed, typechecked,
+  unit-tested code (2 tests, mocked `fetch`, same pattern as
+  `project-resolution.test.ts`) rather than a live deployment.
+  **`CLAUDE.md` §7 stop-and-ask trigger, explicitly surfaced, not just
+  noted in passing: a credential is needed from the human before this can
+  go live** — `REQUIREMENTS_APP_SUPABASE_URL` and a key (anon+RLS or
+  service_role, not yet decided which).
+
+**24 tests passing workspace-wide** (1 scaffold + 2 `ingest-requirements`
++ 21 `packages/core`, which now includes `project-resolution.ts` — a new
+shared module resolving a normalizer's raw `projectHint` to our internal
+`projects.id` via Supabase's REST API, since Cloudflare Workers don't
+reliably support long-lived TCP sockets for a raw Postgres client;
+`fetchImpl` is injected for testability rather than importing `fetch`
+directly).
+
 ### 3.3b Event queue consumer
 
 - **Goal:** decouple fast webhook acknowledgment from Postgres writes.

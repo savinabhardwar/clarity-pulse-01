@@ -17,3 +17,12 @@ export interface NormalizedEvent {
   correlationId: string | null;
   providerEventId: string; // events.provider_event_id, the dedup key
 }
+
+// What actually goes onto the Cloudflare Queue: a NormalizedEvent plus
+// the project id resolved from projectHint (task 3.3's "resolve project"
+// step, done by the ingest Worker before enqueuing -- process-events,
+// task 3.3b, needs the real uuid, not the raw hint, to insert into
+// events.project_id).
+export interface QueuedEvent extends NormalizedEvent {
+  projectId: string;
+}

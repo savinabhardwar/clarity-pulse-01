@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-pm-platform-ingest-jira",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  // Deliberately no `triggers.crons` here -- CLAUDE.md flags the 5
+  // cron-trigger-per-account budget as tight, and task 3.6 (Scheduler
+  // Worker) is where cron consolidation is designed to happen. This
+  // Worker exposes its polling logic over HTTP so 3.6's consolidated
+  // scheduler can call it, rather than claiming its own trigger slot now.
+  "queues": {
+    "producers": [
+      {
+        "queue": "ai-pm-platform-events",
+        "binding": "EVENTS_QUEUE",
+      },
+    ],
+  },
+}

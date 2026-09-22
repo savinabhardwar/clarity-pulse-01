@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-pm-platform-ingest-git",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  "queues": {
+    "producers": [
+      {
+        "queue": "ai-pm-platform-events",
+        "binding": "EVENTS_QUEUE",
+      },
+    ],
+  },
+}

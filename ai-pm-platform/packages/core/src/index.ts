@@ -1,4 +1,4 @@
-export type { NormalizedEvent } from "./event.ts";
+export type { NormalizedEvent, QueuedEvent } from "./event.ts";
 export { normalizeJiraIssue } from "./normalizers/jira.ts";
 export type { JiraIssue } from "./normalizers/jira.ts";
 export { normalizeStakeholderItem } from "./normalizers/requirements-app.ts";
@@ -6,3 +6,5 @@ export type { StakeholderItem } from "./normalizers/requirements-app.ts";
 export { normalizeGithubPush, normalizeGithubPullRequest } from "./normalizers/github.ts";
 export type { GithubPushPayload, GithubPullRequestPayload } from "./normalizers/github.ts";
 export { verifyWebhookSignature } from "./security/hmac.ts";
+export { resolveProjectId } from "./project-resolution.ts";
+export type { ProjectResolutionConfig } from "./project-resolution.ts";
