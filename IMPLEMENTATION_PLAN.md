@@ -586,6 +586,33 @@ in. This task only ships the schema both halves need.
 - **Done when:** inserting the same event twice raises a conflict that the
   upsert path handles cleanly.
 
+**Done — 2026-09-22.** Most of this task was actually already satisfied
+inline as each table got built in migrations 0001–0003 (FKs, the events
+dedup constraint, and every external-identifier unique constraint the task
+names — `jira_issue_key`, PR external ID, commit hash per repo — were all
+added at table-creation time, not deferred). What was genuinely still
+missing, audited explicitly rather than assumed complete:
+**indexes on FK columns** — Postgres does not auto-index foreign keys (only
+primary keys get one automatically), so every FK across all three prior
+migrations needed checking. `ai-pm-platform/db/migrations/0004_fk_indexes.sql`
+adds one for every FK not already covered by a unique constraint's
+leftmost-prefix match, with each skip commented inline so the reasoning is
+auditable later — including a subtlety: **partial** unique indexes
+(`assignments`, `qa_assignment_overrides`) don't count as real coverage,
+since they only index the subset of rows matching their `WHERE` clause; a
+plain index was added alongside each one for the rest of the table.
+
+**Verified live, not assumed:** `pg_indexes` counted per table after
+applying (2–7 indexes per table, matching what each table's constraints +
+this migration should produce). The actual "Done when" wording — an
+**upsert path**, not just a raw duplicate `INSERT` — was tested
+specifically: `INSERT ... ON CONFLICT (source, provider_event_id) DO
+NOTHING` on a duplicate event returned 0 rows with no error, confirming
+the real idempotent-upsert pattern the ingest Workers will use in Phase 3
+works cleanly, not just that a naive duplicate insert throws (already
+proven in task 2.1). Re-runnability re-confirmed across all four
+migrations from a dropped schema.
+
 ### 2.5 Permissions
 
 - **Do:** Row Level Security reflecting D3 and D20 — project configuration is
