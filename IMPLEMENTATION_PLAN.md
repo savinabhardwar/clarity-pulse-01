@@ -781,6 +781,42 @@ guessing a contract that doesn't exist yet (`CLAUDE.md` §3 rule 2).
 - **Done when:** a test with a tampered body and a valid-looking header is
   rejected with 401 and writes nothing.
 
+**Done — 2026-09-22, at the cryptographic-correctness level; the
+Worker-level 401 response is task 3.3's job, not built yet.**
+`ai-pm-platform/packages/core/src/security/hmac.ts`: `verifyWebhookSignature`,
+one shared function for both sources — GitHub and Jira Cloud turned out to
+use the **identical wire format** (`<method>=<hex digest>`), just under
+different header names (`X-Hub-Signature-256` / `X-Hub-Signature`). Uses
+Web Crypto (`crypto.subtle`), not `node:crypto`, since this code needs to
+run in the eventual Cloudflare Workers runtime, not just Node.
+
+**Real gap closed, not assumed:** Jira Cloud's webhook signature scheme
+was completely unconfirmed anywhere in this project before today — fetched
+Atlassian's own developer docs live (2026-09-22): HMAC-SHA256 since
+February 2024, `X-Hub-Signature` header, `sha256=<hex>` format, "Jira
+might start using another method for the HMAC in the future" (the parser
+is written to reject any method it doesn't explicitly support, not
+silently accept one). Atlassian's docs also publish a worked test vector
+(secret `"It's a Secret to Everybody"`, payload `"Hello World!"`) —
+**independently recomputed with `node:crypto` before trusting the fetched
+page's transcription of it**, confirmed byte-for-byte identical, then used
+as a real unit test. This proves the implementation is actually correct
+against a third-party-published answer, not just internally
+self-consistent with its own logic.
+
+**16 tests, all passing**, including the task's own literal wording — a
+tampered body against a valid-looking header is rejected — plus wrong
+secret, missing header, malformed header, unsupported hash method, and
+non-hex content, all rejected rather than throwing (an ingest Worker
+should treat "can't verify" and "verification failed" identically: reject,
+touch nothing, per `CLAUDE.md` hard rule 3).
+
+**What's genuinely still open:** the task's literal "Done when" is about a
+Worker returning **401** and **writing nothing to the database** — that
+requires an actual ingest Worker, which doesn't exist until task 3.3. This
+task proves the cryptographic primitive is correct; wiring it into a real
+Worker that enforces it before any DB access is 3.3's job.
+
 ### 3.3 Ingest Workers
 
 - **Do:** one Worker per source: verify → normalize → resolve project →
