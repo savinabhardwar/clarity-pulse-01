@@ -533,6 +533,50 @@ layer.
 - **Ask if:** task 0.4b found duty rotation more complex than a single on-duty
   person — a schedule table is a different shape and needs confirming first.
 
+**Done — 2026-09-22, implemented differently from this task's original
+suggested shape.** The single-table design above assumed the Supabase
+default from `CLAUDE.md` §8. That default was already overridden on
+2026-09-18 (`docs/discovery.md` §0.4b, human decision): eligibility lives
+in a version-controlled JSON file, not a Supabase table. That decision only
+covered *eligibility* data, though — it left open where the round-robin
+cursor and per-issue overrides should live, since those are written
+automatically on every QA assignment, not human-curated. **Asked the human
+before building anything** (per this session's "ask if a decision needs to
+be made" instruction): confirmed a split —
+
+- `ai-pm-platform/config/qa-rota.json` (+ `qa-rota.schema.json`, `README.md`
+  explaining the split and why) — the eligible QA pool and Project Lead per
+  project, human-edited, git-reviewed. Currently `"projects": {}` — no QA
+  people have been enumerated yet (discovery.md §0.4b left this open;
+  populating it is a separate, later action, not part of this task).
+  **Implementation refinement, flagged not silent:** matches people by
+  **email**, not the "names" discovery.md's wording used — email is
+  `unique not null` on `users` already (migration 0001) and avoids
+  typo/duplicate-name matching risk. Documented in the config README.
+- `ai-pm-platform/db/migrations/0003_qa_rota_state.sql` — `qa_rota_state`
+  (one row per project: `last_assigned_user_id`, `paused`, `updated_by`,
+  `updated_at`) and `qa_assignment_overrides` (`issue_id`, `qa_user_id`,
+  `created_by`, `created_at`, `consumed_at`) for the automation-writable
+  state. A partial unique index enforces "only one *unconsumed* override
+  per issue" per `CLAUDE.md` §8's wording, encoded at the DB level rather
+  than trusted to application logic.
+
+**"Done when" superseded:** "editable in Supabase Studio" no longer
+applies to eligibility (it's a git file now); RLS is enabled on both new
+Supabase tables with no policies yet (task 2.5), same as every other table
+so far. **Verified live, not assumed:** a script inserted real rows and
+confirmed both constraints actually fire — a second `qa_rota_state` row for
+the same project rejected, a second pending override on the same issue
+rejected, and a new pending override correctly allowed once the prior one
+is marked consumed. Re-runnability re-confirmed across all three migrations
+(0001–0003) from a fully dropped schema.
+
+**Not built here, deliberately:** the actual round-robin resolution logic
+(read the git file, read the Supabase state, pick the next eligible
+person, raise an exception if empty/paused/all-unavailable) is task 4.4b's
+job in Phase 4, once the Policy/Automation Engine split exists to run it
+in. This task only ships the schema both halves need.
+
 ### 2.4 Constraints, indexes, idempotency keys
 
 - **Do:** foreign keys; a unique constraint supporting event deduplication

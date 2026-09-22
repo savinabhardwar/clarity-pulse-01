@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QA rota configuration",
+  "description": "Human-curated QA eligibility per project. See ai-pm-platform/config/README.md for the full design (why this is a git file, what lives in Supabase instead, and how round-robin/overrides work). Edited by hand; the Automation Engine only reads this file, never writes it.",
+  "type": "object",
+  "required": ["projects"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "projects": {
+      "type": "object",
+      "description": "Keyed by the project's Jira project key (matches projects.jira_project_key), e.g. \"LT\".",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["projectLead", "qaPool"],
+        "additionalProperties": false,
+        "properties": {
+          "projectLead": {
+            "type": "string",
+            "format": "email",
+            "description": "Single email identifying the Project Lead. Configuration only -- CLAUDE.md §3a: no scheduled job reads this."
+          },
+          "qaPool": {
+            "type": "array",
+            "description": "Eligible QA people for this project, in round-robin order. Order matters: the Automation Engine cycles through this array using the cursor stored in Supabase (qa_rota_state.last_assigned_user_id), not a field in this file.",
+            "items": {
+              "type": "object",
+              "required": ["email", "available"],
+              "additionalProperties": false,
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "description": "Matched against users.email to resolve the internal user id. Chosen over matching by display name, which risks typos/duplicates -- see the 2026-09-22 note in IMPLEMENTATION_PLAN.md task 2.2b."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Display name, for human readability only -- not used for matching."
+                },
+                "available": {
+                  "type": "boolean",
+                  "description": "Toggled by hand on leave/unavailability. Per CLAUDE.md §8: if round-robin lands on someone false here, the automation must surface an exception, not silently skip to the next person."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
