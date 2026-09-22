@@ -736,6 +736,44 @@ uncommitted; not mine to stage or take credit for.
 - **Check:** pure functions, no I/O — they must be trivially unit-testable
   against the Phase 0 fixtures.
 
+**Done — 2026-09-22.** `ai-pm-platform/packages/core` (new workspace
+member) with a shared `NormalizedEvent` type and three normalizers:
+`normalizeJiraIssue`, `normalizeStakeholderItem`,
+`normalizeGithubPush`/`normalizeGithubPullRequest`. 8 unit tests, all
+passing, run against the actual task 2.6 fixtures (not invented sample
+data) — including the real, anonymized LT-43 Jira issue.
+
+**A design decision worth stating plainly:** `NormalizedEvent` has
+`projectHint` where the `events` table has `project_id`. A normalizer
+can't produce a resolved project uuid from a raw payload alone — that's a
+database lookup, and task 3.3 explicitly separates "normalize" from
+"resolve project" as two different pipeline steps. `projectHint` carries
+whatever raw identifier the source gives (Jira project key,
+`owner/repo`, or project-compass's own project uuid), and resolving it to
+our internal `projects.id` happens later, in the ingest Worker.
+
+**Jira and requirements-app normalizers don't infer what changed** (status
+transition, reassignment, comment) — both sources are **polled**, not
+pushed (confirmed live: zero Jira webhooks configured, and project-compass
+emits none at all), so a "normalize" call only ever sees one snapshot.
+Determining what actually changed requires diffing against previously-seen
+state, which is a database read — explicitly out of bounds for a pure
+normalizer per this task's own Check. That diffing is the ingest Worker's
+job, not built here.
+
+**GitHub normalizers are unverified against a live delivery.** Real API
+calls against `alldayPA/line-tester` returned 404 this session (the org access
+regression noted in task 2.6 — 431 repos documented in Phase 0, 3 visible
+now). Built against GitHub's publicly documented webhook shape instead;
+flagged in the normalizer's own file comment to re-verify field-for-field
+before task 3.3 ships against it for real.
+
+**QA normalizer deliberately not built.** There is no external QA system
+to write a normalizer *for* — `docs/discovery.md` §0.4 confirms none
+exists; the minimal QA form (task 4.5) is this data's actual origin, not
+an external API with a payload to normalize. Building one now would mean
+guessing a contract that doesn't exist yet (`CLAUDE.md` §3 rule 2).
+
 ### 3.2 Signature verification
 
 - **Do:** per-source HMAC verification at the top of each ingest Worker, before
