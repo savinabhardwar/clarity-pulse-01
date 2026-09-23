@@ -256,6 +256,27 @@ Core table `stakeholder_items` (`project-compass/supabase/migrations/0001_stakeh
 jira_url, jira_key, status (free text), status_kind (stakeholder|jira),
 priority (High|Medium|Low), comment, created_by, required_by,
 will_be_done_by, created_at, updated_at, deleted_at (soft delete)`.
+
+**Correction, re-verified live 2026-09-23 (a live query against the real
+table, not a docs re-read):** `jira_url` and `jira_key` **no longer exist**
+on `stakeholder_items` — `0008_multiple_jira_links.sql` (predates this
+correction by months) dropped both scalar columns and replaced them with a
+one-to-many `stakeholder_item_jira_links` table (an item can now link
+multiple Jira tickets), with its own `stakeholder_item_jira_links_add`/
+`_remove` RPC functions and a public-read RLS policy
+(`for select using (true)`). `comment` is also gone from this table —
+`0007_item_comments_and_drop_single_comment.sql` moved it to the separate
+`stakeholder_item_comments` table already documented below; this section's
+original column list was simply stale on both counts, not re-checked after
+those migrations landed. **Also corrected:** `project_id` is a **text
+slug** (e.g. `"automated-mis"`), not a uuid — confirmed against
+`stakeholder_items.project_id text not null references
+stakeholder_projects(id)` directly. This was wrong in `docs/field-mapping.md`
+and, as a result, in `ai-pm-platform`'s own migration 0001
+(`projects.requirements_project_id uuid`) until fixed live in migration
+0006 (2026-09-23) — a real schema bug that shipped and ran, not just a
+documentation error, caught only when a live query against the real column
+returned `42703` and a live read of a real row showed a non-uuid value.
 Extended by `0012_client_request_decisions.sql`: `project_id` is nullable —
 an item proposed for 2+ candidate projects becomes a "decision" with no
 project yet, tracked in a separate `stakeholder_item_candidate_projects`
@@ -302,10 +323,20 @@ talking directly to its own Supabase project via `@supabase/supabase-js`
 (server-side, for the Jira-lookup call in `find-jira-match.ts`). There is no
 outbound event, no webhook registration, and no queue. The only viable
 ingestion mode for the AI PM Automation Platform is **polling this app's own
-Supabase tables** (either via its REST API with the anon key + RLS, or —
-better — direct Postgres read if we're ever given a read replica/service
-role, which we are not currently). `updated_at` on `stakeholder_items` is
-the natural polling cursor.
+Supabase tables** via its REST API with the anon key + RLS.
+
+**Corrected 2026-09-23: the anon key was never actually unavailable to
+us.** `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` have been sitting in
+`project-compass/.env.local` the whole time — the earlier framing here
+("polling... if we're ever given a read replica/service role, which we are
+not currently") conflated *read* access with the separate, still-genuinely-
+unissued *write* credential (see "Write-back capability" below), and this
+file was never revisited to check. **Verified live 2026-09-23**: the anon
+key successfully reads `stakeholder_items` (`200`, real rows returned) —
+polling read access is not blocked and never was; task 3.3's
+`ingest-requirements` Worker is deployed and live-tested against it as of
+this correction. `updated_at` on `stakeholder_items` is the natural
+polling cursor.
 
 ### Auth model
 
@@ -328,32 +359,44 @@ cross-database read or an export/poll step, not a same-DB join.
 
 ### Write-back capability (Jira link / clarification request)
 
-**Partial today, decision made for the target design.** `jira_key` /
-`jira_url` columns exist and are populated today via a **manual,
-human-assisted match** — `find-jira-match.ts` does a live JQL
-summary-similarity search against real Jira (same Basic-auth pattern as
-`fetch-jira-rest.mjs`) and offers candidate matches for a human to pick in
-the item form (`item-form.tsx`); it does not auto-link automatically or
-silently (consistent with D8's "ambiguous matches flagged, not silently
-attached"). No automated write-Jira-link-back path exists yet, and neither
-does a mechanism for the Automation Engine to post a clarification request
-into project-compass externally — both would need new RPC calls or direct
-table writes using project-compass's Supabase credentials.
+**Partial today, decision made for the target design. Corrected 2026-09-23:**
+the write-back mechanism has changed shape since this was first written —
+`jira_key`/`jira_url` are no longer columns on `stakeholder_items` at all
+(see the correction under "Data model" above); linking is now via the
+`stakeholder_item_jira_links` table's `stakeholder_item_jira_links_add`/
+`_remove` RPC functions, one-to-many. The manual-match UX itself is
+unchanged: `find-jira-match.ts` does a live JQL summary-similarity search
+against real Jira (same Basic-auth pattern as `fetch-jira-rest.mjs`) and
+offers candidate matches for a human to pick in the item form
+(`item-form.tsx`); it does not auto-link automatically or silently
+(consistent with D8's "ambiguous matches flagged, not silently attached").
+No automated write-Jira-link-back path exists yet, and neither does a
+mechanism for the Automation Engine to post a clarification request into
+project-compass externally.
 
-**Decision (human-confirmed this session):** the Automation Engine **will**
+**Decision (human-confirmed 2026-09-18):** the Automation Engine **will**
 be granted write access to project-compass's Supabase project, so these
-write-back paths (Jira link back onto `stakeholder_items`, clarification
-request creation) can be built as real automation rather than staying
-human-only. **Not yet done:** no credential has actually been shared or
-configured — this is a design green light, not a completed integration.
-Getting the actual service-role key (or a scoped write role) for
-project-compass's Supabase project is a task-1.x-era action item (secrets
-handling, `CLAUDE.md` §3 rule 1 applies — it must go through `wrangler
-secret put`/`.dev.vars`, never committed). When that credential is obtained,
-also decide whether writes go through project-compass's existing
-`security definer` RPCs (safer, respects its own validation) or direct table
-access (more flexible, bypasses its RPC-level guards) — leaning toward
-reusing the RPCs where one already exists for the operation needed.
+write-back paths (Jira link back via `stakeholder_item_jira_links_add`,
+clarification request creation) can be built as real automation rather than
+staying human-only.
+
+**Still genuinely not done, distinct from read access (corrected
+2026-09-23 — see "Ingestion mode" above): read access was never actually
+blocked**, only write. `project-compass/.env.local`'s existing anon key is
+sufficient for polling reads (task 3.3's `ingest-requirements` uses it) —
+but that key is RLS-scoped to what the anon role can do, which does not
+include writing (`stakeholder_item_jira_links_add`/`_remove` and the
+clarification-comment RPCs are `grant`ed to `anon, authenticated`, so this
+may turn out to already be sufficient once checked — not yet verified).
+Getting a write-capable credential (or confirming the existing anon key's
+RPC grants already cover it) for project-compass's Supabase project remains
+an open action item (secrets handling, `CLAUDE.md` §3 rule 1 applies — it
+must go through `wrangler secret put`/`.dev.vars`, never committed). When
+resolved, also decide whether writes go through project-compass's existing
+`security definer` RPCs (safer, respects its own validation, and is what
+the anon-role grants already point at) or direct table access (more
+flexible, bypasses its RPC-level guards) — leaning toward reusing the RPCs
+where one already exists for the operation needed.
 
 ---
 

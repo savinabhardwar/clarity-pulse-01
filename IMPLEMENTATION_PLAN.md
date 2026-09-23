@@ -865,18 +865,42 @@ skipped.** Real infrastructure, not just code: created the
   Jira API**: temporarily mapped Demo Project to `LT`, triggered a poll
   with a 30-day window, got `{"enqueued":33}` back — real issues, really
   normalized, really queued, not a synthetic fixture.
-- **`workers/ingest-requirements` — code exists, NOT deployed.** This
-  platform has no working credential for project-compass's separate
-  Supabase project at all (`docs/discovery.md` §0.3: write access was
-  *agreed*, but no credential — not even read — has actually been issued).
-  Deploying a Worker whose only real invocation would immediately fail
-  isn't useful verification, so this ships as reviewed, typechecked,
-  unit-tested code (2 tests, mocked `fetch`, same pattern as
-  `project-resolution.test.ts`) rather than a live deployment.
-  **`CLAUDE.md` §7 stop-and-ask trigger, explicitly surfaced, not just
-  noted in passing: a credential is needed from the human before this can
-  go live** — `REQUIREMENTS_APP_SUPABASE_URL` and a key (anon+RLS or
-  service_role, not yet decided which).
+- **`workers/ingest-requirements` — corrected and deployed 2026-09-23,
+  same day as the note above claiming it was blocked.** The "no credential
+  exists" claim was wrong — the human pointed out `project-compass/.env.local`
+  already had `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, present since
+  Phase 0 and simply never checked thoroughly enough at the time. Verified
+  live before wiring anything up: the anon key genuinely does read
+  `stakeholder_items` (a real `200`, not an RLS-blocked `403`).
+  **This live check also surfaced two real, separate schema bugs, both
+  corrected the same session, not left as known issues:**
+  1. `jira_url`/`jira_key` don't exist on `stakeholder_items` anymore — a
+     live query for them returned Postgres error `42703`. Migration
+     `0008_multiple_jira_links.sql` in project-compass (predating this
+     correction by months) had already moved them to a separate
+     `stakeholder_item_jira_links` table. `docs/field-mapping.md` and
+     `docs/discovery.md` still claimed the old scalar columns; both
+     corrected, and the `StakeholderItem` type / fixture / Worker query all
+     updated to match.
+  2. **A real, shipped bug, not just a docs error:** `project_id` on
+     `stakeholder_items` is a **text slug** (e.g. `"automated-mis"`), not a
+     uuid — but `ai-pm-platform`'s own migration 0001 typed
+     `projects.requirements_project_id` as `uuid`, on a never-actually-checked
+     assumption. That column would have silently rejected every real
+     project-compass id. Fixed via a new forward-only migration
+     (`0006_fix_requirements_project_id_type.sql`, not an edit to the
+     already-applied 0001), applied live through the real `npm run migrate`
+     runner, and re-verified re-runnable from a fully dropped schema across
+     all six migrations.
+
+  With those fixed, deployed for real and tested against **live
+  project-compass data**: an unauthorized request correctly returns 401;
+  mapping Demo Project to the real `automated-mis` project-compass slug and
+  polling with a wide window returned `{"enqueued":1}` — a real
+  stakeholder item, really resolved, really queued. The specific live row
+  content (a real client name and support-ticket reference) was
+  deliberately not used in the committed fixture — only the verified real
+  column shape was kept, with synthetic values.
 
 **24 tests passing workspace-wide** (1 scaffold + 2 `ingest-requirements`
 + 21 `packages/core`, which now includes `project-resolution.ts` — a new
@@ -885,6 +909,11 @@ shared module resolving a normalizer's raw `projectHint` to our internal
 reliably support long-lived TCP sockets for a raw Postgres client;
 `fetchImpl` is injected for testability rather than importing `fetch`
 directly).
+
+**All three ingest Workers for the sources currently in scope are now
+deployed and live-verified against real systems** — `ingest-qa` remains
+deliberately unbuilt (no QA system exists yet, same reasoning as the
+deferred QA normalizer in task 3.1).
 
 ### 3.3b Event queue consumer
 

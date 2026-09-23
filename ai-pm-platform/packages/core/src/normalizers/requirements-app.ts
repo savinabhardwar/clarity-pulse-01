@@ -1,15 +1,16 @@
 import type { NormalizedEvent } from "../event.ts";
 
-// project-compass's stakeholder_items shape -- verified against its real
-// migrations (project-compass/supabase/migrations/0001_stakeholder_schema.sql,
-// 0010_client_requests.sql, 0012_client_request_decisions.sql), see
-// docs/field-mapping.md. Only the fields this normalizer reads are typed.
+// project-compass's stakeholder_items shape -- re-verified live 2026-09-23
+// against the real table (a stale field-mapping.md claim, jira_url/jira_key
+// as scalar columns, was caught and corrected this session: migration 0008
+// moved them to a separate stakeholder_item_jira_links table, one-to-many,
+// months before this check). Only the fields this normalizer reads are
+// typed. See docs/field-mapping.md.
 export interface StakeholderItem {
   id: string;
   project_id: string | null; // nullable: multi-candidate "decision" items have no project yet (docs/discovery.md §0.3)
   summary: string;
   status: string;
-  jira_key: string | null;
   created_by: string | null;
   updated_at: string;
 }

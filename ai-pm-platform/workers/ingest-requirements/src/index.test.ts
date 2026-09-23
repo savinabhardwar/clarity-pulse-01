@@ -46,7 +46,6 @@ test("polls tracked projects, normalizes, and enqueues matching items", async ()
         project_id: "compass-proj-1",
         summary: "Add CSV export",
         status: "In Progress",
-        jira_key: "LT-43",
         created_by: "pm@example.com",
         updated_at: "2026-09-22T09:00:00Z",
       },

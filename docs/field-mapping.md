@@ -55,23 +55,26 @@ comments, test cases executed, evidence) — see `docs/discovery.md` §0.4.
 
 ## Requirements Gathering App (project-compass)
 
-Verified against `project-compass/supabase/migrations/0001_stakeholder_schema.sql`,
-`0010_client_requests.sql`, `0012_client_request_decisions.sql`. See
-`docs/discovery.md` §0.3 for the full schema notes.
+Originally verified against `project-compass/supabase/migrations/0001_stakeholder_schema.sql`,
+`0010_client_requests.sql`, `0012_client_request_decisions.sql`. **Re-verified
+live 2026-09-23** using project-compass's own anon key + `VITE_SUPABASE_URL`
+(already present in `project-compass/.env.local` — overlooked in the
+original Phase 0 pass, found and used this session) — this surfaced two real
+corrections below, both caught by an actual live query failing rather than
+caught in review. See `docs/discovery.md` §0.3 for the full schema notes.
 
 ### Requirement payload → `requirements`
 
-| project-compass field (`stakeholder_items`) | Internal field                                                                                                           | Notes                                                                                 |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `id`                                        | `source_reference`                                                                                                       | uuid                                                                                  |
-| `project_id`                                | (resolve to internal `project_id` via `jira_project_key` on `stakeholder_projects`)                                      | project-compass only has ~4 configured projects today                                 |
-| `summary`                                   | `title`                                                                                                                  |                                                                                       |
-| `description`                               | `description`                                                                                                            |                                                                                       |
-| `jira_url`                                  | `source_url` (or the reverse — this app currently uses Jira as ONE OF its own fields, not as the pure downstream target) | see discovery.md — write-back path doesn't exist automated yet                        |
-| `jira_key`                                  | `jira_issue_id`/`jira_issue_key` (once resolved)                                                                         | populated today via manual human-assisted match (`find-jira-match.ts`), not automatic |
-| `status` + `status_kind`                    | `status` (needs its own mapping table — two parallel vocabularies)                                                       | see discovery.md's stakeholder status list                                            |
-| `created_by`                                | `created_by` (resolve to internal `users.id`)                                                                            | currently free text, not a user FK                                                    |
-| `created_at` / `updated_at`                 | `created_at` / `updated_at`                                                                                              | `updated_at` is the natural polling cursor, see event-contracts.md                    |
+| project-compass field (`stakeholder_items`) | Internal field                                                                       | Notes                                                                                                                                              |
+| -------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                         | `source_reference`                                                                    | uuid                                                                                                                                                |
+| `project_id`                                 | (resolve to internal `project_id` via `projects.requirements_project_id`)             | **Corrected 2026-09-23: this is a TEXT SLUG** (e.g. `"automated-mis"`), not a uuid — confirmed live and against `stakeholder_items.project_id text not null references stakeholder_projects(id)`. The original entry here claimed uuid; that was never actually checked. `ai-pm-platform`'s own `projects.requirements_project_id` column was `uuid` from task 2.1 until fixed in migration 0006 (2026-09-23) — this was a real, live-caught schema bug, not just a docs error. |
+| `summary`                                    | `title`                                                                                |                                                                                                                                                      |
+| `description`                                | `description`                                                                          |                                                                                                                                                      |
+| `jira_url` / `jira_key`                      | **REMOVED 2026-09-23 — these columns no longer exist on `stakeholder_items`.**         | Migration `0008_multiple_jira_links.sql` (project-compass, predates this correction by months) moved them to a separate `stakeholder_item_jira_links` table (one-to-many, an item can now link multiple Jira tickets), publicly readable via an RLS policy (`for select using (true)`). Not yet consumed by any normalizer here — the current `normalizeStakeholderItem` doesn't read Jira links at all; joining this in is a future enhancement, not done in this pass. |
+| `status` + `status_kind`                     | `status` (needs its own mapping table — two parallel vocabularies)                     | see discovery.md's stakeholder status list                                                                                                          |
+| `created_by`                                 | `created_by` (resolve to internal `users.id`)                                          | currently free text, not a user FK                                                                                                                 |
+| `created_at` / `updated_at`                  | `created_at` / `updated_at`                                                            | `updated_at` is the natural polling cursor, see event-contracts.md                                                                                 |
 
 No field maps to `ai_readiness_status` / `ai_readiness_confidence` /
 `ai_readiness_reason` — those are populated by our own Phase 6 assessment,

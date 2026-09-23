@@ -52,7 +52,7 @@ async function fetchUpdatedItems(
   if (projectIds.length === 0) return [];
   const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
   const idList = projectIds.map((id) => `"${id}"`).join(",");
-  const url = `${env.REQUIREMENTS_APP_SUPABASE_URL}/rest/v1/stakeholder_items?select=id,project_id,summary,status,jira_key,created_by,updated_at&project_id=in.(${idList})&updated_at=gte.${since}`;
+  const url = `${env.REQUIREMENTS_APP_SUPABASE_URL}/rest/v1/stakeholder_items?select=id,project_id,summary,status,created_by,updated_at&project_id=in.(${idList})&updated_at=gte.${since}`;
   const res = await fetch(url, {
     headers: {
       apikey: env.REQUIREMENTS_APP_SUPABASE_KEY,
