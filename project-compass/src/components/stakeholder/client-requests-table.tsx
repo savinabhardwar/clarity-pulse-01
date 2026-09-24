@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import {
   ArrowRightCircle,
   ChevronLeft,
@@ -38,6 +37,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -57,6 +63,7 @@ import {
   useClientRequests,
   useProjects,
   useSoftDeleteItem,
+  useUpdateItem,
 } from "@/data/queries";
 import {
   PRIORITIES,
@@ -65,6 +72,9 @@ import {
   REQUEST_TYPES,
   STAKEHOLDER_STATUSES,
   type ClientRequest,
+  type ItemDraft,
+  type Project,
+  type RequestType,
 } from "@/lib/stakeholder-types";
 import { cn } from "@/lib/utils";
 
@@ -125,6 +135,133 @@ function fmtDate(at: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+// Inline-editable Request Type cell -- click the label to swap in a Select,
+// commit via the same stakeholder_items_update RPC (through useUpdateItem)
+// that item-form.tsx and items-table.tsx's InlineDateCell use for arbitrary
+// field edits, keeping every other field on the draft untouched.
+function InlineRequestTypeCell({ item }: { item: ClientRequest }) {
+  const updateItem = useUpdateItem();
+  const [editing, setEditing] = useState(false);
+
+  function commit(next: RequestType) {
+    setEditing(false);
+    if (next === item.requestType) return;
+
+    const draft: ItemDraft = {
+      requestType: next,
+      summary: item.summary,
+      description: item.description,
+      status: item.status,
+      statusKind: item.statusKind,
+      priority: item.priority,
+      createdBy: item.createdBy,
+      requiredBy: item.requiredBy,
+      willBeDoneBy: item.willBeDoneBy,
+    };
+
+    updateItem.mutate(
+      { id: item.id, draft },
+      {
+        onSuccess: () => toast.success("Request type updated"),
+        onError: (err) => toast.error(err.message),
+      },
+    );
+  }
+
+  if (editing) {
+    return (
+      <Select
+        open
+        {...(item.requestType ? { value: item.requestType } : {})}
+        onValueChange={(v) => commit(v as RequestType)}
+        onOpenChange={(open) => {
+          if (!open) setEditing(false);
+        }}
+      >
+        <SelectTrigger className="h-8 w-auto min-w-[140px]" autoFocus>
+          <SelectValue placeholder="Select type" />
+        </SelectTrigger>
+        <SelectContent>
+          {REQUEST_TYPES.map((r) => (
+            <SelectItem key={r.value} value={r.value}>
+              {r.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="rounded px-1 py-0.5 hover:bg-muted hover:underline"
+    >
+      {requestTypeLabel(item.requestType)}
+    </button>
+  );
+}
+
+// Inline-editable Project cell for already-assigned (non-decision) requests.
+// Reassignment reuses the same useAssignClientRequestProject mutation the
+// "Assign Project" dialog uses for decisions, just against the full project
+// list instead of the item's candidate projects.
+function InlineProjectCell({ item, projects }: { item: ClientRequest; projects: Project[] }) {
+  const assignProject = useAssignClientRequestProject();
+  const [editing, setEditing] = useState(false);
+
+  function commit(projectId: string) {
+    setEditing(false);
+    if (!projectId || projectId === item.projectId) return;
+    const project = projects.find((p) => p.id === projectId);
+    assignProject.mutate(
+      { id: item.id, projectId, kind: item.kind },
+      {
+        onSuccess: () => toast.success(`Client request assigned to ${project?.name ?? "project"}`),
+        onError: (err) => toast.error(err.message),
+      },
+    );
+  }
+
+  if (editing) {
+    return (
+      <Select
+        open
+        {...(item.projectId ? { value: item.projectId } : {})}
+        onValueChange={commit}
+        onOpenChange={(open) => {
+          if (!open) setEditing(false);
+        }}
+      >
+        <SelectTrigger className="h-8 w-auto min-w-[160px]" autoFocus>
+          <SelectValue placeholder="Select project" />
+        </SelectTrigger>
+        <SelectContent>
+          {projects.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.code} {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted hover:underline"
+    >
+      <span className="rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
+        {item.projectCode}
+      </span>
+      <span className="text-foreground">{item.projectName}</span>
+    </button>
+  );
 }
 
 export function ClientRequestsTable() {
@@ -407,45 +544,40 @@ export function ClientRequestsTable() {
                         {it.summary}
                       </button>
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
+                    <TableCell className="py-3 text-center whitespace-nowrap">
                       {it.isDecision || !it.projectId ? (
-                        <div className="space-y-1">
+                        <div className="flex flex-col items-center space-y-1">
                           <DecisionBadge />
                           <div className="max-w-[220px] text-xs text-muted-foreground">
                             {it.candidateProjects.map((p) => p.name).join(", ")}
                           </div>
                         </div>
                       ) : (
-                        <Link
-                          to="/projects/$projectId"
-                          params={{ projectId: it.projectId }}
-                          className="inline-flex items-center gap-1.5 hover:underline"
-                        >
-                          <span className="rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
-                            {it.projectCode}
-                          </span>
-                          <span className="text-foreground">{it.projectName}</span>
-                        </Link>
+                        <InlineProjectCell item={it} projects={projects ?? []} />
                       )}
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
-                      {requestTypeLabel(it.requestType)}
+                    <TableCell className="py-3 text-center whitespace-nowrap">
+                      <InlineRequestTypeCell item={it} />
                     </TableCell>
                     <TableCell className="max-w-[280px] py-3 text-muted-foreground">
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 text-center">
                       <StatusBadge status={it.status} kind={it.statusKind} />
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 text-center">
                       <PriorityTag priority={it.priority} />
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">{it.createdBy}</TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
+                    <TableCell className="py-3 text-center whitespace-nowrap">
+                      {it.createdBy}
+                    </TableCell>
+                    <TableCell className="py-3 text-center whitespace-nowrap">
                       {fmtDate(it.createdAt)}
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">{it.requiredBy || "—"}</TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
+                    <TableCell className="py-3 text-center whitespace-nowrap">
+                      {it.requiredBy || "—"}
+                    </TableCell>
+                    <TableCell className="py-3 text-center whitespace-nowrap">
                       {it.willBeDoneBy || "—"}
                     </TableCell>
                     <TableCell className="py-3">

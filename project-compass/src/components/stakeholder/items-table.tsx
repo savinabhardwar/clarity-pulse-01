@@ -137,7 +137,7 @@ function JiraLinksCell({ itemId }: { itemId: string }) {
     return <span className="text-muted-foreground">—</span>;
   }
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap justify-center gap-1">
       {links.map((link) => (
         <a
           key={link.id}
@@ -503,23 +503,25 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                     <TableCell className="max-w-[320px] py-3 text-muted-foreground">
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 text-center">
                       <JiraLinksCell itemId={it.id} />
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 text-center">
                       <StatusBadge status={it.status} kind={it.statusKind} />
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-3 text-center">
                       <PriorityTag priority={it.priority} />
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">{it.createdBy}</TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
+                    <TableCell className="py-3 text-center whitespace-nowrap">
+                      {it.createdBy}
+                    </TableCell>
+                    <TableCell className="py-3 text-center whitespace-nowrap">
                       {fmtDate(it.createdAt)}
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
+                    <TableCell className="py-3 text-center whitespace-nowrap">
                       <InlineDateCell item={it} field="requiredBy" />
                     </TableCell>
-                    <TableCell className="py-3 whitespace-nowrap">
+                    <TableCell className="py-3 text-center whitespace-nowrap">
                       <InlineDateCell item={it} field="willBeDoneBy" />
                     </TableCell>
                     <TableCell className="py-3">
