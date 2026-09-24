@@ -12,7 +12,6 @@ import {
   ChevronDown,
   ListFilter,
   Search,
-  X,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
@@ -48,36 +47,34 @@ export function SortControl<TField extends string>({
   onDirectionChange: (direction: SortDirection) => void;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label className="block text-xs text-muted-foreground">Sort by</Label>
-      <div className="flex gap-1">
-        <Select value={field} onValueChange={(v) => onFieldChange(v as TField)}>
-          <SelectTrigger className="w-[170px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {fields.map((f) => (
-              <SelectItem key={f.value} value={f.value}>
-                {f.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={direction === "asc" ? "Ascending" : "Descending"}
-          title={direction === "asc" ? "Ascending" : "Descending"}
-          onClick={() => onDirectionChange(direction === "asc" ? "desc" : "asc")}
-        >
-          {direction === "asc" ? (
-            <ArrowUpAZ className="size-4" />
-          ) : (
-            <ArrowDownAZ className="size-4" />
-          )}
-        </Button>
-      </div>
+    <div className="flex shrink-0 gap-1.5">
+      <Select value={field} onValueChange={(v) => onFieldChange(v as TField)}>
+        <SelectTrigger className="h-9 w-[165px] border-[#D9DEE5] text-[13px]" aria-label="Sort by">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {fields.map((f) => (
+            <SelectItem key={f.value} value={f.value}>
+              {f.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-9 shrink-0 border-[#D9DEE5]"
+        aria-label={direction === "asc" ? "Ascending" : "Descending"}
+        title={direction === "asc" ? "Ascending" : "Descending"}
+        onClick={() => onDirectionChange(direction === "asc" ? "desc" : "asc")}
+      >
+        {direction === "asc" ? (
+          <ArrowUpAZ className="size-4" />
+        ) : (
+          <ArrowDownAZ className="size-4" />
+        )}
+      </Button>
     </div>
   );
 }
@@ -122,16 +119,24 @@ function FilterPanel({ categories }: { categories: MultiSelectFilterConfig[] }) 
     for (const v of [...active.selected]) active.onToggle(v);
   }
 
+  function clearAll() {
+    for (const c of categories) {
+      for (const v of [...c.selected]) c.onToggle(v);
+    }
+  }
+
   return (
-    <div className="space-y-1.5">
-      <Label className="block text-xs text-muted-foreground">Filter</Label>
+    <div className="shrink-0">
       <Popover onOpenChange={(open) => open && setQuery("")}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="gap-1.5 font-normal">
+          <Button
+            variant="outline"
+            className="h-9 gap-1.5 border-[#D9DEE5] px-3.5 text-[13px] font-normal"
+          >
             <ListFilter className="size-4" />
             Filter
             {totalSelected > 0 && (
-              <span className="rounded-full bg-brand-soft px-1.5 text-xs font-semibold text-brand">
+              <span className="rounded-full bg-brand px-1.5 text-xs font-semibold text-white">
                 {totalSelected}
               </span>
             )}
@@ -232,6 +237,20 @@ function FilterPanel({ categories }: { categories: MultiSelectFilterConfig[] }) 
               </div>
             </div>
           </div>
+
+          <div className="flex items-center justify-between border-t border-border px-3 py-2">
+            <button
+              type="button"
+              onClick={clearAll}
+              disabled={totalSelected === 0}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-40"
+            >
+              Clear all
+            </button>
+            {totalSelected > 0 && (
+              <span className="text-xs text-muted-foreground">{totalSelected} selected</span>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
     </div>
@@ -270,11 +289,13 @@ function DateRangeFilter<TDateField extends string>({
   }
 
   return (
-    <div className="space-y-1.5">
-      <Label className="block text-xs text-muted-foreground">Date Range</Label>
+    <div className="shrink-0">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="gap-1.5 font-normal">
+          <Button
+            variant="outline"
+            className="h-9 gap-1.5 border-[#D9DEE5] px-3.5 text-[13px] font-normal"
+          >
             <CalendarRange className="size-4" />
             {activeFieldLabel ? (
               <span className="flex items-center gap-1.5">
@@ -379,8 +400,6 @@ export function FilterBar<TSortField extends string, TDateField extends string =
   multiSelects,
   dateRange,
   sort,
-  filtersActive,
-  onClear,
   actions,
 }: {
   search?: { value: string; onChange: (value: string) => void; placeholder: string };
@@ -393,27 +412,21 @@ export function FilterBar<TSortField extends string, TDateField extends string =
     onFieldChange: (field: TSortField) => void;
     onDirectionChange: (direction: SortDirection) => void;
   };
-  filtersActive: boolean;
-  onClear: () => void;
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-raised">
+    <div className="flex min-h-20 flex-wrap items-center gap-2.5 rounded-[7px] border border-border bg-card px-4 py-3.5">
       {search && (
-        <div className="min-w-[220px] flex-1 space-y-1.5">
-          <Label htmlFor="search" className="block text-xs text-muted-foreground">
-            Search summary
-          </Label>
-          <div className="relative">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="search"
-              value={search.value}
-              onChange={(e) => search.onChange(e.target.value)}
-              placeholder={search.placeholder}
-              className="pl-8"
-            />
-          </div>
+        <div className="relative min-w-[220px] flex-1 basis-[400px]" style={{ maxWidth: 675 }}>
+          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#667085]" />
+          <Input
+            id="search"
+            aria-label={search.placeholder}
+            value={search.value}
+            onChange={(e) => search.onChange(e.target.value)}
+            placeholder={search.placeholder}
+            className="h-9 border-[#D9DEE5] pl-9 text-[13px] placeholder:text-[#7A8594]"
+          />
         </div>
       )}
 
@@ -422,15 +435,6 @@ export function FilterBar<TSortField extends string, TDateField extends string =
       {dateRange && <DateRangeFilter {...dateRange} />}
 
       {sort && <SortControl {...sort} />}
-
-      <Button
-        variant="ghost"
-        onClick={onClear}
-        disabled={!filtersActive}
-        className="text-muted-foreground"
-      >
-        <X className="size-4" /> Clear filters
-      </Button>
 
       {actions}
     </div>

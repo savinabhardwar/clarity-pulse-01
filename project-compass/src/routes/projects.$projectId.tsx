@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FolderOpen } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
@@ -60,10 +60,11 @@ function ProjectPage() {
     <AppShell
       title={project.name}
       subtitle={project.description}
+      icon={FolderOpen}
       actions={
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand/30 hover:bg-muted"
+          className="inline-flex h-9 items-center gap-2 rounded-[6px] border border-[#D9DEE5] bg-white px-3.5 text-[13px] font-medium text-[#202938] transition-colors hover:bg-muted"
         >
           <ChevronLeft className="size-4" /> All projects
         </Link>

@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
-import { PriorityTag, StatusBadge } from "@/components/stakeholder/badges";
+import { CreatedByCell, PriorityTag, StatusBadge } from "@/components/stakeholder/badges";
 import { ItemDetailDrawer } from "@/components/stakeholder/item-detail";
 import { ItemFormDrawer } from "@/components/stakeholder/item-form";
 import { ItemHistoryDrawer } from "@/components/stakeholder/item-history";
@@ -137,7 +137,7 @@ function JiraLinksCell({ itemId }: { itemId: string }) {
     return <span className="text-muted-foreground">—</span>;
   }
   return (
-    <div className="flex flex-wrap justify-center gap-1">
+    <div className="flex flex-wrap justify-start gap-1">
       {links.map((link) => (
         <a
           key={link.id}
@@ -268,13 +268,6 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
   const [deleting, setDeleting] = useState<StakeholderItem | null>(null);
 
   const label = kind === "feature" ? "Feature" : "Client Request";
-  const filtersActive =
-    !!search ||
-    statuses.length > 0 ||
-    requestTypes.length > 0 ||
-    priorities.length > 0 ||
-    !!from ||
-    !!to;
 
   const filtered = useMemo(
     () =>
@@ -319,16 +312,6 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  function clearFilters() {
-    setSearch("");
-    setStatuses([]);
-    setRequestTypes([]);
-    setPriorities([]);
-    setDateField("requiredBy");
-    setFrom("");
-    setTo("");
-  }
 
   function toggleStatus(s: string) {
     setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -418,15 +401,13 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
           onFieldChange: setSortField,
           onDirectionChange: setSortDirection,
         }}
-        filtersActive={filtersActive}
-        onClear={clearFilters}
         actions={
           <Button
             onClick={() => {
               setEditing(null);
               setFormOpen(true);
             }}
-            className="ml-auto"
+            className="ml-auto h-9 gap-1.5 rounded-[6px] bg-brand px-4 text-[13px] font-semibold text-white hover:bg-brand-hover"
           >
             <Plus className="size-4" /> Add {label}
           </Button>
@@ -437,12 +418,12 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
         <div className="scroll-slim overflow-x-auto">
           <Table className="min-w-[1750px] text-sm">
             <TableHeader>
-              <TableRow className="bg-surface hover:bg-surface">
+              <TableRow className="h-[38px] bg-surface hover:bg-surface">
                 {columns.map((c) => (
                   <TableHead
                     key={c}
                     className={cn(
-                      "h-10 text-center text-[11px] font-semibold tracking-wider text-muted-foreground uppercase whitespace-nowrap",
+                      "h-[38px] text-left text-[11px] font-semibold tracking-[0.02em] text-[#667085] uppercase whitespace-nowrap",
                       c === "Summary" && "sticky left-0 z-10 bg-surface",
                     )}
                   >
@@ -491,46 +472,54 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                 </TableRow>
               ) : (
                 paginated.map((it) => (
-                  <TableRow key={it.id} className="align-top hover:bg-muted/40 transition-colors">
-                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card py-3">
+                  <TableRow
+                    key={it.id}
+                    className="h-[62px] border-b-[#EEF1F4] align-top hover:bg-surface"
+                  >
+                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card px-3 py-2.5">
                       <button
                         onClick={() => setViewing(it)}
-                        className="text-left font-medium text-foreground hover:text-brand hover:underline"
+                        className="text-left text-[13px] leading-[18px] font-semibold text-[#101828] hover:text-brand hover:underline"
                       >
                         {it.summary}
                       </button>
                     </TableCell>
-                    <TableCell className="max-w-[320px] py-3 text-muted-foreground">
+                    <TableCell className="max-w-[320px] px-3 py-2.5 text-[12px] leading-[17px] text-[#667085]">
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
-                    <TableCell className="py-3 text-center">
+                    <TableCell className="px-3 py-2.5">
                       <JiraLinksCell itemId={it.id} />
                     </TableCell>
-                    <TableCell className="py-3 text-center">
+                    <TableCell className="px-3 py-2.5">
                       <StatusBadge status={it.status} kind={it.statusKind} />
                     </TableCell>
-                    <TableCell className="py-3 text-center">
+                    <TableCell className="px-3 py-2.5">
                       <PriorityTag priority={it.priority} />
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
-                      {it.createdBy}
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
+                      <CreatedByCell name={it.createdBy} />
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       {fmtDate(it.createdAt)}
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       <InlineDateCell item={it} field="requiredBy" />
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       <InlineDateCell item={it} field="willBeDoneBy" />
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="px-3 py-2.5">
                       <AttachmentsCell itemId={it.id} />
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="px-3 py-2.5">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="Row actions">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 rounded-[5px]"
+                            aria-label="Row actions"
+                          >
                             <MoreHorizontal className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -555,10 +544,11 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="px-3 py-2.5">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="size-7 rounded-[5px]"
                         aria-label="View audit history"
                         title="View audit history"
                         onClick={() => setHistory(it)}
@@ -572,7 +562,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-between border-t border-border bg-surface px-4 py-2.5 text-xs text-muted-foreground">
+        <div className="flex min-h-[46px] items-center justify-between border-t border-[#EEF1F4] px-3.5 py-0 text-xs text-[#667085]">
           <span>
             Showing {sorted.length} of {items?.length ?? 0} {label.toLowerCase()} items
           </span>
@@ -583,7 +573,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
             <Button
               variant="outline"
               size="icon"
-              className="size-7"
+              className="size-[30px] rounded-[5px] border-[#DFE3E8]"
               aria-label="Previous page"
               disabled={currentPage <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -593,7 +583,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
             <Button
               variant="outline"
               size="icon"
-              className="size-7"
+              className="size-[30px] rounded-[5px] border-[#DFE3E8]"
               aria-label="Next page"
               disabled={currentPage >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

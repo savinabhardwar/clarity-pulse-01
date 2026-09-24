@@ -16,8 +16,16 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
-import { DecisionBadge, PriorityTag, StatusBadge } from "@/components/stakeholder/badges";
+import {
+  CreatedByCell,
+  DecisionBadge,
+  PriorityTag,
+  ProjectBadge,
+  RequestTypeBadge,
+  StatusBadge,
+} from "@/components/stakeholder/badges";
 import { ClientRequestFormDrawer } from "@/components/stakeholder/client-request-form";
+import { ClientRequestsKpis } from "@/components/stakeholder/client-requests-kpis";
 import { ItemDetailDrawer } from "@/components/stakeholder/item-detail";
 import { ItemFormDrawer } from "@/components/stakeholder/item-form";
 import { ItemHistoryDrawer } from "@/components/stakeholder/item-history";
@@ -69,7 +77,6 @@ import {
 import {
   PRIORITIES,
   PRIORITY_RANK,
-  requestTypeLabel,
   REQUEST_TYPES,
   STAKEHOLDER_STATUSES,
   type ClientRequest,
@@ -96,6 +103,11 @@ const DATE_RANGE_FIELDS: { value: DateField; label: string }[] = [
   { value: "willBeDoneBy", label: "Will Be Done By" },
 ];
 
+// Per the UI refinement spec's table (§4): Required By and Will Be Done By
+// render as one "Will Be Done By" column, matching the reference screenshot
+// -- not two. Required By is still filterable/sortable (see
+// DATE_RANGE_FIELDS/SORT_FIELDS above) and still shown in the item detail
+// drawer and edit form; it's just not a separate table column here.
 const columns = [
   "Summary",
   "Project",
@@ -105,8 +117,7 @@ const columns = [
   "Priority",
   "Created By",
   "Date Added",
-  "Required By Date",
-  "Will Be Done By Date",
+  "Will Be Done By",
   "Actions",
   "History",
 ];
@@ -124,8 +135,7 @@ const SKELETON_WIDTHS = [
   "w-14", // Priority
   "w-20", // Created By
   "w-20", // Date Added
-  "w-20", // Required By Date
-  "w-20", // Will Be Done By Date
+  "w-20", // Will Be Done By
   "w-8", // Actions
   "w-8", // History
 ];
@@ -196,12 +206,8 @@ function InlineRequestTypeCell({ item }: { item: ClientRequest }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setEditing(true)}
-      className="rounded px-1 py-0.5 hover:bg-muted hover:underline"
-    >
-      {requestTypeLabel(item.requestType)}
+    <button type="button" onClick={() => setEditing(true)} className="rounded hover:opacity-80">
+      <RequestTypeBadge type={item.requestType} />
     </button>
   );
 }
@@ -258,9 +264,7 @@ function InlineProjectCell({ item, projects }: { item: ClientRequest; projects: 
         params={{ projectId: item.projectId ?? "" }}
         className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted hover:underline"
       >
-        <span className="rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
-          {item.projectCode}
-        </span>
+        <ProjectBadge code={item.projectCode ?? ""} />
         <span className="text-foreground">{item.projectName}</span>
       </Link>
       <button
@@ -286,7 +290,7 @@ export function ClientRequestsTable() {
   const [projectIds, setProjectIds] = useState<string[]>([]);
   const [requestTypes, setRequestTypes] = useState<string[]>([]);
   const [priorities, setPriorities] = useState<string[]>([]);
-  const [dateField, setDateField] = useState<"requiredBy" | "willBeDoneBy" | null>("requiredBy");
+  const [dateField, setDateField] = useState<"requiredBy" | "willBeDoneBy" | null>("willBeDoneBy");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -299,15 +303,6 @@ export function ClientRequestsTable() {
   const [history, setHistory] = useState<ClientRequest | null>(null);
   const [deleting, setDeleting] = useState<ClientRequest | null>(null);
   const [assigning, setAssigning] = useState<ClientRequest | null>(null);
-
-  const filtersActive =
-    !!search ||
-    statuses.length > 0 ||
-    projectIds.length > 0 ||
-    requestTypes.length > 0 ||
-    priorities.length > 0 ||
-    !!from ||
-    !!to;
 
   const filtered = useMemo(
     () =>
@@ -365,17 +360,6 @@ export function ClientRequestsTable() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  function clearFilters() {
-    setSearch("");
-    setStatuses([]);
-    setProjectIds([]);
-    setRequestTypes([]);
-    setPriorities([]);
-    setDateField("requiredBy");
-    setFrom("");
-    setTo("");
-  }
 
   function toggleStatus(s: string) {
     setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -458,6 +442,8 @@ export function ClientRequestsTable() {
 
   return (
     <div className="space-y-4">
+      <ClientRequestsKpis requests={requests} isLoading={isLoading} />
+
       <FilterBar
         search={{
           value: search,
@@ -481,10 +467,11 @@ export function ClientRequestsTable() {
           onFieldChange: setSortField,
           onDirectionChange: setSortDirection,
         }}
-        filtersActive={filtersActive}
-        onClear={clearFilters}
         actions={
-          <Button onClick={() => setAddOpen(true)} className="ml-auto">
+          <Button
+            onClick={() => setAddOpen(true)}
+            className="ml-auto h-9 gap-1.5 rounded-[6px] bg-brand px-4 text-[13px] font-semibold text-white hover:bg-brand-hover"
+          >
             <Plus className="size-4" /> Add Client Request
           </Button>
         }
@@ -494,12 +481,12 @@ export function ClientRequestsTable() {
         <div className="scroll-slim overflow-x-auto">
           <Table className="min-w-[1900px] text-sm">
             <TableHeader>
-              <TableRow className="bg-surface hover:bg-surface">
+              <TableRow className="h-[38px] bg-surface hover:bg-surface">
                 {columns.map((c) => (
                   <TableHead
                     key={c}
                     className={cn(
-                      "h-10 text-center text-[11px] font-semibold tracking-wider text-muted-foreground uppercase whitespace-nowrap",
+                      "h-[38px] text-left text-[11px] font-semibold tracking-[0.02em] text-[#667085] uppercase whitespace-nowrap",
                       c === "Summary" && "sticky left-0 z-10 bg-surface",
                     )}
                   >
@@ -546,18 +533,21 @@ export function ClientRequestsTable() {
                 </TableRow>
               ) : (
                 paginated.map((it) => (
-                  <TableRow key={it.id} className="align-top hover:bg-muted/40 transition-colors">
-                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card py-3">
+                  <TableRow
+                    key={it.id}
+                    className="h-[62px] border-b-[#EEF1F4] align-top hover:bg-surface"
+                  >
+                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card px-3 py-2.5">
                       <button
                         onClick={() => setViewing(it)}
-                        className="text-left font-medium text-foreground hover:text-brand hover:underline"
+                        className="text-left text-[13px] leading-[18px] font-semibold text-[#101828] hover:text-brand hover:underline"
                       >
                         {it.summary}
                       </button>
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       {it.isDecision || !it.projectId ? (
-                        <div className="flex flex-col items-center space-y-1">
+                        <div className="flex flex-col items-start space-y-1">
                           <DecisionBadge />
                           <div className="max-w-[220px] text-xs text-muted-foreground">
                             {it.candidateProjects.map((p) => p.name).join(", ")}
@@ -567,34 +557,36 @@ export function ClientRequestsTable() {
                         <InlineProjectCell item={it} projects={projects ?? []} />
                       )}
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       <InlineRequestTypeCell item={it} />
                     </TableCell>
-                    <TableCell className="max-w-[280px] py-3 text-muted-foreground">
+                    <TableCell className="max-w-[280px] px-3 py-2.5 text-[12px] leading-[17px] text-[#667085]">
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
-                    <TableCell className="py-3 text-center">
+                    <TableCell className="px-3 py-2.5">
                       <StatusBadge status={it.status} kind={it.statusKind} />
                     </TableCell>
-                    <TableCell className="py-3 text-center">
+                    <TableCell className="px-3 py-2.5">
                       <PriorityTag priority={it.priority} />
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
-                      {it.createdBy}
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
+                      <CreatedByCell name={it.createdBy} />
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       {fmtDate(it.createdAt)}
                     </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
-                      {it.requiredBy || "—"}
-                    </TableCell>
-                    <TableCell className="py-3 text-center whitespace-nowrap">
+                    <TableCell className="px-3 py-2.5 whitespace-nowrap">
                       {it.willBeDoneBy || "—"}
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="px-3 py-2.5">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="Row actions">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 rounded-[5px]"
+                            aria-label="Row actions"
+                          >
                             <MoreHorizontal className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -620,10 +612,11 @@ export function ClientRequestsTable() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="px-3 py-2.5">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="size-7 rounded-[5px]"
                         aria-label="View audit history"
                         title="View audit history"
                         onClick={() => setHistory(it)}
@@ -637,7 +630,7 @@ export function ClientRequestsTable() {
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-between border-t border-border bg-surface px-4 py-2.5 text-xs text-muted-foreground">
+        <div className="flex min-h-[46px] items-center justify-between border-t border-[#EEF1F4] px-3.5 py-0 text-xs text-[#667085]">
           <span>
             Showing {sorted.length} of {requests?.length ?? 0} client requests
           </span>
@@ -648,7 +641,7 @@ export function ClientRequestsTable() {
             <Button
               variant="outline"
               size="icon"
-              className="size-7"
+              className="size-[30px] rounded-[5px] border-[#DFE3E8]"
               aria-label="Previous page"
               disabled={currentPage <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -658,7 +651,7 @@ export function ClientRequestsTable() {
             <Button
               variant="outline"
               size="icon"
-              className="size-7"
+              className="size-[30px] rounded-[5px] border-[#DFE3E8]"
               aria-label="Next page"
               disabled={currentPage >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import {
-  Compass,
   ExternalLink,
   Inbox,
   LayoutGrid,
@@ -77,12 +76,12 @@ function NavItem({
       activeOptions={{ exact: exact ?? false }}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "flex h-9 items-center gap-3 rounded-[6px] px-3 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&_svg]:text-muted-foreground",
         collapsed && "justify-center px-0",
       )}
       activeProps={{
         className:
-          "bg-sidebar-accent !text-sidebar-accent-foreground font-medium border-sidebar-primary",
+          "bg-sidebar-accent !text-sidebar-accent-foreground font-semibold [&_svg]:!text-sidebar-accent-foreground",
       }}
     >
       <Icon className="size-4 shrink-0" />
@@ -114,7 +113,7 @@ function SiblingDashboardLinks() {
           href={d.href}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          className="inline-flex h-9 items-center gap-2 rounded-[6px] border border-[#D9DEE5] bg-white px-3.5 text-[13px] font-medium text-[#202938] transition-colors hover:bg-muted"
         >
           {d.label}
           <ExternalLink className="size-3.5" />
@@ -188,11 +187,13 @@ function IdentityDisplay({ collapsed }: { collapsed?: boolean }) {
 export function AppShell({
   title,
   subtitle,
+  icon: Icon,
   actions,
   children,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
+  icon?: LucideIcon;
   actions?: ReactNode;
   children: ReactNode;
 }) {
@@ -204,31 +205,29 @@ export function AppShell({
       <aside
         className={cn(
           "hidden shrink-0 flex-col bg-sidebar transition-[width] duration-200 ease-in-out lg:flex",
-          collapsed ? "w-16" : "w-64",
+          collapsed ? "w-16" : "w-[232px]",
         )}
       >
         <div
           className={cn(
-            "flex items-center gap-2.5 border-b border-sidebar-border px-5 py-4",
+            "flex h-[54px] shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3",
             collapsed && "justify-center px-2",
           )}
         >
           <div
             title={collapsed ? "Stakeholder Management Console" : undefined}
-            className="grid size-8 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground"
+            className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground"
           >
-            <Compass className="size-4" />
+            S
           </div>
           {collapsed ? null : (
             <div className="leading-tight">
-              <p className="font-display text-sm font-semibold text-sidebar-foreground">
-                Stakeholder
-              </p>
-              <p className="text-[11px] text-sidebar-foreground/60">Management Console</p>
+              <p className="font-display text-sm font-semibold text-foreground">Stakeholder</p>
+              <p className="text-[11px] text-muted-foreground">Management Console</p>
             </div>
           )}
         </div>
-        <nav className={cn("flex-1 space-y-1 py-4", collapsed ? "px-2" : "px-3")}>
+        <nav className={cn("flex-1 space-y-1 py-3", collapsed ? "px-2" : "px-3")}>
           <NavItem to="/" icon={LayoutGrid} label="Projects" exact collapsed={collapsed} />
           <NavItem
             to="/client-requests"
@@ -237,11 +236,11 @@ export function AppShell({
             collapsed={collapsed}
           />
           {collapsed ? (
-            <div className="pt-5 pb-2">
-              <div className="mx-auto h-px w-6 bg-sidebar-border/80" />
+            <div className="pt-4.5 pb-2">
+              <div className="mx-auto h-px w-6 bg-sidebar-border" />
             </div>
           ) : (
-            <p className="px-3 pt-5 pb-2 text-[11px] font-semibold tracking-wider text-sidebar-foreground/45 uppercase">
+            <p className="px-3 pt-4.5 pb-2 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
               Modules
             </p>
           )}
@@ -252,13 +251,12 @@ export function AppShell({
                 to="/projects/$projectId"
                 params={{ projectId: p.id }}
                 title={p.name}
-                className="flex items-center justify-center rounded-md border-l-2 border-transparent px-0 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="flex h-9 items-center justify-center rounded-[6px] px-0 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 activeProps={{
-                  className:
-                    "bg-sidebar-accent !text-sidebar-accent-foreground font-medium border-sidebar-primary",
+                  className: "bg-sidebar-accent !text-sidebar-accent-foreground font-semibold",
                 }}
               >
-                <span className="w-8 shrink-0 rounded bg-sidebar-border/80 px-1 py-0.5 text-center font-mono text-[10px] tracking-wide">
+                <span className="flex h-[18px] min-w-[30px] shrink-0 items-center justify-center rounded bg-surface-strong px-1 text-center font-mono text-[9px] font-semibold tracking-wide text-muted-foreground">
                   {p.code}
                 </span>
               </Link>
@@ -267,13 +265,12 @@ export function AppShell({
                 key={p.id}
                 to="/projects/$projectId"
                 params={{ projectId: p.id }}
-                className="flex items-center gap-2.5 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="flex h-9 items-center gap-3 rounded-[6px] px-3 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 activeProps={{
-                  className:
-                    "bg-sidebar-accent !text-sidebar-accent-foreground font-medium border-sidebar-primary",
+                  className: "bg-sidebar-accent !text-sidebar-accent-foreground font-semibold",
                 }}
               >
-                <span className="w-8 shrink-0 rounded bg-sidebar-border/80 px-1 py-0.5 text-center font-mono text-[10px] tracking-wide">
+                <span className="flex h-[18px] min-w-[30px] shrink-0 items-center justify-center rounded bg-surface-strong px-1 text-center font-mono text-[9px] font-semibold tracking-wide text-muted-foreground">
                   {p.code}
                 </span>
                 <span className="truncate">{p.name}</span>
@@ -287,15 +284,15 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 lg:px-8">
+        <header className="sticky top-0 z-20 min-h-[74px] border-b border-border bg-card">
+          <div className="flex min-h-[74px] flex-wrap items-center justify-between gap-3 px-5 py-3 lg:px-[30px]">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 onClick={toggle}
                 title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                className="hidden shrink-0 rounded-md border border-border bg-muted/60 p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:grid lg:place-items-center"
+                className="hidden size-8 shrink-0 rounded-[7px] border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:grid lg:place-items-center"
               >
                 {collapsed ? (
                   <PanelLeftOpen className="size-4" />
@@ -303,12 +300,19 @@ export function AppShell({
                   <PanelLeftClose className="size-4" />
                 )}
               </button>
+              {Icon && (
+                <div className="hidden size-8 shrink-0 items-center justify-center rounded-[7px] border border-[#DFE3E8] text-[#667085] sm:flex">
+                  <Icon className="size-4" />
+                </div>
+              )}
               <div className="min-w-0">
-                <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-foreground">
+                <h1 className="truncate text-[25px] leading-[30px] font-semibold text-[#161E2B]">
                   {title}
                 </h1>
                 {subtitle ? (
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p>
+                  <p className="mt-[3px] truncate text-[13px] leading-[18px] text-[#667085]">
+                    {subtitle}
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -323,7 +327,7 @@ export function AppShell({
             <NavItem to="/client-requests" icon={Inbox} label="Client Requests" />
           </nav>
         </header>
-        <main className={cn("flex-1 px-5 py-6 lg:px-8")}>{children}</main>
+        <main className={cn("flex-1 px-5 py-6 lg:px-[30px]")}>{children}</main>
       </div>
     </div>
   );

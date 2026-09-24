@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertCircle, ArrowRight, FolderOpen, ListChecks, Wrench } from "lucide-react";
+import { AlertCircle, ArrowRight, FolderOpen, LayoutGrid, ListChecks, Wrench } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
@@ -83,6 +83,7 @@ function ProjectsPage() {
     <AppShell
       title="Stakeholder Management"
       subtitle="Select a project module to manage its stakeholder items"
+      icon={LayoutGrid}
     >
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

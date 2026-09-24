@@ -37,6 +37,7 @@
   --color-surface: var(--surface);
   --color-surface-strong: var(--surface-strong);
   --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
   --color-brand-soft: var(--brand-soft);
   --color-high: var(--high);
   --color-high-soft: var(--high-soft);
@@ -61,48 +62,56 @@
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.985 0.003 247);
-  --foreground: oklch(0.22 0.024 258);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.024 258);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.024 258);
-  --primary: oklch(0.45 0.108 244);
-  --primary-foreground: oklch(0.985 0.003 247);
-  --secondary: oklch(0.965 0.006 250);
-  --secondary-foreground: oklch(0.3 0.03 255);
-  --muted: oklch(0.968 0.005 250);
-  --muted-foreground: oklch(0.54 0.024 256);
-  --accent: oklch(0.955 0.014 240);
-  --accent-foreground: oklch(0.35 0.06 245);
+  --radius: 0.4375rem; /* 7px, per Project Compass UI refinement spec */
+  --background: #ffffff;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+  /* Brand blue pixel-sampled from the reference screenshot's "Add Client
+     Request" button (~#0058DE) and logo mark (~#0273F9), not the docx
+     text spec's #075A8C -- the screenshot is the ground truth per the
+     brief ("match the attached reference screenshot as closely as
+     possible") and the doc's own hex values don't match it. */
+  --primary: #0b63eb;
+  --primary-foreground: #ffffff;
+  --secondary: #f8fafc;
+  --secondary-foreground: #202938;
+  --muted: #f8fafc;
+  --muted-foreground: #667085;
+  --accent: #eaf1fe;
+  --accent-foreground: #0b63eb;
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.99 0.003 247);
-  --border: oklch(0.915 0.008 250);
-  --input: oklch(0.9 0.01 250);
-  --ring: oklch(0.55 0.09 244);
-  --surface: oklch(0.978 0.004 250);
-  --surface-strong: oklch(0.955 0.006 250);
-  --brand: oklch(0.45 0.108 244);
-  --brand-soft: oklch(0.95 0.02 244);
-  --high: oklch(0.52 0.19 26);
-  --high-soft: oklch(0.955 0.03 26);
-  --mid: oklch(0.6 0.13 70);
-  --mid-soft: oklch(0.96 0.04 80);
-  --low: oklch(0.5 0.07 200);
-  --low-soft: oklch(0.96 0.02 200);
-  --jira: oklch(0.45 0.13 264);
-  --jira-soft: oklch(0.955 0.025 264);
-  --stake: oklch(0.44 0.09 175);
-  --stake-soft: oklch(0.955 0.03 175);
-  --sidebar: oklch(0.235 0.028 258);
-  --sidebar-foreground: oklch(0.93 0.008 250);
-  --sidebar-primary: oklch(0.58 0.11 244);
-  --sidebar-primary-foreground: oklch(0.985 0.003 247);
-  --sidebar-accent: oklch(0.3 0.03 258);
-  --sidebar-accent-foreground: oklch(0.97 0.005 250);
-  --sidebar-border: oklch(0.32 0.026 258);
-  --sidebar-ring: oklch(0.58 0.11 244);
+  --border: #dfe3e8;
+  --input: #d9dee5;
+  --ring: #0b63eb;
+  --surface: #f8fafc;
+  --surface-strong: #eef1f4;
+  --brand: #0b63eb;
+  --brand-hover: #094fbd;
+  --brand-soft: #eaf1fe;
+  --high: #d92d20;
+  --high-soft: #feedec;
+  --mid: #b54708;
+  --mid-soft: #fff4e5;
+  --low: #027a48;
+  --low-soft: #ecfdf3;
+  --jira: #175cd3;
+  --jira-soft: #eaf4ff;
+  --stake: #6941c6;
+  --stake-soft: #f2ecff;
+  /* Sidebar is light in the reference screenshot, not the dark navy the
+     docx text described -- pixel-sampled from the reference image. */
+  --sidebar: #f3f8fd;
+  --sidebar-foreground: #344054;
+  --sidebar-primary: #0b63eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #deecfc;
+  --sidebar-accent-foreground: #0b63eb;
+  --sidebar-border: #e3ecf6;
+  --sidebar-ring: #0b63eb;
 }
 
 @layer base {

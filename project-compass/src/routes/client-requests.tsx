@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Inbox } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ClientRequestsTable } from "@/components/stakeholder/client-requests-table";
@@ -28,6 +29,7 @@ function ClientRequestsPage() {
     <AppShell
       title="Client Requests"
       subtitle="Every request submitted through the Client Requests module, across all projects"
+      icon={Inbox}
     >
       <ClientRequestsTable />
     </AppShell>
