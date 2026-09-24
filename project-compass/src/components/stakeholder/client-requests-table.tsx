@@ -351,7 +351,7 @@ export function ClientRequestsTable() {
                   <TableHead
                     key={c}
                     className={cn(
-                      "h-10 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase whitespace-nowrap",
+                      "h-10 text-center text-[11px] font-semibold tracking-wider text-muted-foreground uppercase whitespace-nowrap",
                       c === "Summary" && "sticky left-0 z-10 bg-surface",
                     )}
                   >

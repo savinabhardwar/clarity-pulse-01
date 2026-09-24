@@ -97,12 +97,12 @@
   --stake-soft: oklch(0.955 0.03 175);
   --sidebar: oklch(0.235 0.028 258);
   --sidebar-foreground: oklch(0.93 0.008 250);
-  --sidebar-primary: oklch(0.62 0.12 232);
-  --sidebar-primary-foreground: oklch(0.16 0.02 258);
+  --sidebar-primary: oklch(0.58 0.11 244);
+  --sidebar-primary-foreground: oklch(0.985 0.003 247);
   --sidebar-accent: oklch(0.3 0.03 258);
   --sidebar-accent-foreground: oklch(0.97 0.005 250);
   --sidebar-border: oklch(0.32 0.026 258);
-  --sidebar-ring: oklch(0.62 0.12 232);
+  --sidebar-ring: oklch(0.58 0.11 244);
 }
 
 @layer base {

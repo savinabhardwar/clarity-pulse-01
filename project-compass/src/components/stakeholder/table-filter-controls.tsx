@@ -49,7 +49,7 @@ export function SortControl<TField extends string>({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">Sort by</Label>
+      <Label className="block text-xs text-muted-foreground">Sort by</Label>
       <div className="flex gap-1">
         <Select value={field} onValueChange={(v) => onFieldChange(v as TField)}>
           <SelectTrigger className="w-[170px]">
@@ -124,7 +124,7 @@ function FilterPanel({ categories }: { categories: MultiSelectFilterConfig[] }) 
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">Filter</Label>
+      <Label className="block text-xs text-muted-foreground">Filter</Label>
       <Popover onOpenChange={(open) => open && setQuery("")}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="gap-1.5 font-normal">
@@ -271,7 +271,7 @@ function DateRangeFilter<TDateField extends string>({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">Date Range</Label>
+      <Label className="block text-xs text-muted-foreground">Date Range</Label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="gap-1.5 font-normal">
@@ -293,7 +293,7 @@ function DateRangeFilter<TDateField extends string>({
         </PopoverTrigger>
         <PopoverContent className="w-[280px] p-0" align="start">
           <div className="space-y-1.5 p-3">
-            <Label className="text-xs text-muted-foreground">Filter by</Label>
+            <Label className="block text-xs text-muted-foreground">Filter by</Label>
             <Select
               {...(field ? { value: field } : {})}
               onValueChange={(v) => onFieldChange(v as TDateField)}
@@ -318,7 +318,7 @@ function DateRangeFilter<TDateField extends string>({
               </p>
               <div className="flex gap-2 px-3 pb-3">
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">From</Label>
+                  <Label className="block text-xs text-muted-foreground">From</Label>
                   <div className="relative">
                     <Input
                       type="date"
@@ -331,7 +331,7 @@ function DateRangeFilter<TDateField extends string>({
                   </div>
                 </div>
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">To</Label>
+                  <Label className="block text-xs text-muted-foreground">To</Label>
                   <div className="relative">
                     <Input
                       type="date"
@@ -401,7 +401,7 @@ export function FilterBar<TSortField extends string, TDateField extends string =
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-raised">
       {search && (
         <div className="min-w-[220px] flex-1 space-y-1.5">
-          <Label htmlFor="search" className="text-xs text-muted-foreground">
+          <Label htmlFor="search" className="block text-xs text-muted-foreground">
             Search summary
           </Label>
           <div className="relative">
