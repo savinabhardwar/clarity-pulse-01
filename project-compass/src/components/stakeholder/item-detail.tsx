@@ -47,6 +47,25 @@ function fmt(at: string) {
   )}`;
 }
 
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join("");
+}
+
+function CommentAvatar({ name }: { name: string }) {
+  return (
+    <div
+      aria-hidden
+      className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-semibold text-brand"
+    >
+      {initialsOf(name)}
+    </div>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
@@ -101,11 +120,14 @@ function CommentThread({ item }: { item: DetailItem }) {
               key={c.id}
               className="rounded-md border border-border bg-card px-3 py-2 shadow-raised transition-colors hover:border-brand/25"
             >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium">{c.authorName}</p>
-                <p className="text-xs text-muted-foreground">{fmt(c.createdAt)}</p>
+              <div className="flex items-center gap-2.5">
+                <CommentAvatar name={c.authorName} />
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <p className="truncate text-sm font-medium">{c.authorName}</p>
+                  <p className="shrink-0 text-xs text-muted-foreground">{fmt(c.createdAt)}</p>
+                </div>
               </div>
-              <p className="mt-1 text-sm whitespace-pre-wrap">{c.body}</p>
+              <p className="mt-1.5 pl-[42px] text-sm whitespace-pre-wrap">{c.body}</p>
             </li>
           ))}
         </ul>

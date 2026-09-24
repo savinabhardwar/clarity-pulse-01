@@ -1,5 +1,6 @@
-import { ArrowRight, Bell } from "lucide-react";
+import { ArrowRight, Bell, History } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,31 +46,30 @@ const SHOW_VALUE_FIELDS = new Set([
   "will_be_done_by",
 ]);
 
-function describe(entry: RecentActivityEntry): { text: string; showValues: boolean } {
-  const who = entry.changedBy;
+function describe(entry: RecentActivityEntry): { action: string; showValues: boolean } {
   const what = entry.itemSummary ? `"${entry.itemSummary}"` : "an item";
 
   if (entry.eventType === "created") {
-    return { text: `${who} created ${what}`, showValues: false };
+    return { action: `created ${what}`, showValues: false };
   }
   if (entry.eventType === "deleted") {
-    return { text: `${who} deleted ${what}`, showValues: false };
+    return { action: `deleted ${what}`, showValues: false };
   }
   // event_type === "updated"
   if (entry.fieldName === "deleted_at") {
     return entry.newValue
-      ? { text: `${who} deleted ${what}`, showValues: false }
-      : { text: `${who} restored ${what}`, showValues: false };
+      ? { action: `deleted ${what}`, showValues: false }
+      : { action: `restored ${what}`, showValues: false };
   }
   const label = fieldLabel(entry.fieldName);
   return {
-    text: `${who} changed ${label} on ${what}`,
+    action: `changed ${label} on ${what}`,
     showValues: !!entry.fieldName && SHOW_VALUE_FIELDS.has(entry.fieldName),
   };
 }
 
 function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
-  const { text, showValues } = describe(entry);
+  const { action, showValues } = describe(entry);
   const kindLabel =
     entry.kind === "feature"
       ? "Feature"
@@ -79,7 +79,9 @@ function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
 
   return (
     <li className="border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/50">
-      <p className="text-sm text-foreground">{text}</p>
+      <p className="text-sm text-foreground">
+        <span className="font-medium text-foreground">{entry.changedBy}</span> {action}
+      </p>
       {showValues && entry.oldValue !== null && entry.newValue !== null ? (
         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="rounded bg-surface-strong px-1.5 py-0.5 text-muted-foreground">
@@ -125,9 +127,12 @@ export function RecentActivity() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : !entries || entries.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              No recent activity yet.
-            </p>
+            <EmptyState
+              icon={History}
+              title="No recent activity yet"
+              description="Changes to features and client requests will show up here."
+              className="py-10"
+            />
           ) : (
             <ul>
               {entries.map((entry) => (

@@ -1,8 +1,21 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightCircle, Clock, Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ArrowRightCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Eye,
+  Inbox,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  SearchX,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
 import { DecisionBadge, PriorityTag, StatusBadge } from "@/components/stakeholder/badges";
 import { ClientRequestFormDrawer } from "@/components/stakeholder/client-request-form";
 import { ItemDetailDrawer } from "@/components/stakeholder/item-detail";
@@ -46,7 +59,6 @@ import {
   useSoftDeleteItem,
 } from "@/data/queries";
 import {
-  CLARIFICATION_NEEDED_STATUS,
   PRIORITIES,
   PRIORITY_RANK,
   requestTypeLabel,
@@ -66,6 +78,13 @@ const SORT_FIELDS: { value: SortField; label: string }[] = [
   { value: "priority", label: "Priority" },
 ];
 
+type DateField = "requiredBy" | "willBeDoneBy";
+
+const DATE_RANGE_FIELDS: { value: DateField; label: string }[] = [
+  { value: "requiredBy", label: "Required By" },
+  { value: "willBeDoneBy", label: "Will Be Done By" },
+];
+
 const columns = [
   "Summary",
   "Project",
@@ -79,6 +98,25 @@ const columns = [
   "Will Be Done By Date",
   "Actions",
   "History",
+];
+
+const PAGE_SIZE = 20;
+
+// Roughly matches each column's typical content width so the loading state
+// doesn't visually jump into a different shape once real data arrives.
+const SKELETON_WIDTHS = [
+  "w-32", // Summary
+  "w-24", // Project
+  "w-20", // Request Type
+  "w-40", // Description
+  "w-16", // Status
+  "w-14", // Priority
+  "w-20", // Created By
+  "w-20", // Date Added
+  "w-20", // Required By Date
+  "w-20", // Will Be Done By Date
+  "w-8", // Actions
+  "w-8", // History
 ];
 
 function fmtDate(at: string) {
@@ -100,10 +138,12 @@ export function ClientRequestsTable() {
   const [projectIds, setProjectIds] = useState<string[]>([]);
   const [requestTypes, setRequestTypes] = useState<string[]>([]);
   const [priorities, setPriorities] = useState<string[]>([]);
+  const [dateField, setDateField] = useState<"requiredBy" | "willBeDoneBy" | null>("requiredBy");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [page, setPage] = useState(1);
 
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ClientRequest | null>(null);
@@ -131,25 +171,19 @@ export function ClientRequestsTable() {
         if (requestTypes.length && (!it.requestType || !requestTypes.includes(it.requestType)))
           return false;
         if (priorities.length && !priorities.includes(it.priority)) return false;
-        if (from && (!it.requiredBy || it.requiredBy < from)) return false;
-        if (to && (!it.requiredBy || it.requiredBy > to)) return false;
+        if (dateField) {
+          const value = it[dateField];
+          if (from && (!value || value < from)) return false;
+          if (to && (!value || value > to)) return false;
+        }
         return true;
       }),
-    [requests, search, statuses, projectIds, requestTypes, priorities, from, to],
+    [requests, search, statuses, projectIds, requestTypes, priorities, dateField, from, to],
   );
 
-  // Items needing clarification always float to the top (most-recently-updated
-  // first within that group); everything else is ordered by the chosen sort
-  // field/direction. Applied after filtering, so filters keep working but
-  // whatever's currently shown still surfaces clarification-needed items first.
   const sorted = useMemo(() => {
     const dir = sortDirection === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => {
-      const aNeeds = a.status === CLARIFICATION_NEEDED_STATUS;
-      const bNeeds = b.status === CLARIFICATION_NEEDED_STATUS;
-      if (aNeeds !== bNeeds) return aNeeds ? -1 : 1;
-      if (aNeeds && bNeeds) return b.updatedAt.localeCompare(a.updatedAt);
-
       if (sortField === "priority") {
         return dir * (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
       }
@@ -162,12 +196,35 @@ export function ClientRequestsTable() {
     });
   }, [filtered, sortField, sortDirection]);
 
+  // Reset to the first page whenever the filters or sort change, so a
+  // narrowed/reordered result set never leaves the user stranded on a page
+  // past the end.
+  useEffect(() => {
+    setPage(1);
+  }, [
+    search,
+    statuses,
+    projectIds,
+    requestTypes,
+    priorities,
+    dateField,
+    from,
+    to,
+    sortField,
+    sortDirection,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   function clearFilters() {
     setSearch("");
     setStatuses([]);
     setProjectIds([]);
     setRequestTypes([]);
     setPriorities([]);
+    setDateField("requiredBy");
     setFrom("");
     setTo("");
   }
@@ -260,7 +317,15 @@ export function ClientRequestsTable() {
           placeholder: "Search client request summary…",
         }}
         multiSelects={multiSelects}
-        dateRange={{ label: "Required by", from, to, onFromChange: setFrom, onToChange: setTo }}
+        dateRange={{
+          fields: DATE_RANGE_FIELDS,
+          field: dateField,
+          from,
+          to,
+          onFieldChange: setDateField,
+          onFromChange: setFrom,
+          onToChange: setTo,
+        }}
         sort={{
           field: sortField,
           direction: sortDirection,
@@ -299,9 +364,11 @@ export function ClientRequestsTable() {
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={columns.length}>
-                      <Skeleton className="h-6 w-full" />
-                    </TableCell>
+                    {SKELETON_WIDTHS.map((w, ci) => (
+                      <TableCell key={ci} className="py-3">
+                        <Skeleton className={cn("h-4", w)} />
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))
               ) : isError ? (
@@ -313,23 +380,26 @@ export function ClientRequestsTable() {
                 </TableRow>
               ) : sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="py-14 text-center">
-                    <p className="font-medium">
-                      {requests && requests.length > 0
-                        ? "No client requests match your filters"
-                        : "No client requests yet"}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {requests && requests.length > 0
-                        ? "Adjust the filters or add a new request."
-                        : "Add one to get started."}
-                    </p>
+                  <TableCell colSpan={columns.length}>
+                    {requests && requests.length > 0 ? (
+                      <EmptyState
+                        icon={SearchX}
+                        title="No client requests match your filters"
+                        description="Adjust the filters or add a new request."
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={Inbox}
+                        title="No client requests yet"
+                        description="Add one to get started."
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
-                sorted.map((it) => (
-                  <TableRow key={it.id} className="align-top">
-                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card">
+                paginated.map((it) => (
+                  <TableRow key={it.id} className="align-top hover:bg-muted/40 transition-colors">
+                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card py-3">
                       <button
                         onClick={() => setViewing(it)}
                         className="text-left font-medium text-foreground hover:text-brand hover:underline"
@@ -337,7 +407,7 @@ export function ClientRequestsTable() {
                         {it.summary}
                       </button>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="py-3 whitespace-nowrap">
                       {it.isDecision || !it.projectId ? (
                         <div className="space-y-1">
                           <DecisionBadge />
@@ -358,23 +428,27 @@ export function ClientRequestsTable() {
                         </Link>
                       )}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="py-3 whitespace-nowrap">
                       {requestTypeLabel(it.requestType)}
                     </TableCell>
-                    <TableCell className="max-w-[280px] text-muted-foreground">
+                    <TableCell className="max-w-[280px] py-3 text-muted-foreground">
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <StatusBadge status={it.status} kind={it.statusKind} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <PriorityTag priority={it.priority} />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{it.createdBy}</TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDate(it.createdAt)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{it.requiredBy || "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">{it.willBeDoneBy || "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">{it.createdBy}</TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">
+                      {fmtDate(it.createdAt)}
+                    </TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">{it.requiredBy || "—"}</TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">
+                      {it.willBeDoneBy || "—"}
+                    </TableCell>
+                    <TableCell className="py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" aria-label="Row actions">
@@ -403,7 +477,7 @@ export function ClientRequestsTable() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -424,6 +498,31 @@ export function ClientRequestsTable() {
           <span>
             Showing {sorted.length} of {requests?.length ?? 0} client requests
           </span>
+          <div className="flex items-center gap-2">
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7"
+              aria-label="Previous page"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7"
+              aria-label="Next page"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

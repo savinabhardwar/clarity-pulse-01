@@ -1,16 +1,21 @@
 import {
+  ChevronLeft,
+  ChevronRight,
   Clock,
   ExternalLink,
   Eye,
+  Inbox,
   MoreHorizontal,
   Paperclip,
   Pencil,
   Plus,
+  SearchX,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
 import { PriorityTag, StatusBadge } from "@/components/stakeholder/badges";
 import { ItemDetailDrawer } from "@/components/stakeholder/item-detail";
 import { ItemFormDrawer } from "@/components/stakeholder/item-form";
@@ -77,6 +82,13 @@ const SORT_FIELDS: { value: SortField; label: string }[] = [
   { value: "priority", label: "Priority" },
 ];
 
+type DateField = "requiredBy" | "willBeDoneBy";
+
+const DATE_RANGE_FIELDS: { value: DateField; label: string }[] = [
+  { value: "requiredBy", label: "Required By" },
+  { value: "willBeDoneBy", label: "Will Be Done By" },
+];
+
 const columns = [
   "Summary",
   "Description",
@@ -90,6 +102,25 @@ const columns = [
   "Attach Document",
   "Actions",
   "History",
+];
+
+const PAGE_SIZE = 20;
+
+// Roughly matches each column's typical content width so the loading state
+// doesn't visually jump into a different shape once real data arrives.
+const SKELETON_WIDTHS = [
+  "w-32", // Summary
+  "w-40", // Description
+  "w-16", // Jira Ticket Links
+  "w-16", // Status
+  "w-14", // Priority
+  "w-20", // Created By
+  "w-20", // Date Added
+  "w-20", // Required By Date
+  "w-20", // Will Be Done By Date
+  "w-16", // Attach Document
+  "w-8", // Actions
+  "w-8", // History
 ];
 
 function fmtDate(at: string) {
@@ -223,10 +254,12 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
   const [statuses, setStatuses] = useState<string[]>([]);
   const [requestTypes, setRequestTypes] = useState<string[]>([]);
   const [priorities, setPriorities] = useState<string[]>([]);
+  const [dateField, setDateField] = useState<DateField | null>("requiredBy");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<StakeholderItem | null>(null);
@@ -251,11 +284,14 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
         if (requestTypes.length && (!it.requestType || !requestTypes.includes(it.requestType)))
           return false;
         if (priorities.length && !priorities.includes(it.priority)) return false;
-        if (from && (!it.requiredBy || it.requiredBy < from)) return false;
-        if (to && (!it.requiredBy || it.requiredBy > to)) return false;
+        if (dateField) {
+          const value = it[dateField];
+          if (from && (!value || value < from)) return false;
+          if (to && (!value || value > to)) return false;
+        }
         return true;
       }),
-    [items, search, statuses, requestTypes, priorities, from, to],
+    [items, search, statuses, requestTypes, priorities, dateField, from, to],
   );
 
   const sorted = useMemo(() => {
@@ -273,11 +309,23 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
     });
   }, [filtered, sortField, sortDirection]);
 
+  // Reset to the first page whenever the filters or sort change, so a
+  // narrowed/reordered result set never leaves the user stranded on a page
+  // past the end.
+  useEffect(() => {
+    setPage(1);
+  }, [search, statuses, requestTypes, priorities, dateField, from, to, sortField, sortDirection]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   function clearFilters() {
     setSearch("");
     setStatuses([]);
     setRequestTypes([]);
     setPriorities([]);
+    setDateField("requiredBy");
     setFrom("");
     setTo("");
   }
@@ -354,7 +402,15 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
           placeholder: `Search ${label.toLowerCase()} summary…`,
         }}
         multiSelects={multiSelects}
-        dateRange={{ label: "Required by", from, to, onFromChange: setFrom, onToChange: setTo }}
+        dateRange={{
+          fields: DATE_RANGE_FIELDS,
+          field: dateField,
+          from,
+          to,
+          onFieldChange: setDateField,
+          onFromChange: setFrom,
+          onToChange: setTo,
+        }}
         sort={{
           field: sortField,
           direction: sortDirection,
@@ -399,9 +455,11 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={columns.length}>
-                      <Skeleton className="h-6 w-full" />
-                    </TableCell>
+                    {SKELETON_WIDTHS.map((w, ci) => (
+                      <TableCell key={ci} className="py-3">
+                        <Skeleton className={cn("h-4", w)} />
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))
               ) : isError ? (
@@ -415,23 +473,26 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                 </TableRow>
               ) : sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="py-14 text-center">
-                    <p className="font-medium">
-                      {items && items.length > 0
-                        ? `No ${label.toLowerCase()} items match your filters`
-                        : `No ${label.toLowerCase()} items yet`}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {items && items.length > 0
-                        ? "Adjust the filters or add a new item."
-                        : "Add one to get started."}
-                    </p>
+                  <TableCell colSpan={columns.length}>
+                    {items && items.length > 0 ? (
+                      <EmptyState
+                        icon={SearchX}
+                        title={`No ${label.toLowerCase()} items match your filters`}
+                        description="Adjust the filters or add a new item."
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={Inbox}
+                        title={`No ${label.toLowerCase()} items yet`}
+                        description="Add one to get started."
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
-                sorted.map((it) => (
-                  <TableRow key={it.id} className="align-top">
-                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card">
+                paginated.map((it) => (
+                  <TableRow key={it.id} className="align-top hover:bg-muted/40 transition-colors">
+                    <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card py-3">
                       <button
                         onClick={() => setViewing(it)}
                         className="text-left font-medium text-foreground hover:text-brand hover:underline"
@@ -439,30 +500,32 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                         {it.summary}
                       </button>
                     </TableCell>
-                    <TableCell className="max-w-[320px] text-muted-foreground">
+                    <TableCell className="max-w-[320px] py-3 text-muted-foreground">
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <JiraLinksCell itemId={it.id} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <StatusBadge status={it.status} kind={it.statusKind} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <PriorityTag priority={it.priority} />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{it.createdBy}</TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDate(it.createdAt)}</TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="py-3 whitespace-nowrap">{it.createdBy}</TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">
+                      {fmtDate(it.createdAt)}
+                    </TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">
                       <InlineDateCell item={it} field="requiredBy" />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="py-3 whitespace-nowrap">
                       <InlineDateCell item={it} field="willBeDoneBy" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <AttachmentsCell itemId={it.id} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" aria-label="Row actions">
@@ -490,7 +553,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -511,6 +574,31 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
           <span>
             Showing {sorted.length} of {items?.length ?? 0} {label.toLowerCase()} items
           </span>
+          <div className="flex items-center gap-2">
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7"
+              aria-label="Previous page"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7"
+              aria-label="Next page"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

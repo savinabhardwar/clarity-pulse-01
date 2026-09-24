@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import {
-  ChevronLeft,
-  ChevronRight,
+  Compass,
   ExternalLink,
   Inbox,
   LayoutGrid,
+  PanelLeftClose,
+  PanelLeftOpen,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -76,10 +77,13 @@ function NavItem({
       activeOptions={{ exact: exact ?? false }}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "flex items-center gap-2.5 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         collapsed && "justify-center px-0",
       )}
-      activeProps={{ className: "bg-sidebar-accent !text-sidebar-accent-foreground font-medium" }}
+      activeProps={{
+        className:
+          "bg-sidebar-accent !text-sidebar-accent-foreground font-medium border-sidebar-primary",
+      }}
     >
       <Icon className="size-4 shrink-0" />
       {collapsed ? null : <span className="truncate">{label}</span>}
@@ -208,9 +212,13 @@ export function AppShell({
           onClick={toggle}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute top-4 -right-3 z-10 grid size-6 place-items-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/70 shadow-sm transition-colors hover:text-sidebar-foreground"
+          className="absolute top-4 -right-3 z-10 grid size-6 place-items-center rounded-md border border-sidebar-border bg-muted/60 text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-muted hover:text-sidebar-foreground"
         >
-          {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
+          {collapsed ? (
+            <PanelLeftOpen className="size-3.5" />
+          ) : (
+            <PanelLeftClose className="size-3.5" />
+          )}
         </button>
         <div
           className={cn(
@@ -222,7 +230,7 @@ export function AppShell({
             title={collapsed ? "Stakeholder Management Console" : undefined}
             className="grid size-8 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground"
           >
-            SM
+            <Compass className="size-4" />
           </div>
           {collapsed ? null : (
             <div className="leading-tight">
@@ -257,9 +265,10 @@ export function AppShell({
                 to="/projects/$projectId"
                 params={{ projectId: p.id }}
                 title={p.name}
-                className="flex items-center justify-center rounded-md px-0 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="flex items-center justify-center rounded-md border-l-2 border-transparent px-0 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 activeProps={{
-                  className: "bg-sidebar-accent !text-sidebar-accent-foreground font-medium",
+                  className:
+                    "bg-sidebar-accent !text-sidebar-accent-foreground font-medium border-sidebar-primary",
                 }}
               >
                 <span className="w-8 shrink-0 rounded bg-sidebar-border/80 px-1 py-0.5 text-center font-mono text-[10px] tracking-wide">
@@ -271,9 +280,10 @@ export function AppShell({
                 key={p.id}
                 to="/projects/$projectId"
                 params={{ projectId: p.id }}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="flex items-center gap-2.5 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 activeProps={{
-                  className: "bg-sidebar-accent !text-sidebar-accent-foreground font-medium",
+                  className:
+                    "bg-sidebar-accent !text-sidebar-accent-foreground font-medium border-sidebar-primary",
                 }}
               >
                 <span className="w-8 shrink-0 rounded bg-sidebar-border/80 px-1 py-0.5 text-center font-mono text-[10px] tracking-wide">
@@ -293,7 +303,9 @@ export function AppShell({
         <header className="sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 lg:px-8">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold text-foreground">{title}</h1>
+              <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-foreground">
+                {title}
+              </h1>
               {subtitle ? (
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p>
               ) : null}

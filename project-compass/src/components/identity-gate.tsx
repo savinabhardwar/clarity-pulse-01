@@ -1,3 +1,4 @@
+import { Compass } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -44,41 +45,50 @@ export function IdentityGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-xl border border-border bg-card p-6 shadow-panel">
-        <div className="space-y-1.5 text-center">
-          <h1 className="text-lg font-semibold">Stakeholder Management</h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your name and email to continue. This identifies your comments and changes to
-            others viewing this dashboard.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="identity-name">Name</Label>
-            <Input
-              id="identity-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Jane Doe"
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
+      <div className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-card shadow-panel">
+        <div className="flex flex-col items-center gap-3 border-b border-border bg-surface px-6 py-6 text-center">
+          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-brand text-primary-foreground shadow-raised">
+            <Compass className="size-5" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="identity-email">Email</Label>
-            <Input
-              id="identity-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="jane.doe@company.com"
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
+            <h1 className="font-display text-lg font-semibold tracking-tight">
+              Stakeholder Management
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Enter your name and email to continue. This identifies your comments and changes to
+              others viewing this dashboard.
+            </p>
           </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
-        <Button onClick={submit} className="w-full">
-          Continue
-        </Button>
+        <div className="space-y-5 p-6">
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="identity-name">Name</Label>
+              <Input
+                id="identity-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Doe"
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="identity-email">Email</Label>
+              <Input
+                id="identity-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jane.doe@company.com"
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </div>
+          <Button onClick={submit} className="w-full">
+            Continue
+          </Button>
+        </div>
       </div>
     </div>
   );

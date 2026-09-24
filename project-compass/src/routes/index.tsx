@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ListChecks, Wrench } from "lucide-react";
+import { AlertCircle, ArrowRight, FolderOpen, ListChecks, Wrench } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useItems, useProjects } from "@/data/queries";
 
 export const Route = createFileRoute("/")({
@@ -54,11 +56,11 @@ function ProjectCard({ projectId }: { projectId: string }) {
       <p className="mt-2 line-clamp-2 flex-1 text-sm text-muted-foreground">
         {project.description}
       </p>
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
+      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 border-t border-border pt-3 text-xs">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-jira/25 bg-jira-soft px-2 py-0.5 font-medium text-jira">
           <ListChecks className="size-3.5" /> {features?.length ?? 0} features
         </span>
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-stake/25 bg-stake-soft px-2 py-0.5 font-medium text-stake">
           <Wrench className="size-3.5" /> {implementation?.length ?? 0} client requests
         </span>
         {high > 0 && (
@@ -87,18 +89,37 @@ function ProjectsPage() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="h-40 animate-pulse rounded-xl border border-border bg-card shadow-raised"
-            />
+              className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-raised"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-14 rounded" />
+                  <Skeleton className="h-5 w-3/4 rounded" />
+                </div>
+                <Skeleton className="size-4 shrink-0 rounded" />
+              </div>
+              <Skeleton className="h-8 w-full rounded" />
+              <div className="flex gap-2 border-t border-border pt-3">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-28 rounded-full" />
+              </div>
+            </div>
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-5 py-4 text-sm text-destructive">
-          Couldn't load projects. Please refresh.
-        </div>
+        <EmptyState
+          icon={AlertCircle}
+          title={<span className="text-destructive">Couldn't load projects</span>}
+          description="Something went wrong while fetching projects. Please refresh the page to try again."
+          className="rounded-xl border border-destructive/25 bg-destructive/5"
+        />
       ) : !projects || projects.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface px-5 py-8 text-center text-sm text-muted-foreground">
-          No projects configured yet.
-        </div>
+        <EmptyState
+          icon={FolderOpen}
+          title="No projects yet"
+          description="Projects will show up here once they're configured. Check back soon or contact an admin to get one set up."
+          className="rounded-xl border border-dashed border-border bg-surface"
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((p) => (
