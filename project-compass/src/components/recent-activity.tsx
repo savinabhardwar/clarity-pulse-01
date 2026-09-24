@@ -78,7 +78,7 @@ function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
         : null;
 
   return (
-    <li className="border-b border-border px-4 py-3 last:border-b-0">
+    <li className="border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/50">
       <p className="text-sm text-foreground">{text}</p>
       {showValues && entry.oldValue !== null && entry.newValue !== null ? (
         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
@@ -113,8 +113,8 @@ export function RecentActivity() {
           <Bell className="size-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-0" align="end">
-        <div className="border-b border-border px-4 py-3">
+      <PopoverContent className="w-96 overflow-hidden rounded-lg p-0 shadow-panel" align="end">
+        <div className="border-b border-border bg-surface px-4 py-3">
           <p className="text-sm font-semibold text-foreground">Recent activity</p>
         </div>
         <div className="scroll-slim max-h-96 overflow-y-auto">

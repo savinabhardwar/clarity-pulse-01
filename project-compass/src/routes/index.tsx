@@ -39,19 +39,22 @@ function ProjectCard({ projectId }: { projectId: string }) {
     <Link
       to="/projects/$projectId"
       params={{ projectId: project.id }}
-      className="group flex flex-col rounded-xl border border-border bg-card p-5 shadow-raised transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-panel"
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card p-5 shadow-raised transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-panel active:translate-y-0 active:shadow-raised"
     >
+      <span className="absolute inset-x-0 top-0 h-0.5 scale-x-0 bg-brand transition-transform duration-200 group-hover:scale-x-100" />
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <span className="rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
+        <div className="min-w-0">
+          <span className="inline-block rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
             {project.code}
           </span>
-          <h2 className="mt-2 text-lg font-semibold">{project.name}</h2>
+          <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{project.name}</h2>
         </div>
-        <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
+        <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand" />
       </div>
-      <p className="mt-2 flex-1 text-sm text-muted-foreground">{project.description}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
+      <p className="mt-2 line-clamp-2 flex-1 text-sm text-muted-foreground">
+        {project.description}
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <ListChecks className="size-3.5" /> {features?.length ?? 0} features
         </span>
@@ -59,12 +62,14 @@ function ProjectCard({ projectId }: { projectId: string }) {
           <Wrench className="size-3.5" /> {implementation?.length ?? 0} client requests
         </span>
         {high > 0 && (
-          <span className="ml-auto rounded-full bg-high-soft px-2 py-0.5 font-medium text-high">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-high-soft px-2 py-0.5 font-medium text-high">
             {high} high priority
           </span>
         )}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Owner · {project.owner}</p>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Owner <span className="text-foreground/70">· {project.owner}</span>
+      </p>
     </Link>
   );
 }
@@ -78,11 +83,22 @@ function ProjectsPage() {
       subtitle="Select a project module to manage its stakeholder items"
     >
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading projects…</p>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-40 animate-pulse rounded-xl border border-border bg-card shadow-raised"
+            />
+          ))}
+        </div>
       ) : isError ? (
-        <p className="text-sm text-destructive">Couldn't load projects. Please refresh.</p>
+        <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+          Couldn't load projects. Please refresh.
+        </div>
       ) : !projects || projects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No projects configured yet.</p>
+        <div className="rounded-xl border border-dashed border-border bg-surface px-5 py-8 text-center text-sm text-muted-foreground">
+          No projects configured yet.
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((p) => (

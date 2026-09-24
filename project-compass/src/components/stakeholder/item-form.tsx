@@ -417,7 +417,7 @@ export function ItemFormDrawer({
                 {(item ? (jiraLinksQuery.data ?? []) : []).map((link) => (
                   <div
                     key={link.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-brand/25"
                   >
                     <a
                       href={link.jiraUrl}
@@ -443,7 +443,7 @@ export function ItemFormDrawer({
                   stagedJiraLinks.map((link) => (
                     <div
                       key={link.jiraKey}
-                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-brand/25"
                     >
                       <span className="font-mono text-sm">{link.jiraKey}</span>
                       <Button
@@ -638,7 +638,7 @@ export function ItemFormDrawer({
 
               <div className="space-y-2">
                 <Label>Attach Document</Label>
-                <div className="rounded-lg border border-dashed border-input bg-surface px-4 py-5 text-center">
+                <div className="rounded-lg border border-dashed border-input bg-surface px-4 py-5 text-center transition-colors hover:border-brand/40 hover:bg-brand-soft/40">
                   <Paperclip className="mx-auto size-5 text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">
                     Attach specs, mocks or review notes
@@ -669,7 +669,7 @@ export function ItemFormDrawer({
                     {existingAttachments.map((a: Attachment) => (
                       <li
                         key={a.id}
-                        className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2"
+                        className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-brand/25"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{a.name}</p>
@@ -696,7 +696,7 @@ export function ItemFormDrawer({
                     {stagedFiles.map((f, i) => (
                       <li
                         key={`${f.name}-${f.size}-${i}`}
-                        className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2"
+                        className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-brand/25"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{f.name}</p>

@@ -6,9 +6,7 @@ import {
   Paperclip,
   Pencil,
   Plus,
-  Search,
   Trash2,
-  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -28,7 +26,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,8 +33,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -48,6 +43,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  FilterBar,
+  type MultiSelectFilterConfig,
+  type SortDirection,
+} from "./table-filter-controls";
+import {
   useAttachments,
   useItemJiraLinks,
   useItems,
@@ -56,6 +56,9 @@ import {
 } from "@/data/queries";
 import {
   JIRA_STATUSES,
+  PRIORITIES,
+  PRIORITY_RANK,
+  REQUEST_TYPES,
   STAKEHOLDER_STATUSES,
   type ItemDraft,
   type ItemKind,
@@ -63,6 +66,16 @@ import {
   type StakeholderItem,
 } from "@/lib/stakeholder-types";
 import { cn } from "@/lib/utils";
+
+type SortField = "createdAt" | "updatedAt" | "requiredBy" | "willBeDoneBy" | "priority";
+
+const SORT_FIELDS: { value: SortField; label: string }[] = [
+  { value: "createdAt", label: "Date Added" },
+  { value: "updatedAt", label: "Last Updated" },
+  { value: "requiredBy", label: "Required By Date" },
+  { value: "willBeDoneBy", label: "Will Be Done By Date" },
+  { value: "priority", label: "Priority" },
+];
 
 const columns = [
   "Summary",
@@ -208,8 +221,12 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
 
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
+  const [requestTypes, setRequestTypes] = useState<string[]>([]);
+  const [priorities, setPriorities] = useState<string[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<StakeholderItem | null>(null);
@@ -218,29 +235,63 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
   const [deleting, setDeleting] = useState<StakeholderItem | null>(null);
 
   const label = kind === "feature" ? "Feature" : "Client Request";
-  const filtersActive = !!search || statuses.length > 0 || !!from || !!to;
+  const filtersActive =
+    !!search ||
+    statuses.length > 0 ||
+    requestTypes.length > 0 ||
+    priorities.length > 0 ||
+    !!from ||
+    !!to;
 
   const filtered = useMemo(
     () =>
       (items ?? []).filter((it) => {
         if (search && !it.summary.toLowerCase().includes(search.toLowerCase())) return false;
         if (statuses.length && !statuses.includes(it.status)) return false;
+        if (requestTypes.length && (!it.requestType || !requestTypes.includes(it.requestType)))
+          return false;
+        if (priorities.length && !priorities.includes(it.priority)) return false;
         if (from && (!it.requiredBy || it.requiredBy < from)) return false;
         if (to && (!it.requiredBy || it.requiredBy > to)) return false;
         return true;
       }),
-    [items, search, statuses, from, to],
+    [items, search, statuses, requestTypes, priorities, from, to],
   );
+
+  const sorted = useMemo(() => {
+    const dir = sortDirection === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortField === "priority") {
+        return dir * (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
+      }
+      const aVal = a[sortField] ?? "";
+      const bVal = b[sortField] ?? "";
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return 1;
+      if (!bVal) return -1;
+      return dir * aVal.localeCompare(bVal);
+    });
+  }, [filtered, sortField, sortDirection]);
 
   function clearFilters() {
     setSearch("");
     setStatuses([]);
+    setRequestTypes([]);
+    setPriorities([]);
     setFrom("");
     setTo("");
   }
 
   function toggleStatus(s: string) {
     setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  }
+
+  function toggleRequestType(t: string) {
+    setRequestTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
+
+  function togglePriority(p: string) {
+    setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }
 
   function confirmDelete() {
@@ -259,108 +310,72 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
     (s) => !(STAKEHOLDER_STATUSES as readonly string[]).includes(s),
   );
 
+  const multiSelects: MultiSelectFilterConfig[] = [
+    {
+      key: "status",
+      label: "Status",
+      emptyLabel: "All statuses",
+      groups: [
+        {
+          label: "Stakeholder statuses",
+          options: STAKEHOLDER_STATUSES.map((s) => ({ value: s, label: s })),
+        },
+        { label: "Jira statuses", options: jiraOnly.map((s) => ({ value: s, label: s })) },
+      ],
+      selected: statuses,
+      onToggle: toggleStatus,
+    },
+    {
+      key: "requestType",
+      label: "Request Type",
+      emptyLabel: "All request types",
+      width: "min-w-[190px]",
+      options: REQUEST_TYPES.map((r) => ({ value: r.value, label: r.label })),
+      selected: requestTypes,
+      onToggle: toggleRequestType,
+    },
+    {
+      key: "priority",
+      label: "Priority",
+      emptyLabel: "All priorities",
+      width: "min-w-[150px]",
+      options: PRIORITIES.map((p) => ({ value: p, label: p })),
+      selected: priorities,
+      onToggle: togglePriority,
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-raised">
-        <div className="min-w-[220px] flex-1 space-y-1.5">
-          <Label htmlFor="search" className="text-xs text-muted-foreground">
-            Search summary
-          </Label>
-          <div className="relative">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${label.toLowerCase()} summary…`}
-              className="pl-8"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Status</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[170px] justify-between font-normal">
-                {statuses.length ? `${statuses.length} selected` : "All statuses"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-0" align="start">
-              <div className="max-h-72 overflow-y-auto p-2">
-                <p className="px-2 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  Stakeholder statuses
-                </p>
-                {STAKEHOLDER_STATUSES.map((s) => (
-                  <label
-                    key={`f-stk-${s}`}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={statuses.includes(s)}
-                      onCheckedChange={() => toggleStatus(s)}
-                    />
-                    {s}
-                  </label>
-                ))}
-                <p className="px-2 pt-2 pb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  Jira statuses
-                </p>
-                {jiraOnly.map((s) => (
-                  <label
-                    key={`f-jira-${s}`}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={statuses.includes(s)}
-                      onCheckedChange={() => toggleStatus(s)}
-                    />
-                    {s}
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Required by — from</Label>
-          <Input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="w-[160px]"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">To</Label>
-          <Input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="w-[160px]"
-          />
-        </div>
-
-        <Button
-          variant="ghost"
-          onClick={clearFilters}
-          disabled={!filtersActive}
-          className="text-muted-foreground"
-        >
-          <X className="size-4" /> Clear filters
-        </Button>
-
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
-          }}
-          className="ml-auto"
-        >
-          <Plus className="size-4" /> Add {label}
-        </Button>
-      </div>
+      <FilterBar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: `Search ${label.toLowerCase()} summary…`,
+        }}
+        multiSelects={multiSelects}
+        dateRange={{ label: "Required by", from, to, onFromChange: setFrom, onToChange: setTo }}
+        sort={{
+          field: sortField,
+          direction: sortDirection,
+          fields: SORT_FIELDS,
+          onFieldChange: setSortField,
+          onDirectionChange: setSortDirection,
+        }}
+        filtersActive={filtersActive}
+        onClear={clearFilters}
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+            className="ml-auto"
+          >
+            <Plus className="size-4" /> Add {label}
+          </Button>
+        }
+      />
 
       <div className="table-shell">
         <div className="scroll-slim overflow-x-auto">
@@ -398,7 +413,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                     <p className="mt-1 text-sm text-muted-foreground">Please refresh the page.</p>
                   </TableCell>
                 </TableRow>
-              ) : filtered.length === 0 ? (
+              ) : sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-14 text-center">
                     <p className="font-medium">
@@ -414,7 +429,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((it) => (
+                sorted.map((it) => (
                   <TableRow key={it.id} className="align-top">
                     <TableCell className="sticky left-0 z-10 max-w-[280px] bg-card">
                       <button
@@ -494,7 +509,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
         </div>
         <div className="flex items-center justify-between border-t border-border bg-surface px-4 py-2.5 text-xs text-muted-foreground">
           <span>
-            Showing {filtered.length} of {items?.length ?? 0} {label.toLowerCase()} items
+            Showing {sorted.length} of {items?.length ?? 0} {label.toLowerCase()} items
           </span>
         </div>
       </div>

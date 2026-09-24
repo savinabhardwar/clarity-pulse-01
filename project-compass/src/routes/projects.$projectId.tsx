@@ -7,6 +7,7 @@ import { ItemsTable } from "@/components/stakeholder/items-table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useItems } from "@/data/queries";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import type { ItemKind, Project } from "@/lib/stakeholder-types";
 
 export const Route = createFileRoute("/projects/$projectId")({
@@ -62,23 +63,41 @@ function ProjectPage() {
       actions={
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          className="inline-flex items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm font-medium transition-colors hover:border-brand/30 hover:bg-muted"
         >
           <ChevronLeft className="size-4" /> All projects
         </Link>
       }
     >
       <Tabs value={tab} onValueChange={(v) => setTab(v as ItemKind)} className="gap-5">
-        <TabsList className="h-10 bg-surface-strong p-1">
-          <TabsTrigger value="feature" className="px-5 data-[state=active]:shadow-raised">
+        <TabsList className="h-10 gap-1 rounded-lg border border-border bg-surface-strong p-1">
+          <TabsTrigger
+            value="feature"
+            className="px-5 transition-colors data-[state=active]:shadow-raised"
+          >
             Features
-            <span className="ml-2 rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground">
+            <span
+              className={cn(
+                "ml-2 rounded-full px-1.5 text-[11px]",
+                tab === "feature" ? "bg-brand-soft text-brand" : "bg-muted text-muted-foreground",
+              )}
+            >
               {features?.length ?? 0}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="implementation" className="px-5 data-[state=active]:shadow-raised">
+          <TabsTrigger
+            value="implementation"
+            className="px-5 transition-colors data-[state=active]:shadow-raised"
+          >
             Client Requests
-            <span className="ml-2 rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground">
+            <span
+              className={cn(
+                "ml-2 rounded-full px-1.5 text-[11px]",
+                tab === "implementation"
+                  ? "bg-brand-soft text-brand"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
               {implementation?.length ?? 0}
             </span>
           </TabsTrigger>

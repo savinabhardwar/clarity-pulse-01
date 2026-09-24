@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 
 const statusTone: Record<string, string> = {
   "To Do": "bg-surface-strong text-muted-foreground border-border",
-  "In Progress": "bg-brand-soft text-brand border-brand/20",
-  "In Review": "bg-jira-soft text-jira border-jira/20",
-  Done: "bg-stake-soft text-stake border-stake/20",
+  "In Progress": "bg-brand-soft text-brand border-brand/25",
+  "In Review": "bg-jira-soft text-jira border-jira/25",
+  Done: "bg-stake-soft text-stake border-stake/25",
   "Waiting for Spec": "bg-mid-soft text-mid border-mid/25",
   "Waiting for confirmation": "bg-mid-soft text-mid border-mid/25",
   "Clarification Needed": "bg-high-soft text-high border-high/25",

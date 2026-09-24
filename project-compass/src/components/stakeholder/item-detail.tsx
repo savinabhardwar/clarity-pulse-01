@@ -97,7 +97,10 @@ function CommentThread({ item }: { item: DetailItem }) {
       ) : (
         <ul className="space-y-3">
           {comments.map((c) => (
-            <li key={c.id} className="rounded-md border border-border bg-card px-3 py-2">
+            <li
+              key={c.id}
+              className="rounded-md border border-border bg-card px-3 py-2 shadow-raised transition-colors hover:border-brand/25"
+            >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium">{c.authorName}</p>
                 <p className="text-xs text-muted-foreground">{fmt(c.createdAt)}</p>
@@ -210,7 +213,7 @@ export function ItemDetailDrawer({
                           href={link.jiraUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs text-brand hover:underline"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs text-brand transition-colors hover:border-brand/30 hover:bg-brand-soft hover:underline"
                         >
                           {link.jiraKey}
                           <ExternalLink className="size-3" />
@@ -235,9 +238,9 @@ export function ItemDetailDrawer({
                     {attachments.map((a) => (
                       <li
                         key={a.id}
-                        className="flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2"
+                        className="flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-brand/25 hover:bg-surface"
                       >
-                        <Paperclip className="size-4 text-muted-foreground" />
+                        <Paperclip className="size-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{a.name}</p>
                           <p className="text-xs text-muted-foreground">

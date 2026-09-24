@@ -61,6 +61,8 @@ export const JIRA_STATUSES = [
 
 export type Priority = "High" | "Medium" | "Low";
 export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];
+// Lower rank = higher priority, for sort comparisons (High before Medium before Low).
+export const PRIORITY_RANK: Record<Priority, number> = { High: 0, Medium: 1, Low: 2 };
 
 // The 4 request types offered by the Client Requests module. The first 3
 // route the item to a project's Features tab (kind "feature"); the 4th

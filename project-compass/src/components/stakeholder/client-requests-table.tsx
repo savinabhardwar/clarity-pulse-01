@@ -1,15 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRightCircle,
-  Clock,
-  Eye,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowRightCircle, Clock, Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -29,16 +19,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -49,6 +35,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  FilterBar,
+  type MultiSelectFilterConfig,
+  type SortDirection,
+} from "./table-filter-controls";
+import {
   useAssignClientRequestProject,
   useClientRequests,
   useProjects,
@@ -56,11 +47,24 @@ import {
 } from "@/data/queries";
 import {
   CLARIFICATION_NEEDED_STATUS,
+  PRIORITIES,
+  PRIORITY_RANK,
   requestTypeLabel,
+  REQUEST_TYPES,
   STAKEHOLDER_STATUSES,
   type ClientRequest,
 } from "@/lib/stakeholder-types";
 import { cn } from "@/lib/utils";
+
+type SortField = "createdAt" | "updatedAt" | "requiredBy" | "willBeDoneBy" | "priority";
+
+const SORT_FIELDS: { value: SortField; label: string }[] = [
+  { value: "createdAt", label: "Date Added" },
+  { value: "updatedAt", label: "Last Updated" },
+  { value: "requiredBy", label: "Required By Date" },
+  { value: "willBeDoneBy", label: "Will Be Done By Date" },
+  { value: "priority", label: "Priority" },
+];
 
 const columns = [
   "Summary",
@@ -93,8 +97,13 @@ export function ClientRequestsTable() {
 
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
+  const [projectIds, setProjectIds] = useState<string[]>([]);
+  const [requestTypes, setRequestTypes] = useState<string[]>([]);
+  const [priorities, setPriorities] = useState<string[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<ClientRequest | null>(null);
@@ -103,44 +112,80 @@ export function ClientRequestsTable() {
   const [deleting, setDeleting] = useState<ClientRequest | null>(null);
   const [assigning, setAssigning] = useState<ClientRequest | null>(null);
 
-  const filtersActive = !!search || statuses.length > 0 || !!from || !!to;
+  const filtersActive =
+    !!search ||
+    statuses.length > 0 ||
+    projectIds.length > 0 ||
+    requestTypes.length > 0 ||
+    priorities.length > 0 ||
+    !!from ||
+    !!to;
 
   const filtered = useMemo(
     () =>
       (requests ?? []).filter((it) => {
         if (search && !it.summary.toLowerCase().includes(search.toLowerCase())) return false;
         if (statuses.length && !statuses.includes(it.status)) return false;
+        if (projectIds.length && (!it.projectId || !projectIds.includes(it.projectId)))
+          return false;
+        if (requestTypes.length && (!it.requestType || !requestTypes.includes(it.requestType)))
+          return false;
+        if (priorities.length && !priorities.includes(it.priority)) return false;
         if (from && (!it.requiredBy || it.requiredBy < from)) return false;
         if (to && (!it.requiredBy || it.requiredBy > to)) return false;
         return true;
       }),
-    [requests, search, statuses, from, to],
+    [requests, search, statuses, projectIds, requestTypes, priorities, from, to],
   );
 
-  // Items needing clarification float to the top (most-recently-updated
-  // first within that group); everything else stays ordered by creation
-  // date, newest first. Applied after filtering, so filters keep working
-  // but whatever's currently shown still surfaces clarification-needed
-  // items at the top.
+  // Items needing clarification always float to the top (most-recently-updated
+  // first within that group); everything else is ordered by the chosen sort
+  // field/direction. Applied after filtering, so filters keep working but
+  // whatever's currently shown still surfaces clarification-needed items first.
   const sorted = useMemo(() => {
+    const dir = sortDirection === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => {
       const aNeeds = a.status === CLARIFICATION_NEEDED_STATUS;
       const bNeeds = b.status === CLARIFICATION_NEEDED_STATUS;
       if (aNeeds !== bNeeds) return aNeeds ? -1 : 1;
       if (aNeeds && bNeeds) return b.updatedAt.localeCompare(a.updatedAt);
-      return b.createdAt.localeCompare(a.createdAt);
+
+      if (sortField === "priority") {
+        return dir * (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
+      }
+      const aVal = a[sortField] ?? "";
+      const bVal = b[sortField] ?? "";
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return 1;
+      if (!bVal) return -1;
+      return dir * aVal.localeCompare(bVal);
     });
-  }, [filtered]);
+  }, [filtered, sortField, sortDirection]);
 
   function clearFilters() {
     setSearch("");
     setStatuses([]);
+    setProjectIds([]);
+    setRequestTypes([]);
+    setPriorities([]);
     setFrom("");
     setTo("");
   }
 
   function toggleStatus(s: string) {
     setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  }
+
+  function toggleProject(id: string) {
+    setProjectIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function toggleRequestType(t: string) {
+    setRequestTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
+
+  function togglePriority(p: string) {
+    setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }
 
   function confirmDelete() {
@@ -169,84 +214,68 @@ export function ClientRequestsTable() {
 
   const editingProject = editing ? projects?.find((p) => p.id === editing.projectId) : undefined;
 
+  const multiSelects: MultiSelectFilterConfig[] = [
+    {
+      key: "status",
+      label: "Status",
+      emptyLabel: "All statuses",
+      options: STAKEHOLDER_STATUSES.map((s) => ({ value: s, label: s })),
+      selected: statuses,
+      onToggle: toggleStatus,
+    },
+    {
+      key: "project",
+      label: "Project",
+      emptyLabel: "All projects",
+      options: (projects ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` })),
+      selected: projectIds,
+      onToggle: toggleProject,
+    },
+    {
+      key: "requestType",
+      label: "Request Type",
+      emptyLabel: "All request types",
+      width: "min-w-[190px]",
+      options: REQUEST_TYPES.map((r) => ({ value: r.value, label: r.label })),
+      selected: requestTypes,
+      onToggle: toggleRequestType,
+    },
+    {
+      key: "priority",
+      label: "Priority",
+      emptyLabel: "All priorities",
+      width: "min-w-[150px]",
+      options: PRIORITIES.map((p) => ({ value: p, label: p })),
+      selected: priorities,
+      onToggle: togglePriority,
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-raised">
-        <div className="min-w-[220px] flex-1 space-y-1.5">
-          <Label htmlFor="search" className="text-xs text-muted-foreground">
-            Search summary
-          </Label>
-          <div className="relative">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search client request summary…"
-              className="pl-8"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Status</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[170px] justify-between font-normal">
-                {statuses.length ? `${statuses.length} selected` : "All statuses"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-0" align="start">
-              <div className="max-h-72 overflow-y-auto p-2">
-                {STAKEHOLDER_STATUSES.map((s) => (
-                  <label
-                    key={`f-stk-${s}`}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={statuses.includes(s)}
-                      onCheckedChange={() => toggleStatus(s)}
-                    />
-                    {s}
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Required by — from</Label>
-          <Input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="w-[160px]"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">To</Label>
-          <Input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="w-[160px]"
-          />
-        </div>
-
-        <Button
-          variant="ghost"
-          onClick={clearFilters}
-          disabled={!filtersActive}
-          className="text-muted-foreground"
-        >
-          <X className="size-4" /> Clear filters
-        </Button>
-
-        <Button onClick={() => setAddOpen(true)} className="ml-auto">
-          <Plus className="size-4" /> Add Client Request
-        </Button>
-      </div>
+      <FilterBar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Search client request summary…",
+        }}
+        multiSelects={multiSelects}
+        dateRange={{ label: "Required by", from, to, onFromChange: setFrom, onToChange: setTo }}
+        sort={{
+          field: sortField,
+          direction: sortDirection,
+          fields: SORT_FIELDS,
+          onFieldChange: setSortField,
+          onDirectionChange: setSortDirection,
+        }}
+        filtersActive={filtersActive}
+        onClear={clearFilters}
+        actions={
+          <Button onClick={() => setAddOpen(true)} className="ml-auto">
+            <Plus className="size-4" /> Add Client Request
+          </Button>
+        }
+      />
 
       <div className="table-shell">
         <div className="scroll-slim overflow-x-auto">
