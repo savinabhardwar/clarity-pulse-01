@@ -203,23 +203,10 @@ export function AppShell({
     <div className="flex min-h-screen bg-background">
       <aside
         className={cn(
-          "relative hidden shrink-0 flex-col bg-sidebar transition-[width] duration-200 ease-in-out lg:flex",
+          "hidden shrink-0 flex-col bg-sidebar transition-[width] duration-200 ease-in-out lg:flex",
           collapsed ? "w-16" : "w-64",
         )}
       >
-        <button
-          type="button"
-          onClick={toggle}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute top-4 -right-3 z-30 grid size-6 place-items-center rounded-md border border-sidebar-border bg-muted/60 text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-muted hover:text-sidebar-foreground"
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="size-3.5" />
-          ) : (
-            <PanelLeftClose className="size-3.5" />
-          )}
-        </button>
         <div
           className={cn(
             "flex items-center gap-2.5 border-b border-sidebar-border px-5 py-4",
@@ -302,13 +289,28 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 lg:px-8">
-            <div className="min-w-0">
-              <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-foreground">
-                {title}
-              </h1>
-              {subtitle ? (
-                <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p>
-              ) : null}
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={toggle}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="hidden shrink-0 rounded-md border border-border bg-muted/60 p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:grid lg:place-items-center"
+              >
+                {collapsed ? (
+                  <PanelLeftOpen className="size-4" />
+                ) : (
+                  <PanelLeftClose className="size-4" />
+                )}
+              </button>
+              <div className="min-w-0">
+                <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-foreground">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p>
+                ) : null}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <SiblingDashboardLinks />
