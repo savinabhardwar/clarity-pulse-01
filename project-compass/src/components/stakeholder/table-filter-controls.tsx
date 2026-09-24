@@ -291,7 +291,7 @@ function DateRangeFilter<TDateField extends string>({
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="start">
+        <PopoverContent className="w-[320px] p-0" align="start">
           <div className="space-y-1.5 p-3">
             <Label className="block text-xs text-muted-foreground">Filter by</Label>
             <Select
@@ -316,8 +316,8 @@ function DateRangeFilter<TDateField extends string>({
               <p className="border-t border-border px-3 pt-3 pb-2 text-sm font-semibold">
                 Filter by Date
               </p>
-              <div className="flex gap-2 px-3 pb-3">
-                <div className="flex-1 space-y-1.5">
+              <div className="flex flex-col gap-3 px-3 pb-3">
+                <div className="min-w-0 space-y-1.5">
                   <Label className="block text-xs text-muted-foreground">From</Label>
                   <div className="relative">
                     <Input
@@ -325,12 +325,12 @@ function DateRangeFilter<TDateField extends string>({
                       value={from}
                       onChange={(e) => onFromChange(e.target.value)}
                       placeholder="Select start date"
-                      className="w-full pr-8"
+                      className="w-full pr-8 [&::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                     <CalendarRange className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   </div>
                 </div>
-                <div className="flex-1 space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label className="block text-xs text-muted-foreground">To</Label>
                   <div className="relative">
                     <Input
@@ -338,7 +338,7 @@ function DateRangeFilter<TDateField extends string>({
                       value={to}
                       onChange={(e) => onToChange(e.target.value)}
                       placeholder="Select end date"
-                      className="w-full pr-8"
+                      className="w-full pr-8 [&::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                     <CalendarRange className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   </div>

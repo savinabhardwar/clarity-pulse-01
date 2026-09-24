@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
   ArrowRightCircle,
   ChevronLeft,
@@ -251,16 +252,26 @@ function InlineProjectCell({ item, projects }: { item: ClientRequest; projects: 
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setEditing(true)}
-      className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted hover:underline"
-    >
-      <span className="rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
-        {item.projectCode}
-      </span>
-      <span className="text-foreground">{item.projectName}</span>
-    </button>
+    <span className="inline-flex items-center gap-1.5">
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: item.projectId ?? "" }}
+        className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted hover:underline"
+      >
+        <span className="rounded bg-brand-soft px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-brand">
+          {item.projectCode}
+        </span>
+        <span className="text-foreground">{item.projectName}</span>
+      </Link>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        aria-label="Change project"
+        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Pencil className="size-3" />
+      </button>
+    </span>
   );
 }
 
