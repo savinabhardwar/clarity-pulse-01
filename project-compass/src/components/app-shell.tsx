@@ -212,7 +212,7 @@ export function AppShell({
           onClick={toggle}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute top-4 -right-3 z-10 grid size-6 place-items-center rounded-md border border-sidebar-border bg-muted/60 text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-muted hover:text-sidebar-foreground"
+          className="absolute top-4 -right-3 z-30 grid size-6 place-items-center rounded-md border border-sidebar-border bg-muted/60 text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-muted hover:text-sidebar-foreground"
         >
           {collapsed ? (
             <PanelLeftOpen className="size-3.5" />
