@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-pm-platform-process-events",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  "queues": {
+    "consumers": [
+      {
+        "queue": "ai-pm-platform-events",
+        // Explicit, not silent defaults (task 3.3b's own Check).
+        // max_batch_size/max_retries are the only STATIC retry knobs --
+        // verified against wrangler's own bundled config-schema.json
+        // before writing this, not guessed: there is no static
+        // "retry_delay" field. Delay is set per-message in code via
+        // `message.retry({ delaySeconds })`, see src/index.ts.
+        "max_batch_size": 10,
+        "max_retries": 5,
+        "dead_letter_queue": "ai-pm-platform-events-dlq",
+      },
+    ],
+  },
+}

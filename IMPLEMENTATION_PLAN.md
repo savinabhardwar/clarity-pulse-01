@@ -928,6 +928,67 @@ deferred QA normalizer in task 3.1).
 - **Done when:** a consumer error (e.g. a malformed payload) causes the message
   to retry per the configured policy, not crash-loop the whole queue.
 
+**Done — 2026-09-24.** `workers/process-events`, deployed as a real
+Cloudflare Queues consumer bound to `ai-pm-platform-events`. Also created
+the `ai-pm-platform-events-dlq` queue live — task 3.3b's own "Done when"
+needs somewhere for exhausted messages to actually go, so the DLQ resource
+was created now even though task 3.5 owns building its drain-consumer.
+
+**Retry config verified against wrangler's own bundled
+`config-schema.json` before writing anything, not guessed:** the static
+config fields are `max_batch_size`, `max_retries`, `dead_letter_queue` —
+there is no static "retry delay" field. Delay is set per message in code
+via `message.retry({ delaySeconds })`, so `src/index.ts` computes explicit
+exponential backoff (30s → 60s → 120s → … capped at 15 min) rather than
+accepting an implicit default, satisfying the task's Check literally.
+
+**Per-message `ack()`/`retry()` inside a try/catch, not a bare loop** — an
+uncaught throw in a Cloudflare Queues consumer retries the *whole batch*,
+which would mean one malformed message crash-looping every valid message
+alongside it. Verified with a real unit test: a batch of one malformed
+message plus two valid ones — the malformed one retries on its own, both
+valid ones still get acked. This is task 3.3b's literal "Done when"
+wording, proven with a test that constructs exactly that scenario, not
+inferred from the code reading correct.
+
+**Dedup**: `upsertEvent` uses PostgREST's upsert (`Prefer:
+resolution=ignore-duplicates`) on `(source, provider_event_id)` — a
+duplicate returns an empty result array (not an error), which
+`processMessage` reads to skip the state-table update entirely for
+already-processed events.
+
+**State-table updates are real but intentionally narrow**: `issues`
+(Jira), `commits` and `pull_requests` (GitHub), `requirements`
+(requirements-app) — one upsert function per event type currently
+produced by task 3.1's normalizers, matching each table's real unique
+constraint from migrations 0001/0002. `branches` and `qa_runs` are not
+written here: no normalizer produces those event types yet (`ingest-git`
+only handles `push`/`pull_request`, not branch-creation events; no QA
+system exists). **Person-identity resolution (Jira `accountId` / GitHub
+username / stakeholder `created_by` free text → our internal `users.id`)
+is deliberately not done** — four different identity spaces, no unified
+matching strategy has been decided, so `assignee_id`/`author_id` are left
+`null` rather than guessing a heuristic. A real open question, flagged
+here rather than silently worked around.
+
+**"Hand off to the Policy Engine" is a no-op with a `TODO`** — Phase 4
+doesn't exist yet, and CLAUDE.md's single most important rule (nothing
+executes off an event without going through the Policy Engine) means this
+can't be stubbed with a fake call either.
+
+**Verified live, not just unit-tested — this is the piece that was never
+actually proven until now:** every ingest Worker so far proved it could
+*enqueue* successfully, but nothing had confirmed a message actually gets
+*consumed*. Triggered a real `ingest-jira` poll against the real LT
+project, waited for delivery, and confirmed a real `LT-24` issue landed in
+both `events` (count went 1→2) and `issues` (`jira_issue_key: 'LT-24'`,
+real title and status). Re-ran the same poll immediately after: `events`
+stayed at 2, not 3 — real end-to-end dedup across two independently
+deployed Workers, not a same-process unit test.
+
+**33 tests passing workspace-wide** (1 + 2 + 9 `process-events` + 21
+`packages/core`).
+
 ### 3.4 Idempotency and ordering
 
 - **Do:** dedup on the provider event ID. Guard state updates against

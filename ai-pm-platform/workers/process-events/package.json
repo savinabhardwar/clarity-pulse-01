@@ -1,0 +1,14 @@
+{
+  "name": "@ai-pm-platform/process-events",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ai-pm-platform/core": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "dev": "wrangler dev --config ./wrangler.jsonc",
+    "deploy": "wrangler deploy --config ./wrangler.jsonc"
+  }
+}
