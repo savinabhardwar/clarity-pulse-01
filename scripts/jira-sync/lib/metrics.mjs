@@ -187,9 +187,12 @@ export function computeMetrics({
                 )) /
                 withEstimateAndSpent.length,
           );
-    const estimateCoverage = Math.round(
-      (100 * tickets.filter((t) => t.estimateSeconds > 0).length) / (tickets.length || 1),
-    );
+    const estimateCoverage =
+      tickets.length === 0
+        ? null
+        : Math.round(
+            (100 * tickets.filter((t) => t.estimateSeconds > 0).length) / tickets.length,
+          );
     const closedWithoutLogging = done.filter(
       (t) => (t.estimateSeconds || 0) > 0 && (t.spentSeconds || 0) === 0,
     ).length;
@@ -238,7 +241,8 @@ export function computeMetrics({
       riskFlags.push(`Dark WIP on ${darkWip.length} ticket${darkWip.length > 1 ? "s" : ""}`);
     if (projectsTouched.length >= 3)
       riskFlags.push(`Split across ${projectsTouched.length} projects`);
-    if (estimateCoverage < 80) riskFlags.push("Estimate coverage below 80%");
+    if (estimateCoverage !== null && estimateCoverage < 80)
+      riskFlags.push("Estimate coverage below 80%");
     if (idleWorkdays !== null && idleWorkdays >= 2)
       riskFlags.push(`${idleWorkdays} idle working day${idleWorkdays > 1 ? "s" : ""}`);
     const longBlocked = tickets.find((t) => hasWord(t.status, "block"));
@@ -347,12 +351,14 @@ export function computeMetrics({
       rank: 1,
     });
   }
-  const byHygiene = [...personMetrics].sort(
-    (a, b) =>
-      b.estimateCoverage - a.estimateCoverage ||
-      a.darkWipCount - b.darkWipCount ||
-      b.commentCount - a.commentCount,
-  );
+  const byHygiene = personMetrics
+    .filter((p) => p.estimateCoverage !== null)
+    .sort(
+      (a, b) =>
+        b.estimateCoverage - a.estimateCoverage ||
+        a.darkWipCount - b.darkWipCount ||
+        b.commentCount - a.commentCount,
+    );
   if (byHygiene[0]) {
     standouts.push({
       title: "Cleanest Jira",
@@ -372,9 +378,13 @@ export function computeMetrics({
   }
 
   // ---- Org-level board health ----
-  const avgEstimateCoverage = Math.round(
-    personMetrics.reduce((s, p) => s + p.estimateCoverage, 0) / (personMetrics.length || 1),
-  );
+  const withEstimateCoverage = personMetrics.filter((p) => p.estimateCoverage !== null);
+  const avgEstimateCoverage = withEstimateCoverage.length
+    ? Math.round(
+        withEstimateCoverage.reduce((s, p) => s + p.estimateCoverage, 0) /
+          withEstimateCoverage.length,
+      )
+    : null;
   const totalDarkWip = personMetrics.reduce((s, p) => s + p.darkWipCount, 0);
   const blockedTickets = issues.filter(
     (t) => hasWord(t.status, "block") && t.statusCategory !== "done",
@@ -406,7 +416,7 @@ export function computeMetrics({
   const blockedRatioPct = (100 * blockedTickets) / openTicketCount;
   const darkWipRatioPct = (100 * totalDarkWip) / openTicketCount;
   const boardHealthScore = Math.round(
-    avgEstimateCoverage * 0.5 +
+    (avgEstimateCoverage ?? 0) * 0.5 +
       (100 - Math.min(100, blockedRatioPct)) * 0.25 +
       (100 - Math.min(100, darkWipRatioPct)) * 0.25,
   );
