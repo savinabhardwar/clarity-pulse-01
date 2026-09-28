@@ -10,6 +10,7 @@ import { run as runSync } from "./sync.mjs";
 import { snapshotClosedSprints } from "./snapshot-sprint-summary.mjs";
 import { flagInactivePeople } from "./flag-inactive-people.mjs";
 import { purgeClosedSprintTickets } from "./purge-closed-sprint-tickets.mjs";
+import { purgeOldPlanningAvailability } from "./purge-old-planning-availability.mjs";
 import { syncStakeholderJiraStatus } from "./sync-stakeholder-jira-status.mjs";
 import { runSmokeTest } from "./smoke-test.mjs";
 import { withRetry, isRetryablePgError } from "./lib/retry.mjs";
@@ -105,6 +106,13 @@ async function main() {
   // tickets.mjs for the full eligibility rule and grace period).
   const purgeResult = await purgeClosedSprintTickets(process.env.DATABASE_URL);
   console.log("[run-full-sync] closed-sprint ticket purge:", purgeResult);
+
+  // Same "closed + snapshotted" safety gate as the ticket purge above --
+  // clears leave/availability entries (team-pulse-54's Planning page)
+  // once their sprint has ended and been snapshotted, so old sprints'
+  // leave stops accumulating in that list.
+  const availabilityPurgeResult = await purgeOldPlanningAvailability(process.env.DATABASE_URL);
+  console.log("[run-full-sync] stale planning-availability purge:", availabilityPurgeResult);
 
   // Refreshes project-compass's stakeholder items from the linked Jira
   // ticket's current status -- independent of everything above, so a
