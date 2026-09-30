@@ -75,6 +75,7 @@ import {
   useUpdateItem,
 } from "@/data/queries";
 import {
+  JIRA_STATUSES,
   PRIORITIES,
   PRIORITY_RANK,
   REQUEST_TYPES,
@@ -403,12 +404,25 @@ export function ClientRequestsTable() {
 
   const editingProject = editing ? projects?.find((p) => p.id === editing.projectId) : undefined;
 
+  // Same grouping as the per-project Items table: statuses shared by both
+  // lists (To Do / In Progress / Done / Deprioritised) appear once, under
+  // Stakeholder statuses, and match by name regardless of which kind a row uses.
+  const jiraOnly = JIRA_STATUSES.filter(
+    (s) => !(STAKEHOLDER_STATUSES as readonly string[]).includes(s),
+  );
+
   const multiSelects: MultiSelectFilterConfig[] = [
     {
       key: "status",
       label: "Status",
       emptyLabel: "All statuses",
-      options: STAKEHOLDER_STATUSES.map((s) => ({ value: s, label: s })),
+      groups: [
+        {
+          label: "Stakeholder statuses",
+          options: STAKEHOLDER_STATUSES.map((s) => ({ value: s, label: s })),
+        },
+        { label: "Jira statuses", options: jiraOnly.map((s) => ({ value: s, label: s })) },
+      ],
       selected: statuses,
       onToggle: toggleStatus,
     },
