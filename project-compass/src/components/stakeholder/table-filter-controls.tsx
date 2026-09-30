@@ -13,9 +13,11 @@ import {
   ListFilter,
   Search,
 } from "lucide-react";
+import { format, isValid, parse } from "date-fns";
 import { type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -267,6 +269,74 @@ export type DateRangeFilterConfig<TDateField extends string> = {
   onToChange: (value: string) => void;
 };
 
+// Filter values are yyyy-mm-dd strings; parse/format them in local time (never
+// `new Date("yyyy-mm-dd")`, which is UTC and can shift the day).
+const YMD = "yyyy-MM-dd";
+
+function parseYmd(value: string): Date | undefined {
+  if (!value) return undefined;
+  const d = parse(value, YMD, new Date());
+  return isValid(d) ? d : undefined;
+}
+
+function formatYmd(date: Date): string {
+  return format(date, YMD);
+}
+
+// One From/To field: the date input stays typeable, and its calendar icon is a
+// button that opens a calendar popover to pick that single date.
+function DateField({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const date = parseYmd(value);
+
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <Label className="block text-xs text-muted-foreground">{label}</Label>
+      <div className="relative">
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full pr-8 [&::-webkit-calendar-picker-indicator]:hidden"
+        />
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Pick ${label.toLowerCase()} date`}
+              className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <CalendarRange className="size-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              {...(date ? { selected: date } : {})}
+              defaultMonth={date ?? new Date()}
+              onSelect={(day) => {
+                onChange(day ? formatYmd(day) : "");
+                setOpen(false);
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
+}
+
 // A single "Date Range" button/popover: first choose which date field to
 // filter by (e.g. Required By vs. Will Be Done By), then set a from/to range
 // for that field -- instead of two bare, always-visible date inputs.
@@ -338,32 +408,18 @@ function DateRangeFilter<TDateField extends string>({
                 Filter by Date
               </p>
               <div className="flex flex-col gap-3 px-3 pb-3">
-                <div className="min-w-0 space-y-1.5">
-                  <Label className="block text-xs text-muted-foreground">From</Label>
-                  <div className="relative">
-                    <Input
-                      type="date"
-                      value={from}
-                      onChange={(e) => onFromChange(e.target.value)}
-                      placeholder="Select start date"
-                      className="w-full pr-8 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                    />
-                    <CalendarRange className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="min-w-0 space-y-1.5">
-                  <Label className="block text-xs text-muted-foreground">To</Label>
-                  <div className="relative">
-                    <Input
-                      type="date"
-                      value={to}
-                      onChange={(e) => onToChange(e.target.value)}
-                      placeholder="Select end date"
-                      className="w-full pr-8 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                    />
-                    <CalendarRange className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  </div>
-                </div>
+                <DateField
+                  label="From"
+                  value={from}
+                  placeholder="Select start date"
+                  onChange={onFromChange}
+                />
+                <DateField
+                  label="To"
+                  value={to}
+                  placeholder="Select end date"
+                  onChange={onToChange}
+                />
               </div>
 
               <div className="flex items-center justify-between border-t border-border px-3 py-2">
