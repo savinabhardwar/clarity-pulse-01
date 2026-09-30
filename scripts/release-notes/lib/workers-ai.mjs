@@ -26,7 +26,9 @@ export async function summarizeWithWorkersAI(prompt) {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
-    throw new Error("CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN not set -- Workers AI fallback unavailable");
+    throw new Error(
+      "CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN not set -- Workers AI fallback unavailable",
+    );
   }
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${WORKERS_AI_MODEL}`;
 
@@ -71,6 +73,9 @@ export async function summarizeWithWorkersAI(prompt) {
       console.log(`[release-notes] ${WORKERS_AI_MODEL} (Workers AI fallback) served the summary`);
       return text.trim();
     },
-    { label: `Workers AI summarize (${WORKERS_AI_MODEL})`, isRetryable: (err) => isRetryableHttpStatus(err.status) },
+    {
+      label: `Workers AI summarize (${WORKERS_AI_MODEL})`,
+      isRetryable: (err) => isRetryableHttpStatus(err.status),
+    },
   );
 }

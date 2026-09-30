@@ -136,7 +136,9 @@ async function callGemini(prompt) {
       if (err.dailyQuota) exhaustedModels.add(model);
       const movable = err.status === 429 || err.status >= 500;
       if (!movable) throw err;
-      console.warn(`[release-notes] ${model} unavailable (${err.status}) -- trying next Gemini model`);
+      console.warn(
+        `[release-notes] ${model} unavailable (${err.status}) -- trying next Gemini model`,
+      );
     }
   }
   throw primaryErr ?? new Error("All Gemini models are exhausted for today");
