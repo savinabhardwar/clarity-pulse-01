@@ -28,17 +28,32 @@ import { summarizeWithWorkersAI, workersAiConfigured } from "./lib/workers-ai.mj
 // normally. Do not swap the primary back to 3.8-flash on the strength of
 // that history.
 //
-// gemini-3.8-flash is kept ONLY as a same-provider fallback for 429
-// (rate-limited) specifically -- not for 503/other failures, where 3.8
-// has already shown itself to be the less reliable model. The two model
-// ids plausibly draw from separate free-tier quota buckets, so a 429 on
-// 3.6-flash is worth one attempt against 3.8-flash before giving up.
-// This is not the second-provider fallback CLAUDE.md §2 rules out ("If
-// Gemini is down, queue and wait. Do not add a second provider") --
-// it's the same provider, same account, a different model id.
+// The free tier's quota is 20 requests/day PER MODEL (confirmed
+// 2026-09-30: GenerateRequestsPerDayPerProjectPerModel-FreeTier, limit
+// 20), so each model id below is its own quota bucket. When the primary
+// is exhausted (or failing), we walk GEMINI_MODEL_FALLBACKS in order --
+// same provider, same account, a different model id. This is not the
+// second-provider fallback CLAUDE.md §2 rules out ("If Gemini is down,
+// queue and wait. Do not add a second provider").
+//
+// Fallback order is by observed reliability, not by version number
+// (verified live 2026-09-30): gemini-3.5-flash answered first try;
+// gemini-3.7-flash 503'd once then succeeded, so it gets a second
+// attempt; gemini-3.8-flash 503'd on every attempt that day (and 4/4 on
+// 2026-09-18), so it stays last with a single attempt.
 const GEMINI_MODEL_PRIMARY = "gemini-3.6-flash";
-const GEMINI_MODEL_FALLBACK = "gemini-3.8-flash";
+const GEMINI_MODEL_FALLBACKS = [
+  { model: "gemini-3.5-flash", retries: 2 },
+  { model: "gemini-3.7-flash", retries: 2 },
+  { model: "gemini-3.8-flash", retries: 1 },
+];
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// Models whose DAILY quota is already spent in this process. A run that
+// handles many products (10 were due on 2026-09-30) would otherwise
+// spend one wasted request per product re-probing a model that cannot
+// succeed until the quota resets.
+const exhaustedModels = new Set();
 
 function buildPrompt(product, issues) {
   const issueLines = issues
@@ -82,6 +97,10 @@ async function requestModel(model, prompt, { retries } = {}) {
         const text = await res.text();
         const err = new Error(`Gemini request failed: ${res.status} ${text}`);
         err.status = res.status;
+        // A per-DAY 429 cannot clear within a retry's backoff window
+        // (minutes at most), so retrying only burns more requests. A
+        // per-minute 429 is still worth retrying.
+        err.dailyQuota = res.status === 429 && /PerDay/i.test(text);
         throw err;
       }
       const body = await res.json();
@@ -95,24 +114,35 @@ async function requestModel(model, prompt, { retries } = {}) {
     {
       label: `Gemini summarize (${model})`,
       retries,
-      isRetryable: (err) => isRetryableHttpStatus(err.status),
+      isRetryable: (err) => isRetryableHttpStatus(err.status) && !err.dailyQuota,
     },
   );
 }
 
+// Tries the primary model, then each fallback in order, moving on when a
+// model is rate-limited (429) or unavailable (5xx). Any other error (bad
+// request, bad key) would fail identically on every model, so it is
+// thrown immediately. Throws the PRIMARY model's error if the whole
+// chain fails, so callWithFallback reports the most representative cause.
 async function callGemini(prompt) {
-  try {
-    return await requestModel(GEMINI_MODEL_PRIMARY, prompt);
-  } catch (err) {
-    if (err.status !== 429) throw err;
-    console.warn(
-      `[release-notes] ${GEMINI_MODEL_PRIMARY} exhausted retries on 429 -- trying ${GEMINI_MODEL_FALLBACK} once`,
-    );
-    return requestModel(GEMINI_MODEL_FALLBACK, prompt, { retries: 1 });
+  const chain = [{ model: GEMINI_MODEL_PRIMARY }, ...GEMINI_MODEL_FALLBACKS];
+  let primaryErr;
+  for (const { model, retries } of chain) {
+    if (exhaustedModels.has(model)) continue;
+    try {
+      return await requestModel(model, prompt, { retries });
+    } catch (err) {
+      primaryErr ??= err;
+      if (err.dailyQuota) exhaustedModels.add(model);
+      const movable = err.status === 429 || err.status >= 500;
+      if (!movable) throw err;
+      console.warn(`[release-notes] ${model} unavailable (${err.status}) -- trying next Gemini model`);
+    }
   }
+  throw primaryErr ?? new Error("All Gemini models are exhausted for today");
 }
 
-// Last resort: both Gemini models (429 path included) have failed --
+// Last resort: every model in the Gemini chain above has failed --
 // try Cloudflare Workers AI before giving up entirely, so one bad Gemini
 // day doesn't block a whole release notes cycle. This is intentionally
 // AFTER Gemini's own retry/fallback logic above, not a parallel race --
