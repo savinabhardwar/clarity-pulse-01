@@ -6,7 +6,9 @@
 // the convention this prompt reuses for partially-done work: "...is
 // built and being finalized this sprint" rather than describing it as
 // shipped. Uses Google Gemini since this runs headlessly in GitHub
-// Actions (no Claude session/MCP access there).
+// Actions (no Claude session/MCP access there). Falls back to Cloudflare
+// Workers AI (lib/workers-ai.mjs) only if every Gemini attempt fails --
+// see callWithFallback below.
 //
 // Completeness (pending subtasks / open "Blocks" dependencies) is
 // computed deterministically in fetch-completed-issues.mjs, not left for
@@ -15,6 +17,7 @@
 // how to phrase what's already been determined; it never decides
 // blocked/incomplete status itself.
 import { withRetry, isRetryableHttpStatus } from "../jira-sync/lib/retry.mjs";
+import { summarizeWithWorkersAI, workersAiConfigured } from "./lib/workers-ai.mjs";
 
 // Pin exact model versions and revisit periodically -- Google
 // deprecates old Gemini model ids on a rolling basis.
@@ -51,14 +54,15 @@ function buildPrompt(product, issues) {
 - **AI Coaching Practice Calls** — The full practice-call experience — talk to an AI customer, see live call activity, review the transcript — is built and being finalized this sprint.
 
 Rules:
-- Describe ONE FEATURE per bullet: "- **Feature Name** — one flowing sentence describing the capability." A feature is a user-visible capability, not a ticket -- several tickets (e.g. a design ticket, a frontend ticket, a backend/API ticket) often make up a single feature; collapse those into one bullet, don't write one bullet per ticket.
+- Describe ONE FEATURE per bullet: "- **<a specific feature name you write, e.g. "Standalone Coaching Sessions">** — one flowing sentence describing the capability." <Feature Name> is a placeholder for a real, specific name you invent from the tickets -- never output the literal words "Feature Name". A feature is a user-visible capability, not a ticket -- several tickets (e.g. a design ticket, a frontend ticket, a backend/API ticket) often make up a single feature; collapse those into one bullet, don't write one bullet per ticket.
 - Do not merge multiple distinct, unrelated features into one catch-all bullet just because they sit in the same area of the product.
-- Only add a "## Feature Area" heading above a group of bullets when there are several distinct features that clearly belong together; a standalone feature needs no heading. The same "don't merge unrelated things" rule applies to headings, not just bullets: e.g. "Knowledge Hub" (content ingestion -- web scraping, video processing, integrations) and "AI Self-Learning" (post-call analysis generating prompt recommendations) are different capabilities that happen to sit near each other in the product -- give them separate headings, don't combine into "Knowledge Hub & AI Self-Learning" or any other joined name. If you're naming a heading with "&" or "and" joining two nouns, stop and check whether that's actually one capability or two being forced together.
-- Some tickets below are marked "[INCOMPLETE: ...]" -- meaning a subtask is still open, or the ticket is blocked by another issue that isn't done yet, even though Jira shows it as Done. Never describe that feature as shipped, delivered, completed, or resolved. Instead:
+- Leave out internal QA/test-automation work and infrastructure/ops/tooling work entirely -- these are not user-visible capabilities, no matter how much effort they took. Examples of tickets to EXCLUDE: "Gamification Automation Testing", "CX Pass Integration Testing", "Migrate to SQLAlchemy", "Kubernetes deployment migration", "API versioning infrastructure", "Debug high chatbot latency" (an internal investigation, not a shipped change), "Remove unnecessary fields" (internal cleanup). Do NOT over-apply this: a ticket is only excluded if the WORK ITSELF is testing or infrastructure -- a ticket about a genuine user-facing capability that happens to have "test" in its name stays in, e.g. "AI Simulation Test Workflow" (a feature letting admins simulate a chat conversation before publishing it) is a real product feature, not QA work, and belongs in the release notes like any other feature.
+- Only add a heading, formatted "## <a specific area name you write, e.g. "Platform Infrastructure & Integrations">", above a group of bullets when there are several distinct features that clearly belong together; a standalone feature needs no heading. <area name> is a placeholder for a real, specific name you invent -- never output the literal words "Feature Area". The same "don't merge unrelated things" rule applies to headings, not just bullets: e.g. "Knowledge Hub" (content ingestion -- web scraping, video processing, integrations) and "AI Self-Learning" (post-call analysis generating prompt recommendations) are different capabilities that happen to sit near each other in the product -- give them separate headings, don't combine into "Knowledge Hub & AI Self-Learning" or any other joined name. If you're naming a heading with "&" or "and" joining two nouns, stop and check whether that's actually one capability or two being forced together.
+- Some tickets below are marked "[INCOMPLETE: ...]" -- meaning a subtask is still open, or another linked ticket (e.g. a separate frontend/backend/design half of the same feature) isn't done yet, even though this ticket itself shows as Done in Jira. Never describe that feature as shipped, delivered, completed, or resolved. Instead:
   (a) if the feature has no real user-visible progress yet, leave it out of these release notes entirely, or
   (b) if there is genuine working progress, describe what's done and end the bullet with a clause naming what's outstanding, in the exact voice of the reference example above: "...is built and being finalized this sprint." (adapt the trailing clause to name the actual open item if useful, e.g. "...and is pending its backend integration.")
 - Do not invent details not implied by the ticket summaries.
-- Output ONLY the bullet list (with any "## Feature Area" headings), nothing else -- no top-level title, no preamble.
+- Output ONLY the bullet list (with any "## <area name>" headings), nothing else -- no top-level title, no preamble.
 
 Completed tickets:
 ${issueLines}`;
@@ -108,6 +112,30 @@ async function callGemini(prompt) {
   }
 }
 
+// Last resort: both Gemini models (429 path included) have failed --
+// try Cloudflare Workers AI before giving up entirely, so one bad Gemini
+// day doesn't block a whole release notes cycle. This is intentionally
+// AFTER Gemini's own retry/fallback logic above, not a parallel race --
+// Gemini's output is better tuned for this prompt, so it's tried
+// exhaustively first. If Workers AI isn't configured (no Cloudflare
+// creds), the original Gemini error is what surfaces, unchanged.
+async function callWithFallback(prompt) {
+  try {
+    return await callGemini(prompt);
+  } catch (geminiErr) {
+    if (!workersAiConfigured()) throw geminiErr;
+    console.warn(
+      `[release-notes] Gemini failed (${geminiErr.message}) -- falling back to Workers AI`,
+    );
+    try {
+      return await summarizeWithWorkersAI(prompt);
+    } catch (workersErr) {
+      console.error(`[release-notes] Workers AI fallback also failed: ${workersErr.message}`);
+      throw geminiErr; // surface the primary provider's error, not the fallback's
+    }
+  }
+}
+
 // Returns the raw "- **Feature Name** — sentence" markdown bullet list
 // (with optional "## Feature Area" headings) as a string -- publish.mjs
 // converts it to Confluence storage HTML.
@@ -116,6 +144,6 @@ export async function summarize({ product, issues }) {
     return "* **No user-facing changes:** No tickets were completed in this period.";
   }
   const prompt = buildPrompt(product, issues);
-  const text = await callGemini(prompt);
+  const text = await callWithFallback(prompt);
   return text.trim();
 }
