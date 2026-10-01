@@ -22,7 +22,7 @@ const SPRINT_FIELD = process.env.JIRA_SPRINT_FIELD || "customfield_10020";
 const QA_ASSIGNEE_FIELD = process.env.JIRA_QA_ASSIGNEE_FIELD || "customfield_10690";
 const QA_PLANNED_HOURS_FIELD = process.env.JIRA_QA_PLANNED_HOURS_FIELD || "customfield_10691";
 
-const JIRA_PROJECTS = [
+export const JIRA_PROJECTS = [
   { key: "TEAM", name: "Team-PixelBlinders" },
   { key: "TI", name: "Team - Infrastructure" },
   { key: "TEAMSANKYA", name: "Team Sankya" },

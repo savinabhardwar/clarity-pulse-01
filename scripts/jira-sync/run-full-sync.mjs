@@ -12,6 +12,7 @@ import { flagInactivePeople } from "./flag-inactive-people.mjs";
 import { purgeClosedSprintTickets } from "./purge-closed-sprint-tickets.mjs";
 import { purgeOldPlanningAvailability } from "./purge-old-planning-availability.mjs";
 import { syncStakeholderJiraStatus } from "./sync-stakeholder-jira-status.mjs";
+import { syncNextSprint } from "./sync-next-sprint.mjs";
 import { runSmokeTest } from "./smoke-test.mjs";
 import { withRetry, isRetryablePgError } from "./lib/retry.mjs";
 import pg from "pg";
@@ -123,6 +124,16 @@ async function main() {
     console.log("[run-full-sync] stakeholder Jira status sync:", stakeholderResult);
   } catch (err) {
     console.error("[run-full-sync] stakeholder Jira status sync FAILED (non-fatal):", err);
+  }
+
+  // team-pulse-54's Next Sprint Planning page. Queries live Jira for each
+  // board's future sprint, independent of the fetch cache, and writes only
+  // its own table -- non-fatal for the same reason as the step above.
+  try {
+    const nextSprintResult = await syncNextSprint(process.env.DATABASE_URL);
+    console.log("[run-full-sync] next-sprint sync:", nextSprintResult);
+  } catch (err) {
+    console.error("[run-full-sync] next-sprint sync FAILED (non-fatal):", err);
   }
 
   const smokeResult = await runSmokeTest(process.env.DATABASE_URL);
