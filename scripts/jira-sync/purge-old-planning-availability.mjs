@@ -59,7 +59,9 @@ export async function purgeOldPlanningAvailability(databaseUrl) {
     );
 
     if (rowCount > 0) {
-      console.log(`[purge-old-planning-availability] purged ${rowCount} stale leave entr${rowCount === 1 ? "y" : "ies"}`);
+      console.log(
+        `[purge-old-planning-availability] purged ${rowCount} stale leave entr${rowCount === 1 ? "y" : "ies"}`,
+      );
     } else {
       console.log("[purge-old-planning-availability] nothing to purge");
     }

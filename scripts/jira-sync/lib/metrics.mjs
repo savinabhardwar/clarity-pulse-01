@@ -190,9 +190,7 @@ export function computeMetrics({
     const estimateCoverage =
       tickets.length === 0
         ? null
-        : Math.round(
-            (100 * tickets.filter((t) => t.estimateSeconds > 0).length) / tickets.length,
-          );
+        : Math.round((100 * tickets.filter((t) => t.estimateSeconds > 0).length) / tickets.length);
     const closedWithoutLogging = done.filter(
       (t) => (t.estimateSeconds || 0) > 0 && (t.spentSeconds || 0) === 0,
     ).length;
