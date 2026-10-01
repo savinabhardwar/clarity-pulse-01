@@ -95,7 +95,12 @@ function compareSprints(a, b) {
  * folded in by the caller). Unknown/absent assignees get a null person id but
  * keep their display name.
  */
-export function buildNextSprintRows(issues, projects, personIdByAccount, sprintField = SPRINT_FIELD) {
+export function buildNextSprintRows(
+  issues,
+  projects,
+  personIdByAccount,
+  sprintField = SPRINT_FIELD,
+) {
   const nameByKey = new Map(projects.map((p) => [p.key, p.name]));
   const byProject = new Map();
   for (const issue of issues) {

@@ -64,20 +64,26 @@ test("ignores closed sprints, boards outside the tracked list, and issues with n
     new Map(),
     FIELD,
   );
-  assert.deepEqual(rows.map((r) => r.jira_key), ["KH-1"]);
+  assert.deepEqual(
+    rows.map((r) => r.jira_key),
+    ["KH-1"],
+  );
 });
 
 test("each board gets its own next sprint", () => {
   const rows = buildNextSprintRows(
-    [issue("KH-1", "KH", [future(11, "KH Sprint 5")]), issue("TT-1", "TT", [future(5, "TT Sprint 9")])],
+    [
+      issue("KH-1", "KH", [future(11, "KH Sprint 5")]),
+      issue("TT-1", "TT", [future(5, "TT Sprint 9")]),
+    ],
     PROJECTS,
     new Map(),
     FIELD,
   );
-  assert.deepEqual(
-    rows.map((r) => [r.jira_key, r.board_name, r.jira_sprint_id]).sort(),
-    [["KH-1", "Knowledge Hub", 11], ["TT-1", "Team - Telephony", 5]],
-  );
+  assert.deepEqual(rows.map((r) => [r.jira_key, r.board_name, r.jira_sprint_id]).sort(), [
+    ["KH-1", "Knowledge Hub", 11],
+    ["TT-1", "Team - Telephony", 5],
+  ]);
 });
 
 test("resolves assignee to a person id, keeps the name when unknown, and maps empty goal to null", () => {
