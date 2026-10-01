@@ -16,7 +16,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
-import { CreatedByCell, PriorityTag, StatusBadge } from "@/components/stakeholder/badges";
+import { CreatedByCell, PriorityTag } from "@/components/stakeholder/badges";
+import { InlineStatusCell } from "@/components/stakeholder/inline-status-cell";
 import { ItemDetailDrawer } from "@/components/stakeholder/item-detail";
 import { ItemFormDrawer } from "@/components/stakeholder/item-form";
 import { ItemHistoryDrawer } from "@/components/stakeholder/item-history";
@@ -491,7 +492,7 @@ export function ItemsTable({ project, kind }: { project: Project; kind: ItemKind
                       <JiraLinksCell itemId={it.id} />
                     </TableCell>
                     <TableCell className="px-3 py-2.5">
-                      <StatusBadge status={it.status} kind={it.statusKind} />
+                      <InlineStatusCell item={it} />
                     </TableCell>
                     <TableCell className="px-3 py-2.5">
                       <PriorityTag priority={it.priority} />

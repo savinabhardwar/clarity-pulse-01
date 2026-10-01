@@ -22,10 +22,10 @@ import {
   PriorityTag,
   ProjectBadge,
   RequestTypeBadge,
-  StatusBadge,
 } from "@/components/stakeholder/badges";
 import { ClientRequestFormDrawer } from "@/components/stakeholder/client-request-form";
 import { ClientRequestsKpis } from "@/components/stakeholder/client-requests-kpis";
+import { InlineStatusCell } from "@/components/stakeholder/inline-status-cell";
 import { ItemDetailDrawer } from "@/components/stakeholder/item-detail";
 import { ItemFormDrawer } from "@/components/stakeholder/item-form";
 import { ItemHistoryDrawer } from "@/components/stakeholder/item-history";
@@ -578,7 +578,7 @@ export function ClientRequestsTable() {
                       <span className="line-clamp-2">{it.description || "—"}</span>
                     </TableCell>
                     <TableCell className="px-3 py-2.5">
-                      <StatusBadge status={it.status} kind={it.statusKind} />
+                      <InlineStatusCell item={it} />
                     </TableCell>
                     <TableCell className="px-3 py-2.5">
                       <PriorityTag priority={it.priority} />
