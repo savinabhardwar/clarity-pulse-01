@@ -1,0 +1,365 @@
+{
+  "input": [
+    {
+      "key": "TEAM-1",
+      "summary": "QIP Frontend",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2025-03-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-2",
+      "summary": "QIP Backend",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-3",
+      "summary": "Amy API",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-4",
+      "summary": "Amy Design",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2025-03-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-5",
+      "summary": "Support Tickets",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-6",
+      "summary": "Support Tickets",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-7",
+      "summary": "Backlog - DevOps",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2025-03-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-8",
+      "summary": "WAAC",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-9",
+      "summary": "WAAC migration",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-10",
+      "summary": "Billing",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2025-03-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-11",
+      "summary": "Billing Improvements",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-12",
+      "summary": "CX Portal",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-13",
+      "summary": "Customer Portal",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2025-03-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-14",
+      "summary": "Customer portal",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-15",
+      "summary": "Line Tester",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-16",
+      "summary": "Avani",
+      "project": "TEAM",
+      "status": "In Progress",
+      "updated": "2025-03-01T00:00:00Z"
+    },
+    {
+      "key": "TEAM-17",
+      "summary": "PBX Manager",
+      "project": "TI",
+      "status": "In Progress",
+      "updated": "2026-09-01T00:00:00Z"
+    }
+  ],
+  "output": {
+    "similarityThreshold": 0.72,
+    "overrides": {},
+    "projects": [
+      {
+        "id": "amy",
+        "name": "Amy",
+        "current": true,
+        "jiraProjects": [
+          "TEAM",
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-3",
+            "summary": "Amy API",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          },
+          {
+            "key": "TEAM-4",
+            "summary": "Amy Design",
+            "status": "In Progress",
+            "updated": "2025-03-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "billing",
+        "name": "Billing",
+        "current": true,
+        "jiraProjects": [
+          "TEAM",
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-10",
+            "summary": "Billing",
+            "status": "In Progress",
+            "updated": "2025-03-01T00:00:00Z"
+          },
+          {
+            "key": "TEAM-11",
+            "summary": "Billing Improvements",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "customer-portal",
+        "name": "Customer Portal",
+        "current": true,
+        "jiraProjects": [
+          "TEAM",
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-13",
+            "summary": "Customer Portal",
+            "status": "In Progress",
+            "updated": "2025-03-01T00:00:00Z"
+          },
+          {
+            "key": "TEAM-14",
+            "summary": "Customer portal",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "qip",
+        "name": "QIP",
+        "current": true,
+        "jiraProjects": [
+          "TEAM",
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-1",
+            "summary": "QIP Frontend",
+            "status": "In Progress",
+            "updated": "2025-03-01T00:00:00Z"
+          },
+          {
+            "key": "TEAM-2",
+            "summary": "QIP Backend",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "avani",
+        "name": "Avani",
+        "current": false,
+        "jiraProjects": [
+          "TEAM"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-16",
+            "summary": "Avani",
+            "status": "In Progress",
+            "updated": "2025-03-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "backlog-devops",
+        "name": "Backlog - DevOps",
+        "current": false,
+        "jiraProjects": [
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-7",
+            "summary": "Backlog - DevOps",
+            "status": "In Progress",
+            "updated": "2025-03-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "cx-portal",
+        "name": "CX Portal",
+        "current": true,
+        "jiraProjects": [
+          "TEAM"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-12",
+            "summary": "CX Portal",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "line-tester",
+        "name": "Line Tester",
+        "current": true,
+        "jiraProjects": [
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-15",
+            "summary": "Line Tester",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "pbx-manager",
+        "name": "PBX Manager",
+        "current": true,
+        "jiraProjects": [
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-17",
+            "summary": "PBX Manager",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "support-tickets",
+        "name": "Support Tickets",
+        "current": true,
+        "jiraProjects": [
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-5",
+            "summary": "Support Tickets",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "support-tickets-2",
+        "name": "Support Tickets",
+        "current": true,
+        "jiraProjects": [
+          "TEAM"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-6",
+            "summary": "Support Tickets",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "waac",
+        "name": "WAAC",
+        "current": true,
+        "jiraProjects": [
+          "TEAM"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-8",
+            "summary": "WAAC",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "waac-migration",
+        "name": "WAAC migration",
+        "current": true,
+        "jiraProjects": [
+          "TI"
+        ],
+        "epics": [
+          {
+            "key": "TEAM-9",
+            "summary": "WAAC migration",
+            "status": "In Progress",
+            "updated": "2026-09-01T00:00:00Z"
+          }
+        ]
+      }
+    ]
+  }
+}

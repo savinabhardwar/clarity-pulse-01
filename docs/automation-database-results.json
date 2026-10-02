@@ -1,0 +1,18 @@
+{
+  "completed": true,
+  "checked_at": "2026-10-01T21:56:35.517567+00:00",
+  "passed": [
+    "Python migration runner applies all seven migrations, skips repeats, and rolls back failures",
+    "Python development seed is atomic and idempotent",
+    "all provider event types persist compact state and deduplicate redelivery",
+    "state failure rolls back the dedup marker; repaired retry succeeds",
+    "unknown events are recorded without guessing a compact-state mutation",
+    "atomic RPC execution is restricted to service_role"
+  ],
+  "application_rows_written": 0,
+  "temporary_schema_removed": true,
+  "limitations": [
+    "Tests use a disposable schema on the configured dashboard database, not an automation production deployment.",
+    "The role-lookup migration's public search path is retargeted to the fixture schema only during this test."
+  ]
+}

@@ -4,7 +4,7 @@ on:
   schedule:
     # Daily check for products whose "Next Release Date" (set by hand on
     # the Confluence "Release Schedule" page) is today. See
-    # scripts/release-notes/run.mjs -- it's a no-op on days nothing is due.
+    # backend/app/jobs/release_notes/runner.py -- it's a no-op on days nothing is due.
     - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
@@ -22,6 +22,10 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: release-notes
+  cancel-in-progress: false
+
 jobs:
   release-notes:
     runs-on: ubuntu-latest
@@ -29,15 +33,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: "22"
+          python-version: "3.13"
 
       - name: Install dependencies
-        run: npm ci --omit=dev
+        run: python -m pip install -e ./backend
 
       - name: Run release-notes automation
+        working-directory: backend
         env:
+          INPUT_PROJECT: ${{ github.event.inputs.project }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
@@ -46,9 +53,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           ARGS=()
-          if [ -n "${{ github.event.inputs.project }}" ]; then ARGS+=(--project "${{ github.event.inputs.project }}"); fi
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
-          node scripts/release-notes/run.mjs "${ARGS[@]}"
+          if [ -n "$INPUT_PROJECT" ]; then ARGS+=(--project "$INPUT_PROJECT"); fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS+=(--dry-run); fi
+          python -m app.jobs.release_notes.runner "${ARGS[@]}"
 
       - name: File an issue on failure
         if: failure()

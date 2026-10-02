@@ -1,0 +1,25 @@
+{
+  "completed": true,
+  "checked_at": "2026-10-01T22:09:34.840960+00:00",
+  "passed": [
+    "people matches original Supabase query",
+    "projects matches original Supabase query",
+    "allocations matches original Supabase query",
+    "standouts matches original Supabase query",
+    "blockers matches original Supabase query",
+    "ticket-hygiene matches original Supabase query",
+    "recent-activity matches original Supabase query",
+    "top-risks matches original Supabase query",
+    "teams matches original Supabase query",
+    "project-contributors matches original Supabase query",
+    "organization metrics match original Supabase query",
+    "person and project detail RPC parity",
+    "person and project allocation scoping",
+    "historical people and date-filtered activity parity",
+    "exact sprint and overrun counts",
+    "validation and read-only proxy boundary",
+    "five dashboard pages and person/project detail in Chromium",
+    "browser uses Python proxy without direct Supabase requests"
+  ],
+  "database_writes": 0
+}

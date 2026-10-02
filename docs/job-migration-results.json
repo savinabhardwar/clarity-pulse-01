@@ -1,0 +1,22 @@
+{
+  "completed": true,
+  "checked_at": "2026-10-01T21:18:24.853008+00:00",
+  "passed": [
+    "bulk upsert, conflict no-op and failed replacement rollback",
+    "next sprint alias resolution and outage preservation",
+    "ticket cleanup requires both snapshots, respects tracked sprints and grace",
+    "leave cleanup preserves sprint overlaps",
+    "inactive flagging preserves reviewed people and historical work",
+    "sync health detects stale writes",
+    "linked status refresh is idempotent",
+    "atomic main sync, repeat refresh, historical metrics, manual corrections and failure rollback",
+    "closed sprint person/project snapshots, JSON diagnostics and idempotent pace backfill",
+    "executive narrative refresh, JSON fields and append-only organization history"
+  ],
+  "application_rows_written": 0,
+  "temporary_schema_removed": true,
+  "limitations": [
+    "Fixture tables copy deployed types, constraints and indexes, but not public triggers or all foreign keys.",
+    "Narrative views are isolated fixtures; the scheduled pipeline was not run against application data."
+  ]
+}

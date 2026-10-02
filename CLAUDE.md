@@ -51,7 +51,7 @@ Queues" instruction is now obsolete). Event ingestion uses Queues:
 
 - Each `ingest-*` Worker's job shrinks to **verify signature → normalize →
   enqueue → return 2xx fast**. It does not touch Postgres directly.
-- A separate **consumer Worker** (`workers/process-events`) reads off the
+- A separate **consumer Worker** (`backend/automation/src/worker_process_events.py`) reads off the
   queue, dedups on the provider event ID, upserts `events`, and updates
   current-state tables. This is the same decoupling the old "ingest vs.
   scheduler" split already had for Gemini — now applied to ingestion itself.
@@ -193,50 +193,48 @@ scheduled job reads it.
 
 ## 4. Repo layout
 
-**Revised 2026-09-18.** This repo's root is not empty — it's already
-`tanstack_start_ts`, a live TanStack Start app with its own `package.json`,
-`vite.config`, `tsconfig.json`, and CI scripts. `CLAUDE.md`,
-`IMPLEMENTATION_PLAN.md`, and `docs/` stay at repo root (Claude Code only
-auto-loads a root-level `CLAUDE.md`, and the Phase 0 discovery work already
-lives in root `docs/`). Everything else — the actual monorepo code — lives
-under its own subdirectory, `ai-pm-platform/`, matching how every other app
-in this repo (`project-compass/`, `team-pulse-54/`, `engineering-ethos/`) is
-self-contained with its own `package.json` and tooling. Do not add `workers/`
-or `packages/` at repo root — that would collide with the root app's own
-build tooling.
+**Revised 2026-10-02.** The UI lives in `frontend/`. Dashboard API and
+scheduled Jira/release jobs are Python in `backend/app/`. The event platform
+is Python in `backend/automation/src/ai_pm/`, using FastAPI HTTP workers and
+a Python Queue consumer. Root automation Wrangler configs preserve existing
+worker names and bindings. Node is frontend and Cloudflare CLI tooling only.
+Follow the root README for setup commands and verification.
 
+```text
+frontend/                         React / TanStack Start
+backend/
+  app/                            FastAPI dashboard
+    jobs/jira_sync/               Python scheduled Jira pipeline
+    jobs/release_notes/            Python Confluence releases
+  tests/                          Dashboard and job regression tests
+  jobs/jira-sync/{cache,generated} Ignored runtime data
+  automation/
+    src/ai_pm/                    Events, normalizers, FastAPI, queue adapters
+    src/worker_*.py               Cloudflare Python entrypoints
+    db/{migrations,seed/fixtures}  Automation schema and provider fixtures
+    config/                       QA rota configuration
+    tests/                        API, normalization, workerd checks
+    wrangler.*.jsonc              Per-worker configs at project root
+supabase/migrations/              Original dashboard schema, views and RPCs
+docs/                            Discovery, design and verification reports
+.github/workflows/               Frontend/Python checks and scheduled jobs
 ```
-/                                 # repo root — tanstack_start_ts app, pre-existing
-├── CLAUDE.md
-├── IMPLEMENTATION_PLAN.md
-├── docs/
-│   ├── spec.md                  # converted source spec
-│   ├── discovery.md             # Phase 0 findings — the contract for everything else
-│   ├── constraints.md           # verified free-tier limits, with dates
-│   ├── field-mapping.md         # source system field → internal field
-│   └── event-contracts.md       # normalized event schema per source
-├── project-compass/              # existing app — Requirements App, see docs/discovery.md §0.3
-├── team-pulse-54/                 # existing app — unrelated, own Supabase project
-├── ai-pm-platform/                # NEW — everything for this project lives here
-│   ├── package.json               # own workspace root, own tsconfig/lint/test config
-│   ├── db/
-│   │   ├── migrations/            # numbered, forward-only SQL
-│   │   └── seed/
-│   ├── workers/
-│   │   ├── ingest-jira/           # verify sig → normalize → enqueue, no DB access
-│   │   ├── ingest-git/
-│   │   ├── ingest-requirements/
-│   │   ├── ingest-qa/
-│   │   ├── process-events/        # Queue consumer: dedup, upsert events, update Twin state
-│   │   └── scheduler/             # cron-driven: policy eval, AI eval, stale detection, DLQ drain
-│   ├── packages/
-│   │   ├── core/                  # shared types, event schema, normalizers
-│   │   ├── policy/                # Policy Engine — pure functions, heavily unit tested
-│   │   ├── automation/            # Automation Engine — the only place that calls out
-│   │   └── llm/                   # Gemini client, prompt templates, JSON schema validation
-│   └── ui/                        # Cloudflare Pages Control Centre
-└── .github/workflows/             # shared at root; ai-pm-platform's CI jobs scope to its path
-```
+
+Project Compass remains a separate sibling repository at `../project-compass/`.
+Integrations use external service/database contracts. Historical documents
+may still show `ai-pm-platform/` or nested Compass paths; find automation files
+under `backend/automation/` now. Dashboard/job secrets belong in
+`backend/.env.local`; automation has its own `backend/automation/.env.local`.
+The frontend stores only `CLARITY_BACKEND_URL`. Never assume automation and
+dashboard tables share a compatible schema. Migration 0007 must be applied to
+the automation database before the new consumer deploys. No production migrations
+or deployments accompanied this local refactor. Legacy source is preserved in
+ignored `backend/.tools/legacy-backend/` for recovery; original committed files
+also remain available in Git history.
+
+Future policy, automation and LLM modules described below should be Python
+packages under `backend/automation/src/ai_pm/`; old `packages/*` paths describe
+responsibilities rather than a requirement to restore TypeScript.
 
 ## 5. LLM abstraction contract
 

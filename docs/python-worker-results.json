@@ -1,0 +1,64 @@
+{
+  "completed": true,
+  "remote_requests": false,
+  "workers": [
+    {
+      "worker": "hello-world",
+      "runtime_loaded": true,
+      "checks": [
+        "health",
+        "root",
+        "openapi",
+        "404",
+        "405"
+      ]
+    },
+    {
+      "worker": "ingest-git",
+      "runtime_loaded": true,
+      "checks": [
+        "health",
+        "root",
+        "openapi",
+        "404",
+        "405",
+        "authenticated ingestion",
+        "SDK HTTP transport",
+        "local queue send"
+      ]
+    },
+    {
+      "worker": "ingest-jira",
+      "runtime_loaded": true,
+      "checks": [
+        "health",
+        "root",
+        "openapi",
+        "404",
+        "405",
+        "authenticated ingestion",
+        "SDK HTTP transport",
+        "local queue send"
+      ]
+    },
+    {
+      "worker": "ingest-requirements",
+      "runtime_loaded": true,
+      "checks": [
+        "health",
+        "root",
+        "openapi",
+        "404",
+        "405",
+        "authenticated ingestion",
+        "SDK HTTP transport",
+        "local queue send"
+      ]
+    },
+    {
+      "worker": "process-events",
+      "runtime_loaded": true,
+      "http": "queue-only"
+    }
+  ]
+}

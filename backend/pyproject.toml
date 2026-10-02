@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clarity-pulse-backend"
+version = "0.1.0"
+description = "ClarityPulse dashboard API"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.115,<1", "pydantic-settings>=2.6,<3", "uvicorn>=0.30,<1", "httpx>=0.27,<1", "psycopg2-binary>=2.9,<3"]
+
+[project.optional-dependencies]
+smoke = ["playwright>=1.40,<2"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+"app.jobs.release_notes" = ["prompt.txt"]

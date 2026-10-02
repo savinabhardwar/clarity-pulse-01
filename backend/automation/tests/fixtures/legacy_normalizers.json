@@ -1,0 +1,1656 @@
+[
+  {
+    "operation": "jira",
+    "input": {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10010.requestTypePractice",
+      "id": "43703",
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703",
+      "key": "LT-43",
+      "fields": {
+        "statuscategorychangedate": "2026-09-22T11:18:30.777+0100",
+        "issuetype": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10008",
+          "id": "10008",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10315?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 10315,
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "42952",
+          "key": "LT-3",
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/42952",
+          "fields": {
+            "summary": "Line tester Sprint 1",
+            "status": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+              "description": "",
+              "iconUrl": "https://alldaypa.atlassian.net/",
+              "name": "To Do",
+              "id": "10227",
+              "statusCategory": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+                "id": 2,
+                "key": "new",
+                "colorName": "blue-gray",
+                "name": "To Do"
+              }
+            },
+            "priority": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+              "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+              "name": "Medium",
+              "id": "3"
+            },
+            "issuetype": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10000",
+              "id": "10000",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://alldaypa.atlassian.net/images/icons/issuetypes/epic.svg",
+              "name": "Epic",
+              "subtask": false,
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "timespent": null,
+        "customfield_10591": null,
+        "customfield_10030": null,
+        "project": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/project/10480",
+          "id": "10480",
+          "key": "LT",
+          "name": "Line Tester",
+          "projectTypeKey": "software",
+          "simplified": false,
+          "avatarUrls": {
+            "48x48": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421",
+            "24x24": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=small",
+            "16x16": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=xsmall",
+            "32x32": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=medium"
+          }
+        },
+        "customfield_10031": null,
+        "customfield_10032": null,
+        "customfield_10033": null,
+        "fixVersions": [],
+        "aggregatetimespent": 10800,
+        "customfield_10034": null,
+        "statusCategory": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "customfield_10035": null,
+        "resolution": null,
+        "customfield_10037": null,
+        "customfield_10027": null,
+        "customfield_10028": null,
+        "customfield_10029": null,
+        "customfield_10624": null,
+        "customfield_10306": null,
+        "resolutiondate": null,
+        "workratio": 0,
+        "watches": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/watchers",
+          "watchCount": 1,
+          "isWatching": true
+        },
+        "lastViewed": null,
+        "created": "2026-09-07T16:12:57.348+0100",
+        "customfield_10020": [
+          {
+            "id": 1986,
+            "name": "LR Sprint 1",
+            "state": "closed",
+            "boardId": 517,
+            "goal": "",
+            "startDate": "2026-08-31T19:34:00.000Z",
+            "endDate": "2026-09-10T23:00:00.000Z",
+            "completeDate": "2026-09-14T06:01:42.545Z"
+          },
+          {
+            "id": 2167,
+            "name": "LR Sprint 2",
+            "state": "active",
+            "boardId": 517,
+            "goal": "",
+            "startDate": "2026-09-14T06:02:56.852Z",
+            "endDate": "2026-09-24T23:00:00.000Z"
+          }
+        ],
+        "customfield_10021": null,
+        "customfield_10022": null,
+        "customfield_10023": null,
+        "priority": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+          "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+          "name": "Medium",
+          "id": "3"
+        },
+        "customfield_10024": null,
+        "customfield_10025": null,
+        "labels": [],
+        "customfield_10026": null,
+        "customfield_10016": null,
+        "customfield_10017": null,
+        "customfield_10657": null,
+        "customfield_10019": "0|i01j5i:z",
+        "timeestimate": 25200,
+        "aggregatetimeoriginalestimate": 36000,
+        "versions": [],
+        "issuelinks": [],
+        "assignee": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-1",
+          "accountId": "fixture-account-1",
+          "avatarUrls": {
+            "48x48": "https://example.com/avatar-placeholder-48x48.png",
+            "24x24": "https://example.com/avatar-placeholder-24x24.png",
+            "16x16": "https://example.com/avatar-placeholder-16x16.png",
+            "32x32": "https://example.com/avatar-placeholder-32x32.png"
+          },
+          "displayName": "Fixture Person 1",
+          "active": true,
+          "timeZone": "Europe/London",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-09-22T11:18:30.777+0100",
+        "status": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+          "description": "",
+          "iconUrl": "https://alldaypa.atlassian.net/",
+          "name": "To Do",
+          "id": "10227",
+          "statusCategory": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+            "id": 2,
+            "key": "new",
+            "colorName": "blue-gray",
+            "name": "To Do"
+          }
+        },
+        "components": [],
+        "timeoriginalestimate": 25200,
+        "customfield_10690": null,
+        "customfield_10691": null,
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Users need an at-a-glance view of line health and recurring problems, separable by ACX client.\n\nAcceptance criteria:\n- Summary tiles show success rate over a selected period.\n- Failures are broken down by stage.\n- Failures are broken down by client, with a client filter available.\n- A repeat-offender list is shown for DDIs failing repeatedly.\n- A trend-over-time view is available."
+                }
+              ]
+            }
+          ]
+        },
+        "customfield_10010": null,
+        "customfield_10014": "LT-3",
+        "customfield_10015": null,
+        "timetracking": {
+          "originalEstimate": "1d",
+          "remainingEstimate": "1d",
+          "originalEstimateSeconds": 25200,
+          "remainingEstimateSeconds": 25200
+        },
+        "customfield_10005": null,
+        "customfield_10006": null,
+        "customfield_10007": null,
+        "security": null,
+        "customfield_10008": null,
+        "customfield_10207": null,
+        "attachment": [],
+        "aggregatetimeestimate": 25200,
+        "customfield_10009": null,
+        "summary": "FE-7 — Reporting dashboard",
+        "creator": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+          "accountId": "fixture-account-2",
+          "emailAddress": "fixture.person2@example.com",
+          "avatarUrls": {
+            "48x48": "https://example.com/avatar-placeholder-48x48.png",
+            "24x24": "https://example.com/avatar-placeholder-24x24.png",
+            "16x16": "https://example.com/avatar-placeholder-16x16.png",
+            "32x32": "https://example.com/avatar-placeholder-32x32.png"
+          },
+          "displayName": "Fixture Person 2",
+          "active": true,
+          "timeZone": "Europe/London",
+          "accountType": "atlassian"
+        },
+        "subtasks": [
+          {
+            "id": "44094",
+            "key": "LT-51",
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/44094",
+            "fields": {
+              "summary": "UI- Reporting dashboard",
+              "status": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/status/10029",
+                "description": "",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/statuses/generic.png",
+                "name": "Testing",
+                "id": "10029",
+                "statusCategory": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/4",
+                  "id": 4,
+                  "key": "indeterminate",
+                  "colorName": "yellow",
+                  "name": "In Progress"
+                }
+              },
+              "priority": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+                "name": "Medium",
+                "id": "3"
+              },
+              "issuetype": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10198",
+                "id": "10198",
+                "description": "A small piece of work that's part of a larger task.",
+                "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10316?size=medium",
+                "name": "Sub-task",
+                "subtask": true,
+                "avatarId": 10316,
+                "hierarchyLevel": -1
+              }
+            }
+          }
+        ],
+        "customfield_10240": [],
+        "reporter": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+          "accountId": "fixture-account-2",
+          "emailAddress": "fixture.person2@example.com",
+          "avatarUrls": {
+            "48x48": "https://example.com/avatar-placeholder-48x48.png",
+            "24x24": "https://example.com/avatar-placeholder-24x24.png",
+            "16x16": "https://example.com/avatar-placeholder-16x16.png",
+            "32x32": "https://example.com/avatar-placeholder-32x32.png"
+          },
+          "displayName": "Fixture Person 2",
+          "active": true,
+          "timeZone": "Europe/London",
+          "accountType": "atlassian"
+        },
+        "aggregateprogress": {
+          "progress": 10800,
+          "total": 36000,
+          "percent": 30
+        },
+        "customfield_10000": "{}",
+        "customfield_10001": null,
+        "customfield_10002": [],
+        "customfield_10003": null,
+        "customfield_10004": null,
+        "customfield_10038": null,
+        "environment": null,
+        "duedate": null,
+        "progress": {
+          "progress": 0,
+          "total": 25200,
+          "percent": 0
+        },
+        "votes": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/votes",
+          "votes": 0,
+          "hasVoted": false
+        },
+        "comment": {
+          "comments": [],
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703/comment",
+          "maxResults": 0,
+          "total": 0,
+          "startAt": 0
+        },
+        "worklog": {
+          "startAt": 0,
+          "maxResults": 20,
+          "total": 0,
+          "worklogs": []
+        }
+      }
+    },
+    "output": {
+      "source": "jira",
+      "eventType": "issue.observed",
+      "projectHint": "LT",
+      "entityType": "issue",
+      "entityId": "LT-43",
+      "actor": {
+        "type": "user",
+        "id": "fixture-account-1"
+      },
+      "timestamp": "2026-09-22T11:18:30.777+0100",
+      "payload": {
+        "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10010.requestTypePractice",
+        "id": "43703",
+        "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703",
+        "key": "LT-43",
+        "fields": {
+          "statuscategorychangedate": "2026-09-22T11:18:30.777+0100",
+          "issuetype": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10008",
+            "id": "10008",
+            "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+            "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10315?size=medium",
+            "name": "Story",
+            "subtask": false,
+            "avatarId": 10315,
+            "hierarchyLevel": 0
+          },
+          "parent": {
+            "id": "42952",
+            "key": "LT-3",
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/42952",
+            "fields": {
+              "summary": "Line tester Sprint 1",
+              "status": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+                "description": "",
+                "iconUrl": "https://alldaypa.atlassian.net/",
+                "name": "To Do",
+                "id": "10227",
+                "statusCategory": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+                  "id": 2,
+                  "key": "new",
+                  "colorName": "blue-gray",
+                  "name": "To Do"
+                }
+              },
+              "priority": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+                "name": "Medium",
+                "id": "3"
+              },
+              "issuetype": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10000",
+                "id": "10000",
+                "description": "A collection of related bugs, stories, and tasks.",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/issuetypes/epic.svg",
+                "name": "Epic",
+                "subtask": false,
+                "hierarchyLevel": 1
+              }
+            }
+          },
+          "timespent": null,
+          "customfield_10591": null,
+          "customfield_10030": null,
+          "project": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/project/10480",
+            "id": "10480",
+            "key": "LT",
+            "name": "Line Tester",
+            "projectTypeKey": "software",
+            "simplified": false,
+            "avatarUrls": {
+              "48x48": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421",
+              "24x24": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=small",
+              "16x16": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=xsmall",
+              "32x32": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=medium"
+            }
+          },
+          "customfield_10031": null,
+          "customfield_10032": null,
+          "customfield_10033": null,
+          "fixVersions": [],
+          "aggregatetimespent": 10800,
+          "customfield_10034": null,
+          "statusCategory": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+            "id": 2,
+            "key": "new",
+            "colorName": "blue-gray",
+            "name": "To Do"
+          },
+          "customfield_10035": null,
+          "resolution": null,
+          "customfield_10037": null,
+          "customfield_10027": null,
+          "customfield_10028": null,
+          "customfield_10029": null,
+          "customfield_10624": null,
+          "customfield_10306": null,
+          "resolutiondate": null,
+          "workratio": 0,
+          "watches": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/watchers",
+            "watchCount": 1,
+            "isWatching": true
+          },
+          "lastViewed": null,
+          "created": "2026-09-07T16:12:57.348+0100",
+          "customfield_10020": [
+            {
+              "id": 1986,
+              "name": "LR Sprint 1",
+              "state": "closed",
+              "boardId": 517,
+              "goal": "",
+              "startDate": "2026-08-31T19:34:00.000Z",
+              "endDate": "2026-09-10T23:00:00.000Z",
+              "completeDate": "2026-09-14T06:01:42.545Z"
+            },
+            {
+              "id": 2167,
+              "name": "LR Sprint 2",
+              "state": "active",
+              "boardId": 517,
+              "goal": "",
+              "startDate": "2026-09-14T06:02:56.852Z",
+              "endDate": "2026-09-24T23:00:00.000Z"
+            }
+          ],
+          "customfield_10021": null,
+          "customfield_10022": null,
+          "customfield_10023": null,
+          "priority": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+            "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+            "name": "Medium",
+            "id": "3"
+          },
+          "customfield_10024": null,
+          "customfield_10025": null,
+          "labels": [],
+          "customfield_10026": null,
+          "customfield_10016": null,
+          "customfield_10017": null,
+          "customfield_10657": null,
+          "customfield_10019": "0|i01j5i:z",
+          "timeestimate": 25200,
+          "aggregatetimeoriginalestimate": 36000,
+          "versions": [],
+          "issuelinks": [],
+          "assignee": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-1",
+            "accountId": "fixture-account-1",
+            "avatarUrls": {
+              "48x48": "https://example.com/avatar-placeholder-48x48.png",
+              "24x24": "https://example.com/avatar-placeholder-24x24.png",
+              "16x16": "https://example.com/avatar-placeholder-16x16.png",
+              "32x32": "https://example.com/avatar-placeholder-32x32.png"
+            },
+            "displayName": "Fixture Person 1",
+            "active": true,
+            "timeZone": "Europe/London",
+            "accountType": "atlassian"
+          },
+          "updated": "2026-09-22T11:18:30.777+0100",
+          "status": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+            "description": "",
+            "iconUrl": "https://alldaypa.atlassian.net/",
+            "name": "To Do",
+            "id": "10227",
+            "statusCategory": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+              "id": 2,
+              "key": "new",
+              "colorName": "blue-gray",
+              "name": "To Do"
+            }
+          },
+          "components": [],
+          "timeoriginalestimate": 25200,
+          "customfield_10690": null,
+          "customfield_10691": null,
+          "description": {
+            "type": "doc",
+            "version": 1,
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Users need an at-a-glance view of line health and recurring problems, separable by ACX client.\n\nAcceptance criteria:\n- Summary tiles show success rate over a selected period.\n- Failures are broken down by stage.\n- Failures are broken down by client, with a client filter available.\n- A repeat-offender list is shown for DDIs failing repeatedly.\n- A trend-over-time view is available."
+                  }
+                ]
+              }
+            ]
+          },
+          "customfield_10010": null,
+          "customfield_10014": "LT-3",
+          "customfield_10015": null,
+          "timetracking": {
+            "originalEstimate": "1d",
+            "remainingEstimate": "1d",
+            "originalEstimateSeconds": 25200,
+            "remainingEstimateSeconds": 25200
+          },
+          "customfield_10005": null,
+          "customfield_10006": null,
+          "customfield_10007": null,
+          "security": null,
+          "customfield_10008": null,
+          "customfield_10207": null,
+          "attachment": [],
+          "aggregatetimeestimate": 25200,
+          "customfield_10009": null,
+          "summary": "FE-7 — Reporting dashboard",
+          "creator": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+            "accountId": "fixture-account-2",
+            "emailAddress": "fixture.person2@example.com",
+            "avatarUrls": {
+              "48x48": "https://example.com/avatar-placeholder-48x48.png",
+              "24x24": "https://example.com/avatar-placeholder-24x24.png",
+              "16x16": "https://example.com/avatar-placeholder-16x16.png",
+              "32x32": "https://example.com/avatar-placeholder-32x32.png"
+            },
+            "displayName": "Fixture Person 2",
+            "active": true,
+            "timeZone": "Europe/London",
+            "accountType": "atlassian"
+          },
+          "subtasks": [
+            {
+              "id": "44094",
+              "key": "LT-51",
+              "self": "https://alldaypa.atlassian.net/rest/api/3/issue/44094",
+              "fields": {
+                "summary": "UI- Reporting dashboard",
+                "status": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/status/10029",
+                  "description": "",
+                  "iconUrl": "https://alldaypa.atlassian.net/images/icons/statuses/generic.png",
+                  "name": "Testing",
+                  "id": "10029",
+                  "statusCategory": {
+                    "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/4",
+                    "id": 4,
+                    "key": "indeterminate",
+                    "colorName": "yellow",
+                    "name": "In Progress"
+                  }
+                },
+                "priority": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+                  "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+                  "name": "Medium",
+                  "id": "3"
+                },
+                "issuetype": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10198",
+                  "id": "10198",
+                  "description": "A small piece of work that's part of a larger task.",
+                  "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10316?size=medium",
+                  "name": "Sub-task",
+                  "subtask": true,
+                  "avatarId": 10316,
+                  "hierarchyLevel": -1
+                }
+              }
+            }
+          ],
+          "customfield_10240": [],
+          "reporter": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+            "accountId": "fixture-account-2",
+            "emailAddress": "fixture.person2@example.com",
+            "avatarUrls": {
+              "48x48": "https://example.com/avatar-placeholder-48x48.png",
+              "24x24": "https://example.com/avatar-placeholder-24x24.png",
+              "16x16": "https://example.com/avatar-placeholder-16x16.png",
+              "32x32": "https://example.com/avatar-placeholder-32x32.png"
+            },
+            "displayName": "Fixture Person 2",
+            "active": true,
+            "timeZone": "Europe/London",
+            "accountType": "atlassian"
+          },
+          "aggregateprogress": {
+            "progress": 10800,
+            "total": 36000,
+            "percent": 30
+          },
+          "customfield_10000": "{}",
+          "customfield_10001": null,
+          "customfield_10002": [],
+          "customfield_10003": null,
+          "customfield_10004": null,
+          "customfield_10038": null,
+          "environment": null,
+          "duedate": null,
+          "progress": {
+            "progress": 0,
+            "total": 25200,
+            "percent": 0
+          },
+          "votes": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/votes",
+            "votes": 0,
+            "hasVoted": false
+          },
+          "comment": {
+            "comments": [],
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703/comment",
+            "maxResults": 0,
+            "total": 0,
+            "startAt": 0
+          },
+          "worklog": {
+            "startAt": 0,
+            "maxResults": 20,
+            "total": 0,
+            "worklogs": []
+          }
+        }
+      },
+      "correlationId": null,
+      "providerEventId": "43703:2026-09-22T11:18:30.777+0100"
+    }
+  },
+  {
+    "operation": "jira",
+    "input": {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10010.requestTypePractice",
+      "id": "43703",
+      "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703",
+      "key": "LT-43",
+      "fields": {
+        "statuscategorychangedate": "2026-09-22T11:18:30.777+0100",
+        "issuetype": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10008",
+          "id": "10008",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10315?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 10315,
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "42952",
+          "key": "LT-3",
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/42952",
+          "fields": {
+            "summary": "Line tester Sprint 1",
+            "status": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+              "description": "",
+              "iconUrl": "https://alldaypa.atlassian.net/",
+              "name": "To Do",
+              "id": "10227",
+              "statusCategory": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+                "id": 2,
+                "key": "new",
+                "colorName": "blue-gray",
+                "name": "To Do"
+              }
+            },
+            "priority": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+              "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+              "name": "Medium",
+              "id": "3"
+            },
+            "issuetype": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10000",
+              "id": "10000",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://alldaypa.atlassian.net/images/icons/issuetypes/epic.svg",
+              "name": "Epic",
+              "subtask": false,
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "timespent": null,
+        "customfield_10591": null,
+        "customfield_10030": null,
+        "project": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/project/10480",
+          "id": "10480",
+          "key": "LT",
+          "name": "Line Tester",
+          "projectTypeKey": "software",
+          "simplified": false,
+          "avatarUrls": {
+            "48x48": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421",
+            "24x24": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=small",
+            "16x16": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=xsmall",
+            "32x32": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=medium"
+          }
+        },
+        "customfield_10031": null,
+        "customfield_10032": null,
+        "customfield_10033": null,
+        "fixVersions": [],
+        "aggregatetimespent": 10800,
+        "customfield_10034": null,
+        "statusCategory": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "customfield_10035": null,
+        "resolution": null,
+        "customfield_10037": null,
+        "customfield_10027": null,
+        "customfield_10028": null,
+        "customfield_10029": null,
+        "customfield_10624": null,
+        "customfield_10306": null,
+        "resolutiondate": null,
+        "workratio": 0,
+        "watches": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/watchers",
+          "watchCount": 1,
+          "isWatching": true
+        },
+        "lastViewed": null,
+        "created": "2026-09-07T16:12:57.348+0100",
+        "customfield_10020": [
+          {
+            "id": 1986,
+            "name": "LR Sprint 1",
+            "state": "closed",
+            "boardId": 517,
+            "goal": "",
+            "startDate": "2026-08-31T19:34:00.000Z",
+            "endDate": "2026-09-10T23:00:00.000Z",
+            "completeDate": "2026-09-14T06:01:42.545Z"
+          },
+          {
+            "id": 2167,
+            "name": "LR Sprint 2",
+            "state": "active",
+            "boardId": 517,
+            "goal": "",
+            "startDate": "2026-09-14T06:02:56.852Z",
+            "endDate": "2026-09-24T23:00:00.000Z"
+          }
+        ],
+        "customfield_10021": null,
+        "customfield_10022": null,
+        "customfield_10023": null,
+        "priority": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+          "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+          "name": "Medium",
+          "id": "3"
+        },
+        "customfield_10024": null,
+        "customfield_10025": null,
+        "labels": [],
+        "customfield_10026": null,
+        "customfield_10016": null,
+        "customfield_10017": null,
+        "customfield_10657": null,
+        "customfield_10019": "0|i01j5i:z",
+        "timeestimate": 25200,
+        "aggregatetimeoriginalestimate": 36000,
+        "versions": [],
+        "issuelinks": [],
+        "assignee": null,
+        "updated": "2026-09-22T11:18:30.777+0100",
+        "status": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+          "description": "",
+          "iconUrl": "https://alldaypa.atlassian.net/",
+          "name": "To Do",
+          "id": "10227",
+          "statusCategory": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+            "id": 2,
+            "key": "new",
+            "colorName": "blue-gray",
+            "name": "To Do"
+          }
+        },
+        "components": [],
+        "timeoriginalestimate": 25200,
+        "customfield_10690": null,
+        "customfield_10691": null,
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Users need an at-a-glance view of line health and recurring problems, separable by ACX client.\n\nAcceptance criteria:\n- Summary tiles show success rate over a selected period.\n- Failures are broken down by stage.\n- Failures are broken down by client, with a client filter available.\n- A repeat-offender list is shown for DDIs failing repeatedly.\n- A trend-over-time view is available."
+                }
+              ]
+            }
+          ]
+        },
+        "customfield_10010": null,
+        "customfield_10014": "LT-3",
+        "customfield_10015": null,
+        "timetracking": {
+          "originalEstimate": "1d",
+          "remainingEstimate": "1d",
+          "originalEstimateSeconds": 25200,
+          "remainingEstimateSeconds": 25200
+        },
+        "customfield_10005": null,
+        "customfield_10006": null,
+        "customfield_10007": null,
+        "security": null,
+        "customfield_10008": null,
+        "customfield_10207": null,
+        "attachment": [],
+        "aggregatetimeestimate": 25200,
+        "customfield_10009": null,
+        "summary": "FE-7 — Reporting dashboard",
+        "creator": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+          "accountId": "fixture-account-2",
+          "emailAddress": "fixture.person2@example.com",
+          "avatarUrls": {
+            "48x48": "https://example.com/avatar-placeholder-48x48.png",
+            "24x24": "https://example.com/avatar-placeholder-24x24.png",
+            "16x16": "https://example.com/avatar-placeholder-16x16.png",
+            "32x32": "https://example.com/avatar-placeholder-32x32.png"
+          },
+          "displayName": "Fixture Person 2",
+          "active": true,
+          "timeZone": "Europe/London",
+          "accountType": "atlassian"
+        },
+        "subtasks": [
+          {
+            "id": "44094",
+            "key": "LT-51",
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/44094",
+            "fields": {
+              "summary": "UI- Reporting dashboard",
+              "status": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/status/10029",
+                "description": "",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/statuses/generic.png",
+                "name": "Testing",
+                "id": "10029",
+                "statusCategory": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/4",
+                  "id": 4,
+                  "key": "indeterminate",
+                  "colorName": "yellow",
+                  "name": "In Progress"
+                }
+              },
+              "priority": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+                "name": "Medium",
+                "id": "3"
+              },
+              "issuetype": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10198",
+                "id": "10198",
+                "description": "A small piece of work that's part of a larger task.",
+                "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10316?size=medium",
+                "name": "Sub-task",
+                "subtask": true,
+                "avatarId": 10316,
+                "hierarchyLevel": -1
+              }
+            }
+          }
+        ],
+        "customfield_10240": [],
+        "reporter": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+          "accountId": "fixture-account-2",
+          "emailAddress": "fixture.person2@example.com",
+          "avatarUrls": {
+            "48x48": "https://example.com/avatar-placeholder-48x48.png",
+            "24x24": "https://example.com/avatar-placeholder-24x24.png",
+            "16x16": "https://example.com/avatar-placeholder-16x16.png",
+            "32x32": "https://example.com/avatar-placeholder-32x32.png"
+          },
+          "displayName": "Fixture Person 2",
+          "active": true,
+          "timeZone": "Europe/London",
+          "accountType": "atlassian"
+        },
+        "aggregateprogress": {
+          "progress": 10800,
+          "total": 36000,
+          "percent": 30
+        },
+        "customfield_10000": "{}",
+        "customfield_10001": null,
+        "customfield_10002": [],
+        "customfield_10003": null,
+        "customfield_10004": null,
+        "customfield_10038": null,
+        "environment": null,
+        "duedate": null,
+        "progress": {
+          "progress": 0,
+          "total": 25200,
+          "percent": 0
+        },
+        "votes": {
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/votes",
+          "votes": 0,
+          "hasVoted": false
+        },
+        "comment": {
+          "comments": [],
+          "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703/comment",
+          "maxResults": 0,
+          "total": 0,
+          "startAt": 0
+        },
+        "worklog": {
+          "startAt": 0,
+          "maxResults": 20,
+          "total": 0,
+          "worklogs": []
+        }
+      }
+    },
+    "output": {
+      "source": "jira",
+      "eventType": "issue.observed",
+      "projectHint": "LT",
+      "entityType": "issue",
+      "entityId": "LT-43",
+      "actor": null,
+      "timestamp": "2026-09-22T11:18:30.777+0100",
+      "payload": {
+        "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10010.requestTypePractice",
+        "id": "43703",
+        "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703",
+        "key": "LT-43",
+        "fields": {
+          "statuscategorychangedate": "2026-09-22T11:18:30.777+0100",
+          "issuetype": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10008",
+            "id": "10008",
+            "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+            "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10315?size=medium",
+            "name": "Story",
+            "subtask": false,
+            "avatarId": 10315,
+            "hierarchyLevel": 0
+          },
+          "parent": {
+            "id": "42952",
+            "key": "LT-3",
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/42952",
+            "fields": {
+              "summary": "Line tester Sprint 1",
+              "status": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+                "description": "",
+                "iconUrl": "https://alldaypa.atlassian.net/",
+                "name": "To Do",
+                "id": "10227",
+                "statusCategory": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+                  "id": 2,
+                  "key": "new",
+                  "colorName": "blue-gray",
+                  "name": "To Do"
+                }
+              },
+              "priority": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+                "name": "Medium",
+                "id": "3"
+              },
+              "issuetype": {
+                "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10000",
+                "id": "10000",
+                "description": "A collection of related bugs, stories, and tasks.",
+                "iconUrl": "https://alldaypa.atlassian.net/images/icons/issuetypes/epic.svg",
+                "name": "Epic",
+                "subtask": false,
+                "hierarchyLevel": 1
+              }
+            }
+          },
+          "timespent": null,
+          "customfield_10591": null,
+          "customfield_10030": null,
+          "project": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/project/10480",
+            "id": "10480",
+            "key": "LT",
+            "name": "Line Tester",
+            "projectTypeKey": "software",
+            "simplified": false,
+            "avatarUrls": {
+              "48x48": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421",
+              "24x24": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=small",
+              "16x16": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=xsmall",
+              "32x32": "https://alldaypa.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10421?size=medium"
+            }
+          },
+          "customfield_10031": null,
+          "customfield_10032": null,
+          "customfield_10033": null,
+          "fixVersions": [],
+          "aggregatetimespent": 10800,
+          "customfield_10034": null,
+          "statusCategory": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+            "id": 2,
+            "key": "new",
+            "colorName": "blue-gray",
+            "name": "To Do"
+          },
+          "customfield_10035": null,
+          "resolution": null,
+          "customfield_10037": null,
+          "customfield_10027": null,
+          "customfield_10028": null,
+          "customfield_10029": null,
+          "customfield_10624": null,
+          "customfield_10306": null,
+          "resolutiondate": null,
+          "workratio": 0,
+          "watches": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/watchers",
+            "watchCount": 1,
+            "isWatching": true
+          },
+          "lastViewed": null,
+          "created": "2026-09-07T16:12:57.348+0100",
+          "customfield_10020": [
+            {
+              "id": 1986,
+              "name": "LR Sprint 1",
+              "state": "closed",
+              "boardId": 517,
+              "goal": "",
+              "startDate": "2026-08-31T19:34:00.000Z",
+              "endDate": "2026-09-10T23:00:00.000Z",
+              "completeDate": "2026-09-14T06:01:42.545Z"
+            },
+            {
+              "id": 2167,
+              "name": "LR Sprint 2",
+              "state": "active",
+              "boardId": 517,
+              "goal": "",
+              "startDate": "2026-09-14T06:02:56.852Z",
+              "endDate": "2026-09-24T23:00:00.000Z"
+            }
+          ],
+          "customfield_10021": null,
+          "customfield_10022": null,
+          "customfield_10023": null,
+          "priority": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+            "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+            "name": "Medium",
+            "id": "3"
+          },
+          "customfield_10024": null,
+          "customfield_10025": null,
+          "labels": [],
+          "customfield_10026": null,
+          "customfield_10016": null,
+          "customfield_10017": null,
+          "customfield_10657": null,
+          "customfield_10019": "0|i01j5i:z",
+          "timeestimate": 25200,
+          "aggregatetimeoriginalestimate": 36000,
+          "versions": [],
+          "issuelinks": [],
+          "assignee": null,
+          "updated": "2026-09-22T11:18:30.777+0100",
+          "status": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/status/10227",
+            "description": "",
+            "iconUrl": "https://alldaypa.atlassian.net/",
+            "name": "To Do",
+            "id": "10227",
+            "statusCategory": {
+              "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/2",
+              "id": 2,
+              "key": "new",
+              "colorName": "blue-gray",
+              "name": "To Do"
+            }
+          },
+          "components": [],
+          "timeoriginalestimate": 25200,
+          "customfield_10690": null,
+          "customfield_10691": null,
+          "description": {
+            "type": "doc",
+            "version": 1,
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Users need an at-a-glance view of line health and recurring problems, separable by ACX client.\n\nAcceptance criteria:\n- Summary tiles show success rate over a selected period.\n- Failures are broken down by stage.\n- Failures are broken down by client, with a client filter available.\n- A repeat-offender list is shown for DDIs failing repeatedly.\n- A trend-over-time view is available."
+                  }
+                ]
+              }
+            ]
+          },
+          "customfield_10010": null,
+          "customfield_10014": "LT-3",
+          "customfield_10015": null,
+          "timetracking": {
+            "originalEstimate": "1d",
+            "remainingEstimate": "1d",
+            "originalEstimateSeconds": 25200,
+            "remainingEstimateSeconds": 25200
+          },
+          "customfield_10005": null,
+          "customfield_10006": null,
+          "customfield_10007": null,
+          "security": null,
+          "customfield_10008": null,
+          "customfield_10207": null,
+          "attachment": [],
+          "aggregatetimeestimate": 25200,
+          "customfield_10009": null,
+          "summary": "FE-7 — Reporting dashboard",
+          "creator": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+            "accountId": "fixture-account-2",
+            "emailAddress": "fixture.person2@example.com",
+            "avatarUrls": {
+              "48x48": "https://example.com/avatar-placeholder-48x48.png",
+              "24x24": "https://example.com/avatar-placeholder-24x24.png",
+              "16x16": "https://example.com/avatar-placeholder-16x16.png",
+              "32x32": "https://example.com/avatar-placeholder-32x32.png"
+            },
+            "displayName": "Fixture Person 2",
+            "active": true,
+            "timeZone": "Europe/London",
+            "accountType": "atlassian"
+          },
+          "subtasks": [
+            {
+              "id": "44094",
+              "key": "LT-51",
+              "self": "https://alldaypa.atlassian.net/rest/api/3/issue/44094",
+              "fields": {
+                "summary": "UI- Reporting dashboard",
+                "status": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/status/10029",
+                  "description": "",
+                  "iconUrl": "https://alldaypa.atlassian.net/images/icons/statuses/generic.png",
+                  "name": "Testing",
+                  "id": "10029",
+                  "statusCategory": {
+                    "self": "https://alldaypa.atlassian.net/rest/api/3/statuscategory/4",
+                    "id": 4,
+                    "key": "indeterminate",
+                    "colorName": "yellow",
+                    "name": "In Progress"
+                  }
+                },
+                "priority": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/priority/3",
+                  "iconUrl": "https://alldaypa.atlassian.net/images/icons/priorities/medium_new.svg",
+                  "name": "Medium",
+                  "id": "3"
+                },
+                "issuetype": {
+                  "self": "https://alldaypa.atlassian.net/rest/api/3/issuetype/10198",
+                  "id": "10198",
+                  "description": "A small piece of work that's part of a larger task.",
+                  "iconUrl": "https://alldaypa.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10316?size=medium",
+                  "name": "Sub-task",
+                  "subtask": true,
+                  "avatarId": 10316,
+                  "hierarchyLevel": -1
+                }
+              }
+            }
+          ],
+          "customfield_10240": [],
+          "reporter": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/user?accountId=fixture-account-2",
+            "accountId": "fixture-account-2",
+            "emailAddress": "fixture.person2@example.com",
+            "avatarUrls": {
+              "48x48": "https://example.com/avatar-placeholder-48x48.png",
+              "24x24": "https://example.com/avatar-placeholder-24x24.png",
+              "16x16": "https://example.com/avatar-placeholder-16x16.png",
+              "32x32": "https://example.com/avatar-placeholder-32x32.png"
+            },
+            "displayName": "Fixture Person 2",
+            "active": true,
+            "timeZone": "Europe/London",
+            "accountType": "atlassian"
+          },
+          "aggregateprogress": {
+            "progress": 10800,
+            "total": 36000,
+            "percent": 30
+          },
+          "customfield_10000": "{}",
+          "customfield_10001": null,
+          "customfield_10002": [],
+          "customfield_10003": null,
+          "customfield_10004": null,
+          "customfield_10038": null,
+          "environment": null,
+          "duedate": null,
+          "progress": {
+            "progress": 0,
+            "total": 25200,
+            "percent": 0
+          },
+          "votes": {
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/LT-43/votes",
+            "votes": 0,
+            "hasVoted": false
+          },
+          "comment": {
+            "comments": [],
+            "self": "https://alldaypa.atlassian.net/rest/api/3/issue/43703/comment",
+            "maxResults": 0,
+            "total": 0,
+            "startAt": 0
+          },
+          "worklog": {
+            "startAt": 0,
+            "maxResults": 20,
+            "total": 0,
+            "worklogs": []
+          }
+        }
+      },
+      "correlationId": null,
+      "providerEventId": "43703:2026-09-22T11:18:30.777+0100"
+    }
+  },
+  {
+    "operation": "push",
+    "input": {
+      "_fixture_note": "Shape follows GitHub's publicly documented push webhook event. All names/URLs below are placeholders -- see github-pull-request.json's _fixture_note for why this isn't live-fetched this session.",
+      "ref": "refs/heads/feature/lt-43-csv-export",
+      "before": "0000000000000000000000000000000000000000",
+      "after": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+      "repository": {
+        "id": 555001,
+        "name": "line-tester",
+        "full_name": "alldayPA/line-tester",
+        "html_url": "https://github.com/alldayPA/line-tester"
+      },
+      "pusher": {
+        "name": "fixture-dev-1",
+        "email": "fixture.dev1@example.com"
+      },
+      "commits": [
+        {
+          "id": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+          "message": "LT-43 add CSV export button",
+          "timestamp": "2026-09-19T09:15:00Z",
+          "url": "https://github.com/alldayPA/line-tester/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+          "author": {
+            "name": "Fixture Dev 1",
+            "email": "fixture.dev1@example.com",
+            "username": "fixture-dev-1"
+          }
+        }
+      ]
+    },
+    "output": [
+      {
+        "source": "github",
+        "eventType": "commit.pushed",
+        "projectHint": "alldayPA/line-tester",
+        "entityType": "commit",
+        "entityId": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+        "actor": {
+          "type": "user",
+          "id": "fixture-dev-1"
+        },
+        "timestamp": "2026-09-19T09:15:00Z",
+        "payload": {
+          "id": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+          "message": "LT-43 add CSV export button",
+          "timestamp": "2026-09-19T09:15:00Z",
+          "url": "https://github.com/alldayPA/line-tester/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+          "author": {
+            "name": "Fixture Dev 1",
+            "email": "fixture.dev1@example.com",
+            "username": "fixture-dev-1"
+          }
+        },
+        "correlationId": "fixture-delivery",
+        "providerEventId": "fixture-delivery:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+      }
+    ]
+  },
+  {
+    "operation": "push",
+    "input": {
+      "_fixture_note": "Shape follows GitHub's publicly documented push webhook event. All names/URLs below are placeholders -- see github-pull-request.json's _fixture_note for why this isn't live-fetched this session.",
+      "ref": "refs/heads/feature/lt-43-csv-export",
+      "before": "0000000000000000000000000000000000000000",
+      "after": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+      "repository": {
+        "id": 555001,
+        "name": "line-tester",
+        "full_name": "alldayPA/line-tester",
+        "html_url": "https://github.com/alldayPA/line-tester"
+      },
+      "pusher": {
+        "name": "fixture-dev-1",
+        "email": "fixture.dev1@example.com"
+      },
+      "commits": []
+    },
+    "output": []
+  },
+  {
+    "operation": "pr",
+    "input": {
+      "_fixture_note": "Shape follows GitHub's publicly documented pull_request webhook event (standard product behavior, not org-specific -- see docs/event-contracts.md's 'Git provider' section for why this doesn't need live verification). All names/URLs below are placeholders, not real GitHub data -- live PR fetches against alldayPA/line-tester failed with 404 this session (org access has narrowed since Phase 0's discovery.md, which documented 431 visible repos; only 3 are visible now, and line-tester isn't one of them -- flagged separately, not fixed here).",
+      "action": "closed",
+      "number": 128,
+      "pull_request": {
+        "id": 1234567890,
+        "number": 128,
+        "state": "closed",
+        "title": "LT-43 Add CSV export button to report view",
+        "body": "Implements LT-43. Exports the current report table as CSV.",
+        "html_url": "https://github.com/alldayPA/line-tester/pull/128",
+        "user": {
+          "login": "fixture-dev-1",
+          "id": 900001
+        },
+        "head": {
+          "ref": "feature/lt-43-csv-export",
+          "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        },
+        "base": {
+          "ref": "development",
+          "sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1"
+        },
+        "merged": true,
+        "merged_at": "2026-09-20T14:32:00Z",
+        "merged_by": {
+          "login": "fixture-dev-2",
+          "id": 900002
+        },
+        "created_at": "2026-09-19T09:10:00Z",
+        "updated_at": "2026-09-20T14:32:00Z"
+      },
+      "repository": {
+        "id": 555001,
+        "name": "line-tester",
+        "full_name": "alldayPA/line-tester",
+        "html_url": "https://github.com/alldayPA/line-tester"
+      }
+    },
+    "output": {
+      "source": "github",
+      "eventType": "pull_request.merged",
+      "projectHint": "alldayPA/line-tester",
+      "entityType": "pull_request",
+      "entityId": "128",
+      "actor": {
+        "type": "user",
+        "id": "fixture-dev-1"
+      },
+      "timestamp": "2026-09-20T14:32:00Z",
+      "payload": {
+        "id": 1234567890,
+        "number": 128,
+        "state": "closed",
+        "title": "LT-43 Add CSV export button to report view",
+        "body": "Implements LT-43. Exports the current report table as CSV.",
+        "html_url": "https://github.com/alldayPA/line-tester/pull/128",
+        "user": {
+          "login": "fixture-dev-1",
+          "id": 900001
+        },
+        "head": {
+          "ref": "feature/lt-43-csv-export",
+          "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        },
+        "base": {
+          "ref": "development",
+          "sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1"
+        },
+        "merged": true,
+        "merged_at": "2026-09-20T14:32:00Z",
+        "merged_by": {
+          "login": "fixture-dev-2",
+          "id": 900002
+        },
+        "created_at": "2026-09-19T09:10:00Z",
+        "updated_at": "2026-09-20T14:32:00Z"
+      },
+      "correlationId": "fixture-delivery",
+      "providerEventId": "fixture-delivery:128:closed"
+    }
+  },
+  {
+    "operation": "pr",
+    "input": {
+      "_fixture_note": "Shape follows GitHub's publicly documented pull_request webhook event (standard product behavior, not org-specific -- see docs/event-contracts.md's 'Git provider' section for why this doesn't need live verification). All names/URLs below are placeholders, not real GitHub data -- live PR fetches against alldayPA/line-tester failed with 404 this session (org access has narrowed since Phase 0's discovery.md, which documented 431 visible repos; only 3 are visible now, and line-tester isn't one of them -- flagged separately, not fixed here).",
+      "action": "opened",
+      "number": 128,
+      "pull_request": {
+        "id": 1234567890,
+        "number": 128,
+        "state": "closed",
+        "title": "LT-43 Add CSV export button to report view",
+        "body": "Implements LT-43. Exports the current report table as CSV.",
+        "html_url": "https://github.com/alldayPA/line-tester/pull/128",
+        "user": {
+          "login": "fixture-dev-1",
+          "id": 900001
+        },
+        "head": {
+          "ref": "feature/lt-43-csv-export",
+          "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        },
+        "base": {
+          "ref": "development",
+          "sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1"
+        },
+        "merged": false,
+        "merged_at": null,
+        "merged_by": {
+          "login": "fixture-dev-2",
+          "id": 900002
+        },
+        "created_at": "2026-09-19T09:10:00Z",
+        "updated_at": "2026-09-20T14:32:00Z"
+      },
+      "repository": {
+        "id": 555001,
+        "name": "line-tester",
+        "full_name": "alldayPA/line-tester",
+        "html_url": "https://github.com/alldayPA/line-tester"
+      }
+    },
+    "output": {
+      "source": "github",
+      "eventType": "pull_request.opened",
+      "projectHint": "alldayPA/line-tester",
+      "entityType": "pull_request",
+      "entityId": "128",
+      "actor": {
+        "type": "user",
+        "id": "fixture-dev-1"
+      },
+      "timestamp": "2026-09-20T14:32:00Z",
+      "payload": {
+        "id": 1234567890,
+        "number": 128,
+        "state": "closed",
+        "title": "LT-43 Add CSV export button to report view",
+        "body": "Implements LT-43. Exports the current report table as CSV.",
+        "html_url": "https://github.com/alldayPA/line-tester/pull/128",
+        "user": {
+          "login": "fixture-dev-1",
+          "id": 900001
+        },
+        "head": {
+          "ref": "feature/lt-43-csv-export",
+          "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        },
+        "base": {
+          "ref": "development",
+          "sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1"
+        },
+        "merged": false,
+        "merged_at": null,
+        "merged_by": {
+          "login": "fixture-dev-2",
+          "id": 900002
+        },
+        "created_at": "2026-09-19T09:10:00Z",
+        "updated_at": "2026-09-20T14:32:00Z"
+      },
+      "correlationId": "fixture-delivery",
+      "providerEventId": "fixture-delivery:128:opened"
+    }
+  },
+  {
+    "operation": "requirement",
+    "input": {
+      "_fixture_note": "Column shape re-verified LIVE 2026-09-23 against the real stakeholder_items table (project-compass's anon key + VITE_SUPABASE_URL, both already present in project-compass/.env.local -- overlooked earlier in this project, corrected this session). This replaces an earlier, materially wrong version of this fixture: jira_url/jira_key/comment do NOT exist as columns on this table -- migration 0008_multiple_jira_links.sql moved Jira links to a separate stakeholder_item_jira_links table months before the original (unverified) fixture was written. Also corrected: project_id is a TEXT SLUG (e.g. \"automated-mis\"), not a uuid -- the original fixture's uuid-shaped value was invented, never checked against project-compass/supabase/migrations/0001_stakeholder_schema.sql's actual `project_id text not null references stakeholder_projects(id)`. Values below are synthetic -- a real live row was fetched to confirm the shape, but it contained real client/contact content that doesn't belong in a committed fixture, so it was not used verbatim.",
+      "id": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+      "project_id": "line-tester",
+      "kind": "feature",
+      "summary": "Add CSV export button to report view",
+      "description": "Users on the report screen want to export the current table as CSV, matching the existing export behavior on other report screens.",
+      "status": "In Progress",
+      "status_kind": "jira",
+      "priority": "Medium",
+      "created_by": "fixture.pm@example.com",
+      "required_by": null,
+      "will_be_done_by": null,
+      "request_type": null,
+      "created_at": "2026-09-15T10:00:00Z",
+      "updated_at": "2026-09-19T09:10:00Z",
+      "deleted_at": null
+    },
+    "output": {
+      "source": "requirements-app",
+      "eventType": "requirement.observed",
+      "projectHint": "line-tester",
+      "entityType": "requirement",
+      "entityId": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+      "actor": {
+        "type": "user",
+        "id": "fixture.pm@example.com"
+      },
+      "timestamp": "2026-09-19T09:10:00Z",
+      "payload": {
+        "_fixture_note": "Column shape re-verified LIVE 2026-09-23 against the real stakeholder_items table (project-compass's anon key + VITE_SUPABASE_URL, both already present in project-compass/.env.local -- overlooked earlier in this project, corrected this session). This replaces an earlier, materially wrong version of this fixture: jira_url/jira_key/comment do NOT exist as columns on this table -- migration 0008_multiple_jira_links.sql moved Jira links to a separate stakeholder_item_jira_links table months before the original (unverified) fixture was written. Also corrected: project_id is a TEXT SLUG (e.g. \"automated-mis\"), not a uuid -- the original fixture's uuid-shaped value was invented, never checked against project-compass/supabase/migrations/0001_stakeholder_schema.sql's actual `project_id text not null references stakeholder_projects(id)`. Values below are synthetic -- a real live row was fetched to confirm the shape, but it contained real client/contact content that doesn't belong in a committed fixture, so it was not used verbatim.",
+        "id": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+        "project_id": "line-tester",
+        "kind": "feature",
+        "summary": "Add CSV export button to report view",
+        "description": "Users on the report screen want to export the current table as CSV, matching the existing export behavior on other report screens.",
+        "status": "In Progress",
+        "status_kind": "jira",
+        "priority": "Medium",
+        "created_by": "fixture.pm@example.com",
+        "required_by": null,
+        "will_be_done_by": null,
+        "request_type": null,
+        "created_at": "2026-09-15T10:00:00Z",
+        "updated_at": "2026-09-19T09:10:00Z",
+        "deleted_at": null
+      },
+      "correlationId": null,
+      "providerEventId": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d:2026-09-19T09:10:00Z"
+    }
+  },
+  {
+    "operation": "requirement",
+    "input": {
+      "_fixture_note": "Column shape re-verified LIVE 2026-09-23 against the real stakeholder_items table (project-compass's anon key + VITE_SUPABASE_URL, both already present in project-compass/.env.local -- overlooked earlier in this project, corrected this session). This replaces an earlier, materially wrong version of this fixture: jira_url/jira_key/comment do NOT exist as columns on this table -- migration 0008_multiple_jira_links.sql moved Jira links to a separate stakeholder_item_jira_links table months before the original (unverified) fixture was written. Also corrected: project_id is a TEXT SLUG (e.g. \"automated-mis\"), not a uuid -- the original fixture's uuid-shaped value was invented, never checked against project-compass/supabase/migrations/0001_stakeholder_schema.sql's actual `project_id text not null references stakeholder_projects(id)`. Values below are synthetic -- a real live row was fetched to confirm the shape, but it contained real client/contact content that doesn't belong in a committed fixture, so it was not used verbatim.",
+      "id": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+      "project_id": null,
+      "kind": "feature",
+      "summary": "Add CSV export button to report view",
+      "description": "Users on the report screen want to export the current table as CSV, matching the existing export behavior on other report screens.",
+      "status": "In Progress",
+      "status_kind": "jira",
+      "priority": "Medium",
+      "created_by": "fixture.pm@example.com",
+      "required_by": null,
+      "will_be_done_by": null,
+      "request_type": null,
+      "created_at": "2026-09-15T10:00:00Z",
+      "updated_at": "2026-09-19T09:10:00Z",
+      "deleted_at": null
+    },
+    "output": null
+  },
+  {
+    "operation": "requirement",
+    "input": {
+      "_fixture_note": "Column shape re-verified LIVE 2026-09-23 against the real stakeholder_items table (project-compass's anon key + VITE_SUPABASE_URL, both already present in project-compass/.env.local -- overlooked earlier in this project, corrected this session). This replaces an earlier, materially wrong version of this fixture: jira_url/jira_key/comment do NOT exist as columns on this table -- migration 0008_multiple_jira_links.sql moved Jira links to a separate stakeholder_item_jira_links table months before the original (unverified) fixture was written. Also corrected: project_id is a TEXT SLUG (e.g. \"automated-mis\"), not a uuid -- the original fixture's uuid-shaped value was invented, never checked against project-compass/supabase/migrations/0001_stakeholder_schema.sql's actual `project_id text not null references stakeholder_projects(id)`. Values below are synthetic -- a real live row was fetched to confirm the shape, but it contained real client/contact content that doesn't belong in a committed fixture, so it was not used verbatim.",
+      "id": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+      "project_id": "line-tester",
+      "kind": "feature",
+      "summary": "Add CSV export button to report view",
+      "description": "Users on the report screen want to export the current table as CSV, matching the existing export behavior on other report screens.",
+      "status": "In Progress",
+      "status_kind": "jira",
+      "priority": "Medium",
+      "created_by": null,
+      "required_by": null,
+      "will_be_done_by": null,
+      "request_type": null,
+      "created_at": "2026-09-15T10:00:00Z",
+      "updated_at": "2026-09-19T09:10:00Z",
+      "deleted_at": null
+    },
+    "output": {
+      "source": "requirements-app",
+      "eventType": "requirement.observed",
+      "projectHint": "line-tester",
+      "entityType": "requirement",
+      "entityId": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+      "actor": null,
+      "timestamp": "2026-09-19T09:10:00Z",
+      "payload": {
+        "_fixture_note": "Column shape re-verified LIVE 2026-09-23 against the real stakeholder_items table (project-compass's anon key + VITE_SUPABASE_URL, both already present in project-compass/.env.local -- overlooked earlier in this project, corrected this session). This replaces an earlier, materially wrong version of this fixture: jira_url/jira_key/comment do NOT exist as columns on this table -- migration 0008_multiple_jira_links.sql moved Jira links to a separate stakeholder_item_jira_links table months before the original (unverified) fixture was written. Also corrected: project_id is a TEXT SLUG (e.g. \"automated-mis\"), not a uuid -- the original fixture's uuid-shaped value was invented, never checked against project-compass/supabase/migrations/0001_stakeholder_schema.sql's actual `project_id text not null references stakeholder_projects(id)`. Values below are synthetic -- a real live row was fetched to confirm the shape, but it contained real client/contact content that doesn't belong in a committed fixture, so it was not used verbatim.",
+        "id": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d",
+        "project_id": "line-tester",
+        "kind": "feature",
+        "summary": "Add CSV export button to report view",
+        "description": "Users on the report screen want to export the current table as CSV, matching the existing export behavior on other report screens.",
+        "status": "In Progress",
+        "status_kind": "jira",
+        "priority": "Medium",
+        "created_by": null,
+        "required_by": null,
+        "will_be_done_by": null,
+        "request_type": null,
+        "created_at": "2026-09-15T10:00:00Z",
+        "updated_at": "2026-09-19T09:10:00Z",
+        "deleted_at": null
+      },
+      "correlationId": null,
+      "providerEventId": "6f1e2d3c-4b5a-4978-8c1d-9e0f1a2b3c4d:2026-09-19T09:10:00Z"
+    }
+  }
+]

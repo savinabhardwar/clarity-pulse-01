@@ -1,0 +1,8 @@
+{
+  "name": "clarity-automation-deploy-tools",
+  "private": true,
+  "description": "Cloudflare CLI only; application code is Python",
+  "devDependencies": {
+    "wrangler": "4.134.0"
+  }
+}

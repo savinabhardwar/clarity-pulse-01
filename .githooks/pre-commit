@@ -2,7 +2,7 @@
 # Blocks a commit if staged changes contain what looks like a live secret.
 # Defense in depth on top of .gitignore -- CLAUDE.md (ai-pm-platform) §3
 # rule 1, IMPLEMENTATION_PLAN.md task 1.4. Installed via
-# `ai-pm-platform`'s `prepare` script (see ai-pm-platform/scripts/install-hooks.mjs).
+# `python backend/scripts/install_hooks.py` from the repository root.
 set -euo pipefail
 
 STAGED=$(git diff --cached --name-only --diff-filter=ACM)

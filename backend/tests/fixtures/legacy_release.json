@@ -1,0 +1,108 @@
+{
+  "4e2bf032fcacd15ed51f3cad6dd3779778d87bfebadcc9fc0efdcb2b07c1caba": {
+    "input": [
+      {
+        "operation": "format",
+        "data": {
+          "dates": [
+            "QIP",
+            "2026-08-24",
+            "2026-09-30"
+          ],
+          "body": [
+            "QIP & Portal",
+            "2026-08-24",
+            "## Portal & clients\n- **Customer <portal>** \u2014 A & B can log in.\n* Plain <bullet>\n### Another area\n- **Feature**: More work."
+          ],
+          "rows": [
+            {
+              "product": "QIP & Portal",
+              "jiraKey": "QIP",
+              "lastReleaseDate": "2026-09-01",
+              "nextReleaseDate": ""
+            }
+          ],
+          "html": "<table data-layout=\"default\"><tbody><tr><th><p>Product</p></th><th><p>Jira Key</p></th><th><p>Last Release Date</p></th><th><p>Next Release Date</p></th></tr><tr><td><p>QIP &amp; Portal</p></td><td><p>QIP</p></td><td><p>2026-09-01</p></td><td><p></p></td></tr></tbody></table>"
+        }
+      },
+      {
+        "operation": "completeness",
+        "data": {
+          "key": "QIP-1",
+          "fields": {
+            "subtasks": [
+              {
+                "key": "QIP-2",
+                "fields": {
+                  "status": {
+                    "statusCategory": {
+                      "key": "new"
+                    }
+                  }
+                }
+              }
+            ],
+            "issuelinks": [
+              {
+                "type": {
+                  "name": "Relates",
+                  "outward": "relates to"
+                },
+                "outwardIssue": {
+                  "key": "QIP-3",
+                  "fields": {}
+                }
+              },
+              {
+                "type": {
+                  "name": "Duplicate"
+                },
+                "outwardIssue": {
+                  "key": "QIP-4",
+                  "fields": {}
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "operation": "prompt",
+        "data": {
+          "product": "QIP",
+          "issues": [
+            {
+              "key": "QIP-1",
+              "issuetype": "Story",
+              "summary": "Customer portal",
+              "completenessNote": "pending subtask(s): QIP-2; relates to QIP-3 (still open)"
+            }
+          ]
+        }
+      }
+    ],
+    "output": [
+      {
+        "title": "QIP Release Notes: 24 August - 30 September",
+        "body": "<h1>QIP &amp; Portal Release Notes</h1><h3>Since August 24, 2026</h3><h2>Portal &amp; clients</h2><ul><li><p><strong>Customer &lt;portal&gt;</strong> \u2014 A &amp; B can log in.</p></li><li><p>Plain &lt;bullet&gt;</p></li></ul><h2>Another area</h2><ul><li><p><strong>Feature</strong> \u2014 More work.</p></li></ul>",
+        "rendered": "<table data-layout=\"default\"><tbody><tr><th><p>Product</p></th><th><p>Jira Key</p></th><th><p>Last Release Date</p></th><th><p>Next Release Date</p></th></tr><tr><td><p>QIP &amp; Portal</p></td><td><p>QIP</p></td><td><p>2026-09-01</p></td><td><p></p></td></tr></tbody></table>",
+        "cells": [
+          [
+            "Product",
+            "Jira Key",
+            "Last Release Date",
+            "Next Release Date"
+          ],
+          [
+            "QIP & Portal",
+            "QIP",
+            "2026-09-01",
+            ""
+          ]
+        ]
+      },
+      "pending subtask(s): QIP-2; relates to QIP-3 (still open)",
+      "You are writing release notes for the \"QIP\" product, in the exact style below (this is a real excerpt from \"QIP \u2014 Features till August 2026\", the reference feature catalog for this document set -- do not deviate from this structure):\n\n- **Standalone coaching sessions** \u2014 Schedule coaching without requiring an evaluation or dispute, for both agents and QA.\n- **Action plan tracking** \u2014 Assign individual due dates and track completion for each coaching action.\n- **AI Coaching Practice Calls** \u2014 The full practice-call experience \u2014 talk to an AI customer, see live call activity, review the transcript \u2014 is built and being finalized this sprint.\n\nRules:\n- Describe ONE FEATURE per bullet: \"- **<a specific feature name you write, e.g. \"Standalone Coaching Sessions\">** \u2014 one flowing sentence describing the capability.\" <Feature Name> is a placeholder for a real, specific name you invent from the tickets -- never output the literal words \"Feature Name\". A feature is a user-visible capability, not a ticket -- several tickets (e.g. a design ticket, a frontend ticket, a backend/API ticket) often make up a single feature; collapse those into one bullet, don't write one bullet per ticket.\n- Do not merge multiple distinct, unrelated features into one catch-all bullet just because they sit in the same area of the product.\n- Leave out internal QA/test-automation work and infrastructure/ops/tooling work entirely -- these are not user-visible capabilities, no matter how much effort they took. Examples of tickets to EXCLUDE: \"Gamification Automation Testing\", \"CX Pass Integration Testing\", \"Migrate to SQLAlchemy\", \"Kubernetes deployment migration\", \"API versioning infrastructure\", \"Debug high chatbot latency\" (an internal investigation, not a shipped change), \"Remove unnecessary fields\" (internal cleanup). Do NOT over-apply this: a ticket is only excluded if the WORK ITSELF is testing or infrastructure -- a ticket about a genuine user-facing capability that happens to have \"test\" in its name stays in, e.g. \"AI Simulation Test Workflow\" (a feature letting admins simulate a chat conversation before publishing it) is a real product feature, not QA work, and belongs in the release notes like any other feature.\n- Only add a heading, formatted \"## <a specific area name you write, e.g. \"Platform Infrastructure & Integrations\">\", above a group of bullets when there are several distinct features that clearly belong together; a standalone feature needs no heading. <area name> is a placeholder for a real, specific name you invent -- never output the literal words \"Feature Area\". The same \"don't merge unrelated things\" rule applies to headings, not just bullets: e.g. \"Knowledge Hub\" (content ingestion -- web scraping, video processing, integrations) and \"AI Self-Learning\" (post-call analysis generating prompt recommendations) are different capabilities that happen to sit near each other in the product -- give them separate headings, don't combine into \"Knowledge Hub & AI Self-Learning\" or any other joined name. If you're naming a heading with \"&\" or \"and\" joining two nouns, stop and check whether that's actually one capability or two being forced together.\n- Some tickets below are marked \"[INCOMPLETE: ...]\" -- meaning a subtask is still open, or another linked ticket (e.g. a separate frontend/backend/design half of the same feature) isn't done yet, even though this ticket itself shows as Done in Jira. Never describe that feature as shipped, delivered, completed, or resolved. Instead:\n  (a) if the feature has no real user-visible progress yet, leave it out of these release notes entirely, or\n  (b) if there is genuine working progress, describe what's done and end the bullet with a clause naming what's outstanding, in the exact voice of the reference example above: \"...is built and being finalized this sprint.\" (adapt the trailing clause to name the actual open item if useful, e.g. \"...and is pending its backend integration.\")\n- Do not invent details not implied by the ticket summaries.\n- Output ONLY the bullet list (with any \"## <area name>\" headings), nothing else -- no top-level title, no preamble.\n\nCompleted tickets:\n- [Story] QIP-1: Customer portal [INCOMPLETE: pending subtask(s): QIP-2; relates to QIP-3 (still open)]"
+    ]
+  }
+}
