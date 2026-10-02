@@ -1,7 +1,37 @@
 # ClarityPulse refactor verification
 
 Verified locally on 2026-10-02. All implemented backend code is Python.
-The original React interface remains under `frontend/`.
+This section records the original backend refactor. The Team Pulse replacement
+verification below supersedes its frontend page names and test counts.
+
+## Team Pulse frontend replacement
+
+The six-page Team Pulse UI now runs from `frontend/` against the Python API.
+Backend tests cover its additional queries, validation, availability CRUD,
+provider failures, and GitHub workflow dispatch with fixture responses. There
+are 83 backend tests and 23 frontend next-sprint calculation tests.
+
+The live smoke script compares all new queries with their original Supabase
+queries, including next-sprint tickets, worklogs, sprint summaries and history.
+It checks all six pages and person/project expansion in Chromium. Availability
+add/edit/delete is exercised with isolated browser responses; its Python
+handlers are verified with an injected PostgREST transport. Live availability
+rows are never changed. The script also checks proxy method/origin restrictions
+and verifies that browsers make no direct Supabase requests.
+
+Run with both local servers available:
+
+```sh
+python backend/scripts/smoke_live.py --report docs/team-pulse-replacement-results.json
+npm run test --workspace frontend
+```
+
+See [team-pulse-replacement-results.json](team-pulse-replacement-results.json).
+TypeScript, lint, Cloudflare and existing Netlify builds are checked. The
+optional GitHub dispatch token is not configured locally; actual workflow
+execution and remote deployment are outside these local checks.
+
+## Original backend migration verification
 
 - 75 dashboard and scheduled-job tests pass. These cover all dashboard routes,
   validation, upstream failures, Jira pagination and retries, account merging,

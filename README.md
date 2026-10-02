@@ -5,7 +5,7 @@ Project Compass is a separate application and Git repository at
 `../project-compass/` in the local workspace.
 
 ```text
-frontend/             Existing React / TanStack Start interface
+frontend/             Team Pulse React / TanStack Start interface
 backend/app/          Python / FastAPI dashboard API
 backend/tests/        Dashboard and scheduled-job tests
 backend/app/jobs/     Python Jira sync and release-note jobs
@@ -19,7 +19,8 @@ Use Node.js 22 and Python 3.10 or newer. From the repository root:
 
 ```sh
 npm ci
-npm run dev -- --port 5174
+cd frontend
+node ../node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174
 ```
 
 The npm workspace delegates frontend commands to `frontend/`. Set the frontend
@@ -43,16 +44,30 @@ liveness; `/docs` exposes the API contract. No new login is introduced.
 
 ## Migration boundary
 
+The frontend now comes from `../team-pulse-54/`: Dashboard, People, Projects,
+Planning, Next Sprint, and Trends. Its engineering calculations and visual
+design are retained. The source repository stays separate and unchanged.
+
 All dashboard reads now go through Python: people and historical snapshots,
 person/project details, allocations, contributors, organization metrics,
 standouts, blockers, ticket hygiene, activity, risks, teams and sprint counts.
 The existing database views and RPC calculations are preserved. React Query
 still owns browser caching and the UI keeps its existing data shapes.
 
-The frontend's `/api/clarity/*` adapter only transports reads to Python. It
+Team Pulse's sprint tickets, worklogs, availability, history, and sprint
+summary queries also use Python. Planning availability supports add, edit,
+and delete through validated FastAPI endpoints using the existing anon role.
+
+The frontend's `/api/clarity/*` adapter transports these fixed routes to Python. It
 does not expose arbitrary Supabase tables or RPC calls. Supabase credentials
-and the SDK have been removed from the frontend. The existing interface and
-route URLs are preserved.
+and the SDK have been removed from the frontend. The new page URLs are
+`/`, `/people`, `/projects`, `/planning`, `/next-sprint`, and `/trends`.
+
+The Next Sprint sync button dispatches the existing GitHub Jira workflow via
+Python. Configure optional `GITHUB_ACTIONS_TOKEN` and `GITHUB_ACTIONS_REF`
+(default `main`) in the backend environment. Until configured, it reports
+that the sync trigger is unavailable. Scheduled Jira sync remains independent.
+No workflow was dispatched while verifying this replacement.
 
 Jira sync and release-note jobs stay in this repository under
 `backend/app/jobs/`. Both run in Python. Jira cache and generated files remain
@@ -128,6 +143,7 @@ npm run build
 npm run lint
 npm run typecheck
 npm test
+npm run test --workspace frontend
 ```
 
 From `backend/`:

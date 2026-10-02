@@ -1,577 +1,283 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/components/emp/shell";
+import { Bar, Metric, Panel, SectionHeader, SeverityDot, StatusPill } from "@/components/emp/bits";
+import { useEm, filteredProjects } from "@/lib/emp-store";
 import {
-  AlertTriangle,
-  ArrowUpRight,
-  CheckCircle2,
-  CircleSlash,
-  GitMerge,
-  Rocket,
-  TestTube2,
-  Activity,
-} from "lucide-react";
-import {
-  AllocationBar,
-  Avatar,
-  AvatarStack,
-  Chip,
-  DateRangeFilter,
-  dateRangeToIso,
-  HealthBadge,
-  LowConfidenceNote,
-  Meter,
-  PageHeader,
-  SectionHeading,
-  StatCard,
-  UnconfirmedBadge,
-  type DateRangeValue,
-} from "@/components/dashboard/primitives";
-import { QueryBoundary } from "@/components/dashboard/query-state";
-import {
-  useAllPersonAllocations,
-  useOrgMetrics,
-  usePeople,
-  useProjects,
-  useRecentActivity,
-  useSprintOverrunCount,
-  useTopRisks,
+  countOpenTicketsByPerson,
+  kpis,
+  managerActions,
+  projectSpaceToTeam,
+  teamMetrics,
   toHealth,
-  type AllocationRow,
-  type PersonRow,
-  type ProjectRow,
+} from "@/lib/emp-engine";
+import { EXCLUDED_PEOPLE } from "@/lib/emp-data";
+import {
+  useCanonicalSprint,
+  useOpenTickets,
+  useTicketHygiene,
+  type HygieneRow,
 } from "@/data/queries";
 
-const searchSchema = z.object({
-  from: fallback(z.string(), "").default(""),
-  to: fallback(z.string(), "").default(""),
-});
+const title = "Sprint Dashboard — Delivery Lens Engineering Management";
+const description =
+  "Sprint health, manager actions, Jira hygiene and project status in one engineering management view.";
 
 export const Route = createFileRoute("/")({
-  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
-      { title: "Engineering Overview — Delivery, Capacity & Health" },
-      {
-        name: "description",
-        content:
-          "Executive summary of engineering delivery: sprint progress, capacity, projects at risk and board health in one screen.",
-      },
-      { property: "og:title", content: "Engineering Overview — Delivery, Capacity & Health" },
-      {
-        property: "og:description",
-        content: "Sprint progress, capacity, projects at risk and board health in one screen.",
-      },
+      { title },
+      { name: "description", content: description },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
     ],
   }),
-  component: Overview,
+  component: Dashboard,
 });
 
-const activityIcon = {
-  released: Rocket,
-  completed: CheckCircle2,
-  blocked: CircleSlash,
-  qa: TestTube2,
-  merged: GitMerge,
-  update: Activity,
-};
+function Dashboard() {
+  const { people, teamPeople, filters, projects, allocations } = useEm();
+  const openTickets = useOpenTickets();
+  const hygiene = useTicketHygiene();
+  const canonicalSprint = useCanonicalSprint();
 
-function personInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
-}
+  const k = kpis(people);
+  const teams = teamMetrics(teamPeople);
+  const openTicketCounts = countOpenTicketsByPerson(openTickets.data ?? []);
+  const actions = managerActions(people, openTicketCounts);
+  const visibleProjects = filteredProjects(filters, projects, allocations)
+    .filter((p) => p.is_current && (p.open_tickets > 0 || p.closed_tickets > 0))
+    .sort((a, b) => b.remaining_estimate_hours - a.remaining_estimate_hours);
+  const sprintName = canonicalSprint.data?.[0]?.name ?? "current sprint";
 
-// Per-person allocations aren't on v_people_overview (that view is a flat
-// rollup); fetch them in bulk once for the "people requiring attention"
-// and "available capacity" sections rather than N+1 querying per card.
-// (Hook lives in data/queries.ts so Projects' per-project variant shares
-// the same query-key namespace.)
-
-function Overview() {
-  const { from, to } = Route.useSearch();
-  const navigate = useNavigate({ from: "/" });
-  const range: DateRangeValue = from || to ? { from, to } : null;
-  const since = dateRangeToIso(range).from;
-  const orgMetrics = useOrgMetrics();
-  const people = usePeople();
-  const projects = useProjects();
-  const allocations = useAllPersonAllocations();
-  const topRisks = useTopRisks();
-  const recentActivity = useRecentActivity(since);
-  const overrunCount = useSprintOverrunCount();
-
-  const isLoading =
-    orgMetrics.isLoading || people.isLoading || projects.isLoading || allocations.isLoading;
-  const firstError = orgMetrics.error || people.error || projects.error || allocations.error;
-
-  return (
-    <div className="space-y-10">
-      <PageHeader
-        title="Overview"
-        question="Is engineering on track, and what needs a decision today?"
-      >
-        <DateRangeFilter
-          value={range}
-          onChange={(v) => navigate({ search: { from: v?.from ?? "", to: v?.to ?? "" } })}
-        />
-      </PageHeader>
-      <p className="-mt-6 text-xs text-muted-foreground">
-        KPIs and people/project health below are the current-sprint snapshot as of the last sync
-        {range ? " — the date range only narrows Recent Activity further down." : "."}
-      </p>
-
-      <QueryBoundary
-        isLoading={isLoading}
-        isError={!!firstError}
-        error={firstError as Error | null}
-      >
-        {orgMetrics.data && people.data && projects.data && allocations.data && (
-          <OverviewBody
-            m={orgMetrics.data}
-            people={people.data}
-            projects={projects.data}
-            allocations={allocations.data}
-            risks={topRisks.data ?? []}
-            activity={recentActivity.data ?? []}
-            overrunCount={overrunCount.data ?? 0}
-          />
-        )}
-      </QueryBoundary>
-    </div>
-  );
-}
-
-function OverviewBody({
-  m,
-  people,
-  projects,
-  allocations,
-  risks,
-  activity,
-  overrunCount,
-}: {
-  m: NonNullable<ReturnType<typeof useOrgMetrics>["data"]>;
-  people: PersonRow[];
-  projects: ProjectRow[];
-  allocations: AllocationRow[];
-  risks: { title: string }[];
-  activity: {
-    occurred_at: string;
-    text: string;
-    kind: keyof typeof activityIcon;
-    project_name: string;
-  }[];
-  overrunCount: number;
-}) {
-  const attention = [...people]
-    .filter((p) => p.health !== "on_track")
-    .sort((a, b) => b.utilisation_pct - a.utilisation_pct);
-  const available = [...people]
-    .filter((p) => p.bandwidth_hours >= 5)
-    .sort((a, b) => b.bandwidth_hours - a.bandwidth_hours);
-  const allocationsByPerson = new Map<string, typeof allocations>();
-  for (const a of allocations) {
-    if (!allocationsByPerson.has(a.person_id)) allocationsByPerson.set(a.person_id, []);
-    allocationsByPerson.get(a.person_id)!.push(a);
+  const hygieneByPerson = new Map<string, HygieneRow[]>();
+  for (const h of hygiene.data ?? []) {
+    const name = h.person_name ?? "Unassigned";
+    if (EXCLUDED_PEOPLE.has(name)) continue;
+    (hygieneByPerson.get(name) ?? hygieneByPerson.set(name, []).get(name)!).push(h);
   }
-  const atRiskProjects = projects.filter((p) => p.is_current && p.health !== "on_track");
-  const currentProjects = projects.filter((p) => p.is_current);
-  const overallDeliveryTone =
-    atRiskProjects.length === 0 ? "success" : atRiskProjects.length <= 2 ? "warning" : "danger";
+  const hygieneGroups = [...hygieneByPerson.entries()].sort((a, b) => b[1].length - a[1].length);
+
+  const cards = [
+    {
+      label: "Total Productive Hours",
+      value: `${k.productive}h`,
+      sub: "Fixed sprint capacity across the team",
+    },
+    {
+      label: "Allocated Hours",
+      value: `${k.allocated}h`,
+      sub: "Committed to sprint work (oversized tickets excluded)",
+    },
+    {
+      label: "Unallocated Hours",
+      value: `${k.unallocated}h`,
+      sub: "Available for additional work",
+    },
+    { label: "Sprint Spillage", value: `${k.spillage}h`, sub: "Likely to carry into next sprint" },
+    { label: "Team Utilisation", value: `${k.utilisation}%`, sub: "Allocated against capacity" },
+  ];
 
   return (
-    <>
-      {/* Status banner */}
-      <section className="card-soft overflow-hidden">
-        <div className="grid gap-px bg-border md:grid-cols-3">
-          <BannerCell
-            label="Overall Delivery Status"
-            value={atRiskProjects.length === 0 ? "On Track" : "Needs Attention"}
-            tone={overallDeliveryTone}
-            hint={`${atRiskProjects.length} of ${currentProjects.length} projects off plan`}
+    <AppShell
+      title={`Sprint Dashboard — ${sprintName}`}
+      description="Are we on track, and what needs your attention today?"
+    >
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {cards.map((c) => (
+          <div key={c.label} className="panel p-4">
+            <p className="stat-label">{c.label}</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums">{c.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{c.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <Panel className="lg:col-span-2">
+          <SectionHeader
+            title="Manager actions"
+            hint={`${actions.length} items generated from this sprint's signals`}
           />
-          <BannerCell
-            label="Sprints Overrunning"
-            value={`${overrunCount} of 5`}
-            tone={overrunCount === 0 ? "success" : "warning"}
-            hint={
-              overrunCount > 0
-                ? "Still open past their planned end date"
-                : "All tracked sprints in-window"
-            }
-          />
-          <BannerCell
-            label="Overall Health"
-            value={`${m.board_health_score}/100`}
-            tone={m.board_health_score > 80 ? "success" : "warning"}
-            hint="Estimate coverage, blocked work and dark WIP combined"
-            meter={m.board_health_score}
-          />
-        </div>
-        <div className="border-t border-border bg-secondary/40 px-6 py-5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Top reasons
-          </p>
-          <ul className="mt-3 space-y-2">
-            {(risks.length ? risks : [{ title: "No open high-priority risks right now" }]).map(
-              (r) => (
-                <li key={r.title} className="flex items-start gap-2.5 text-sm text-foreground">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
-                  {r.title}
-                </li>
-              ),
-            )}
-          </ul>
-        </div>
-      </section>
-
-      {/* KPIs */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          label="Team Capacity"
-          value={`${m.avg_utilisation}%`}
-          sub={`Average utilisation across ${people.length} engineers`}
-          tone={m.avg_utilisation > 100 ? "danger" : m.avg_utilisation > 90 ? "warning" : "neutral"}
-          footer={`${m.overallocated_count} people above 100%`}
-        />
-        <StatCard
-          label="Available Bandwidth"
-          value={`${m.available_hours}h`}
-          sub="Unallocated hours this window"
-          tone="success"
-          footer={`${available.length} people can take more work`}
-        />
-        <StatCard
-          label="Projects At Risk"
-          value={m.at_risk_projects}
-          sub={`of ${m.active_projects} active projects`}
-          tone="warning"
-          footer={atRiskProjects.map((p) => p.name).join(", ") || "None"}
-        />
-        <StatCard
-          label="Board Health"
-          value={`${m.board_health_score}`}
-          sub={`${m.estimate_coverage}% estimate coverage`}
-          tone={m.board_health_score > 80 ? "success" : "warning"}
-          footer={`${m.blocked_count} blocked tickets · ${m.dark_wip} dark WIP`}
-        />
-        <StatCard
-          label="Projected Sprint Spillage"
-          value={`${m.total_spillage_hours}h`}
-          sub="Work unlikely to finish by sprint end, at current pace"
-          tone={m.total_spillage_hours > 0 ? "warning" : "success"}
-          footer="Across active Development projects"
-        />
-      </section>
-
-      {/* People requiring attention */}
-      <section>
-        <SectionHeading
-          title="People requiring attention"
-          description="Who is overloaded, and what is pulling them under."
-          action={
-            <Link
-              to="/people"
-              search={{ q: "", person: "" }}
-              className="text-sm font-medium text-info hover:underline"
-            >
-              All people
-            </Link>
-          }
-        />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {attention.map((p) => {
-            const personAllocations = allocationsByPerson.get(p.id) ?? [];
-            return (
-              <article key={p.id} className="card-soft card-hover p-5">
-                <div className="flex items-start gap-3">
-                  <Avatar person={{ name: p.name, initials: personInitials(p.name) }} size="lg" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate font-semibold">{p.name}</h3>
-                      <HealthBadge health={toHealth(p.health)} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {p.role ?? "Engineer"} · {p.team ?? "Unassigned team"}
-                    </p>
-                    {p.team_guessed && (
-                      <UnconfirmedBadge label="team assignment" className="mt-1.5" />
-                    )}
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Allocation
-                    </p>
-                    <p className="num font-semibold">{p.utilisation_pct}%</p>
-                    {p.target_hours_is_fallback && (
-                      <LowConfidenceNote
-                        reason="no tracked sprint dates for this person's project(s), target is a flat 80h guess"
-                        className="mt-0.5"
-                      />
-                    )}
-                    {p.overallocation_reason && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {p.overallocation_reason}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Bandwidth
-                    </p>
-                    <p
-                      className={`num font-semibold ${p.bandwidth_hours < 0 ? "text-danger" : "text-success"}`}
-                    >
-                      {p.bandwidth_hours}h
-                    </p>
-                  </div>
-                </div>
-                {personAllocations.length > 0 && (
-                  <div className="mt-4">
-                    <AllocationBar
-                      segments={personAllocations.map((a) => ({
-                        label: a.project_name,
-                        pct: a.pct,
-                        hours: a.hours,
-                        color: a.project_color || "var(--chart-1)",
-                      }))}
-                    />
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {personAllocations.map((a) => (
-                        <span key={a.project_id} className="inline-flex items-center gap-1.5">
-                          <span
-                            className="size-2 rounded-full"
-                            style={{ backgroundColor: a.project_color || undefined }}
-                          />
-                          {a.project_name} {a.pct}%
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {p.risk_flags.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {p.risk_flags.map((f) => (
-                      <Chip key={f} tone="danger">
-                        {f}
-                      </Chip>
-                    ))}
-                  </div>
-                )}
-                <Link
-                  to="/people"
-                  search={{ q: "", person: p.id }}
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-info hover:underline"
-                >
-                  View details <ArrowUpRight className="size-3.5" />
-                </Link>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Available capacity */}
-      <section>
-        <SectionHeading
-          title="Available capacity"
-          description="Who can take more work this sprint."
-        />
-        <div className="card-soft divide-y divide-border">
-          {available.map((p) => {
-            const personAllocations = allocationsByPerson.get(p.id) ?? [];
-            return (
-              <div key={p.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
-                <Avatar person={{ name: p.name, initials: personInitials(p.name) }} />
-                <div className="min-w-[10rem] flex-1">
-                  <p className="font-medium">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.role ?? "Engineer"} · {p.team ?? "Unassigned team"}
+          <ul className="divide-y divide-border">
+            {actions.map((a, i) => (
+              <li key={i} className="flex gap-3 py-3">
+                <SeverityDot severity={a.severity} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {a.subject}
+                    <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      {a.kind}
+                    </span>
                   </p>
-                </div>
-                <div className="w-40">
-                  <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                    <span>Allocation</span>
-                    <span className="num">{p.utilisation_pct}%</span>
-                  </div>
-                  <Meter value={p.utilisation_pct} />
-                </div>
-                <div className="w-28">
-                  <p className="text-xs text-muted-foreground">Available</p>
-                  <p className="num font-semibold text-success">{p.bandwidth_hours}h</p>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {personAllocations.map((a) => (
-                    <Chip key={a.project_id}>{a.project_name}</Chip>
-                  ))}
-                </div>
-                <Link
-                  to="/people"
-                  search={{ q: "", person: p.id }}
-                  className="ml-auto text-sm font-medium text-info hover:underline"
-                >
-                  View details
-                </Link>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Projects */}
-      <section>
-        <SectionHeading
-          title="Project overview"
-          description="What is active, and how healthy is each project."
-          action={
-            <Link
-              to="/projects"
-              search={{ project: "" }}
-              className="text-sm font-medium text-info hover:underline"
-            >
-              Project workspace
-            </Link>
-          }
-        />
-        <div className="grid gap-4 md:grid-cols-2">
-          {currentProjects.map((project) => (
-            <article key={project.id} className="card-soft card-hover p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="size-2.5 rounded-full"
-                    style={{ backgroundColor: project.color || "var(--chart-1)" }}
-                  />
-                  <h3 className="font-semibold">{project.name}</h3>
-                </div>
-                <HealthBadge health={toHealth(project.health)} />
-              </div>
-              {project.progress !== null && (
-                <div className="mt-4">
-                  <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">
-                    <span>Progress</span>
-                    <span className="num">{project.progress}%</span>
-                  </div>
-                  <Meter
-                    value={project.progress}
-                    tone={project.health === "at_risk" ? "danger" : "success"}
-                  />
-                </div>
-              )}
-              {project.sprint_goal && (
-                <p className="mt-4 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Sprint goal:</span>{" "}
-                  {project.sprint_goal}
-                </p>
-              )}
-              <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Hours / sprint
-                  </p>
-                  <p className="num font-semibold">{project.hours_this_sprint}h</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Remaining</p>
-                  <p className="num font-semibold">{project.remaining_estimate_hours}h</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Blocked</p>
-                  <p
-                    className={`num font-semibold ${project.blocked_tickets ? "text-danger" : "text-success"}`}
-                  >
-                    {project.blocked_tickets}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-                <span className="text-xs text-muted-foreground">
-                  {project.contributor_count} contributors
-                </span>
-                <Link
-                  to="/projects"
-                  search={{ project: project.slug }}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-info hover:underline"
-                >
-                  View project <ArrowUpRight className="size-3.5" />
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* Activity */}
-      <section>
-        <SectionHeading
-          title="Recent activity"
-          description="Newest first — completions, comments and new blockers."
-        />
-        <ol className="card-soft divide-y divide-border">
-          {activity.length === 0 && (
-            <li className="px-5 py-6 text-sm text-muted-foreground">
-              No recent activity synced yet.
-            </li>
-          )}
-          {activity.map((a, i) => {
-            const Icon = activityIcon[a.kind] ?? Activity;
-            const tone =
-              a.kind === "blocked"
-                ? "text-danger"
-                : a.kind === "released" || a.kind === "completed"
-                  ? "text-success"
-                  : "text-info";
-            return (
-              <li key={i} className="flex items-start gap-3 px-5 py-3.5">
-                <Icon className={`mt-0.5 size-4 shrink-0 ${tone}`} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-foreground">{a.text}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(a.occurred_at).toLocaleString()} · {a.project_name}
-                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{a.issue}</p>
+                  <p className="mt-1 text-sm font-medium text-primary">{a.action}</p>
                 </div>
               </li>
-            );
-          })}
-        </ol>
-      </section>
-    </>
-  );
-}
+            ))}
+            {actions.length === 0 && (
+              <li className="py-6 text-sm text-muted-foreground">
+                Nothing needs your attention right now.
+              </li>
+            )}
+          </ul>
+        </Panel>
 
-function BannerCell({
-  label,
-  value,
-  hint,
-  tone,
-  meter,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  tone: "success" | "warning" | "danger" | "neutral";
-  meter?: number;
-}) {
-  const toneClass = {
-    success: "text-success",
-    warning: "text-warning",
-    danger: "text-danger",
-    neutral: "text-foreground",
-  }[tone];
-  return (
-    <div className="bg-card px-6 py-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`num mt-2 text-3xl font-semibold ${toneClass}`}>{value}</p>
-      {meter !== undefined && (
-        <Meter className="mt-3" value={meter} tone={tone === "neutral" ? "success" : tone} />
-      )}
-      <p className="mt-2 text-sm text-muted-foreground">{hint}</p>
-    </div>
+        <Panel>
+          <SectionHeader
+            title="Jira hygiene"
+            hint="Tickets missing an estimate, comments, epic or worklog"
+          />
+          <div className="max-h-[560px] space-y-4 overflow-y-auto">
+            {hygiene.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+            {!hygiene.isLoading && hygieneGroups.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Every ticket in view is properly updated.
+              </p>
+            )}
+            {hygieneGroups.map(([personName, tickets]) => (
+              <div key={personName} className="rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">{personName}</p>
+                  <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <ul className="mt-2 space-y-2">
+                  {tickets.map((h) => (
+                    <li
+                      key={h.ticket_id}
+                      className="border-t border-border/60 pt-2 first:border-0 first:pt-0"
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        {h.jira_key} · {h.summary}
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium text-warning-foreground">
+                        Missing:{" "}
+                        {[
+                          h.missing_estimate && "original estimate",
+                          h.missing_comments && "comments",
+                          h.missing_epic && "epic",
+                          h.missing_worklog && "worklog",
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <Panel className="mt-6">
+        <SectionHeader title="Team utilisation" hint="Where additional work can be assigned" />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                {[
+                  "Team",
+                  "Productive",
+                  "Allocated",
+                  "Unallocated",
+                  "Capacity used",
+                  "Spillage",
+                ].map((h) => (
+                  <th key={h} className="stat-label py-2 pr-4">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map((t) => (
+                <tr key={t.team} className="border-b border-border/60 last:border-0">
+                  <td className="py-3 pr-4 font-medium">{t.team}</td>
+                  <td className="py-3 pr-4 tabular-nums">{t.productiveHours}h</td>
+                  <td className="py-3 pr-4 tabular-nums">{t.allocatedHours}h</td>
+                  <td className="py-3 pr-4 tabular-nums font-medium text-success">
+                    {t.unallocatedHours}h
+                  </td>
+                  <td className="w-52 py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      <Bar
+                        value={t.capacityUsed}
+                        tone={
+                          t.capacityUsed >= 100
+                            ? "danger"
+                            : t.capacityUsed >= 90
+                              ? "warn"
+                              : "primary"
+                        }
+                      />
+                      <span className="tabular-nums">{t.capacityUsed}%</span>
+                    </div>
+                  </td>
+                  <td className="py-3 tabular-nums">{t.spillage}h</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel className="mt-6">
+        <SectionHeader title="Project overview" hint="Sorted by hours planned this sprint" />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                {["Project", "Status", "Progress", "Planned this sprint", "Investment"].map((h) => (
+                  <th key={h} className="stat-label py-2 pr-4">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleProjects.map((p) => (
+                <tr key={p.id} className="border-b border-border/60 last:border-0">
+                  <td className="py-3 pr-4">
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {projectSpaceToTeam(p.project_space)}
+                    </p>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <StatusPill status={toHealth(p.health)} />
+                  </td>
+                  <td className="w-44 py-3 pr-4">
+                    {p.progress !== null ? (
+                      <div className="flex items-center gap-2">
+                        <Bar value={p.progress} />
+                        <span className="tabular-nums">{p.progress}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Not tracked</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4 tabular-nums">{p.remaining_estimate_hours}h</td>
+                  <td className="py-3 pr-4 tabular-nums">{p.hours_invested.toLocaleString()}h</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {teams.map((t) => (
+          <Panel key={t.team} className="p-4">
+            <Metric
+              label={`${t.team} headroom`}
+              value={`${t.unallocatedHours}h`}
+              sub={`${t.engineers} engineers · ${t.capacityUsed}% capacity used`}
+            />
+          </Panel>
+        ))}
+      </div>
+    </AppShell>
   );
 }

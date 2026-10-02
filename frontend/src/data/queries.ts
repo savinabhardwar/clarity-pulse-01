@@ -1,377 +1,539 @@
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/api-client";
-import type { Health, Ticket } from "./dashboard";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-// The DB's health enum, as returned raw by Postgres before toHealth()
-// maps it to the UI's title-case Health type.
+async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`/api/clarity/${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init.headers },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(
+      typeof body.detail === "string" ? body.detail : "The request could not be completed",
+    );
+  }
+  return response.status === 204 ? (undefined as T) : response.json();
+}
+
+// DB's health enum, as returned raw by Postgres.
 export type DbHealth = "on_track" | "needs_attention" | "at_risk";
 
-// ---------- Query key namespace ----------
-export const queryKeys = {
-  people: ["people"] as const,
-  person: (id: string) => ["people", id] as const,
-  projects: ["projects"] as const,
-  project: (slug: string) => ["projects", slug] as const,
-  orgMetrics: ["org-metrics"] as const,
-  standouts: ["standouts"] as const,
-  allBlockers: ["all-blockers"] as const,
-  ticketHygiene: ["ticket-hygiene"] as const,
-  teams: ["teams"] as const,
-};
-
-// DB health enum is snake_case; the UI's Health type (and every
-// component keying off it, e.g. HealthBadge) expects the original
-// title-case strings. Map at render time so no UI component needs to
-// change, while call sites that need to branch on the raw DB value
-// (filters, sorts) keep using DbHealth directly.
-const HEALTH_MAP: Record<DbHealth, Health> = {
-  on_track: "On Track",
-  needs_attention: "Needs Attention",
-  at_risk: "At Risk",
-};
-export function toHealth(dbValue: DbHealth): Health {
-  return HEALTH_MAP[dbValue] ?? "On Track";
-}
-
-// DB status_mapping.ui_bucket already matches the UI's Ticket["status"]
-// strings verbatim (see supabase/migrations/0002_core_tables.sql), so no
-// mapping is needed there. Priority is stored lowercase in the DB
-// ('highest' | 'high' | 'medium' | 'low' | 'lowest'); the UI's
-// PriorityPill only special-cases "Critical"/"High", everything else
-// renders as a neutral chip, so title-casing is enough.
-export function toPriorityLabel(dbValue: string | null): string {
-  if (!dbValue) return "Medium";
-  return dbValue.charAt(0).toUpperCase() + dbValue.slice(1);
-}
-
-// ---------- Dashboard queries: Python owns the database boundary ----------
-export function usePeople(asOf?: string | null) {
-  return useQuery({
-    queryKey: [...queryKeys.people, asOf ?? "latest"],
-    queryFn: () =>
-      apiRequest<PersonRow[]>(`/people${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ""}`),
-  });
-}
-
-export function usePersonDetail(personId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.person(personId ?? ""),
-    enabled: !!personId,
-    queryFn: () => apiRequest<PersonDetail | null>(`/people/${encodeURIComponent(personId ?? "")}`),
-  });
-}
-
-export function useProjectDetail(slug: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.project(slug ?? ""),
-    enabled: !!slug,
-    queryFn: () => apiRequest<ProjectDetail | null>(`/projects/${encodeURIComponent(slug ?? "")}`),
-  });
-}
-
-export interface AllocationRow {
-  person_id: string;
-  project_id: string;
-  project_name: string;
-  project_color: string | null;
-  pct: number;
-  hours: number;
-}
-
-export function usePersonAllocations(personId: string | undefined) {
-  return useQuery({
-    queryKey: ["allocations", personId ?? ""],
-    enabled: !!personId,
-    queryFn: () =>
-      apiRequest<AllocationRow[]>(`/allocations?personId=${encodeURIComponent(personId ?? "")}`),
-  });
-}
-
-export function useProjectAllocations(projectId: string | undefined) {
-  return useQuery({
-    queryKey: ["project-allocations", projectId ?? ""],
-    enabled: !!projectId,
-    queryFn: () =>
-      apiRequest<AllocationRow[]>(`/allocations?projectId=${encodeURIComponent(projectId ?? "")}`),
-  });
-}
-
-export function useRecentActivity(since?: string | null) {
-  return useQuery({
-    queryKey: ["recent-activity", since ?? "all"],
-    queryFn: () =>
-      apiRequest<ActivityRow[]>(
-        `/recent-activity${since ? `?since=${encodeURIComponent(since)}` : ""}`,
-      ),
-  });
-}
-
-export function useProjects() {
-  return useQuery({
-    queryKey: queryKeys.projects,
-    queryFn: () => apiRequest<ProjectRow[]>("/projects"),
-  });
-}
-
-export function useAllPersonAllocations() {
-  return useQuery({
-    queryKey: ["all-person-allocations"],
-    queryFn: () => apiRequest<AllocationRow[]>("/allocations"),
-  });
-}
-
-export function useOrgMetrics() {
-  return useQuery({
-    queryKey: queryKeys.orgMetrics,
-    queryFn: () => apiRequest<OrgMetrics>("/org-metrics"),
-  });
-}
-
-export function useStandouts() {
-  return useQuery({
-    queryKey: queryKeys.standouts,
-    queryFn: () =>
-      apiRequest<
-        { title: string; person_id: string; person_name: string; detail: string | null }[]
-      >("/standouts"),
-  });
-}
-
-export function useAllBlockers() {
-  return useQuery({
-    queryKey: queryKeys.allBlockers,
-    queryFn: () => apiRequest<BlockerRow[]>("/blockers"),
-  });
-}
-
-export function useTicketHygiene() {
-  return useQuery({
-    queryKey: queryKeys.ticketHygiene,
-    queryFn: () => apiRequest<TicketHygieneRow[]>("/ticket-hygiene"),
-  });
-}
-
-export function useTopRisks() {
-  return useQuery({
-    queryKey: ["top-risks"],
-    queryFn: () => apiRequest<RiskRow[]>("/top-risks"),
-  });
-}
-
-export function useSprintOverrunCount() {
-  return useQuery({
-    queryKey: ["sprint-overrun-count"],
-    queryFn: () => apiRequest<number>("/sprint-overrun-count"),
-  });
-}
-
-export function useTeams() {
-  return useQuery({
-    queryKey: queryKeys.teams,
-    queryFn: () => apiRequest<{ id: string; name: string }[]>("/teams"),
-  });
-}
-
-export function useProjectContributors() {
-  return useQuery({
-    queryKey: ["project-contributors"],
-    queryFn: () => apiRequest<ProjectContributorRow[]>("/project-contributors"),
-  });
-}
-
-export function useTrackedSprintStatus() {
-  return useQuery({
-    queryKey: ["tracked-sprint-status"],
-    queryFn: () => apiRequest<{ total: number; overrunning: number }>("/tracked-sprint-status"),
-  });
-}
-
-// ---------- Shapes returned by the RPC / views (frontend-facing) ----------
+// ---------- Shapes returned by the views / RPCs ----------
 export interface PersonRow {
   id: string;
   name: string;
   role: string | null;
   team: string | null;
   team_guessed: boolean;
-  utilisation_pct: number;
   bandwidth_hours: number;
+  utilisation_pct: number;
   pace_pct: number;
-  pace_target_hours: number;
-  hours_logged: number;
   estimated_hours: number;
-  velocity: number;
+  hours_logged: number;
   estimate_accuracy: number | null;
   estimate_coverage: number;
-  worklog_count: number;
-  comment_count: number;
   idle_workdays: number;
   dark_wip_count: number;
   health: DbHealth;
   risk_flags: string[];
-  target_hours_is_fallback: boolean;
-  overallocation_reason: string | null;
 }
-
-export const PROJECT_SPACES = ["development", "infra", "telephony"] as const;
-export type ProjectSpace = (typeof PROJECT_SPACES)[number];
 
 export interface ProjectRow {
   id: string;
   slug: string;
   name: string;
-  color: string | null;
   purpose: string | null;
   health: DbHealth;
   progress: number | null;
   sprint_goal: string | null;
-  owner_name: string | null;
   is_current: boolean;
-  source: "epic_cluster" | "roadmap" | "manual";
-  // Which Projects-page tab this project belongs to, derived in
-  // v_projects_overview from the Jira boards its epics come from (see
-  // migration 0020): 'infra' = all TI, 'telephony' = all TT, everything
-  // else (multi-board, TEAM/TEAMSANKYA/TRG, or no Jira link at all) is
-  // 'development'. Exactly one bucket per project.
-  project_space: ProjectSpace;
-  summary_text: string | null;
+  project_space: "development" | "infra" | "telephony";
+  started_at: string;
   hours_invested: number;
+  /** Hours logged against this project since the sprint started -- NOT planned/allocated work, despite the name. See useProjectsOverview. */
   hours_this_sprint: number;
+  /** Outstanding estimated work on this project's open tickets -- what the UI actually means by "planned this sprint." */
+  remaining_estimate_hours: number;
+  spillage_hours: number;
   open_tickets: number;
   closed_tickets: number;
-  blocked_tickets: number;
-  remaining_estimate_hours: number;
-  contributor_count: number;
-  spillage_hours: number;
 }
 
-export interface ProjectContributorRow {
+export interface AllocationRow {
   person_id: string;
   project_id: string;
+  project_name: string;
   pct: number;
   hours: number;
 }
 
-export interface OrgMetrics {
-  avg_utilisation: number;
-  available_hours: number;
-  overallocated_count: number;
-  at_risk_projects: number;
-  active_projects: number;
-  estimate_coverage: number;
-  blocked_count: number;
-  dark_wip: number;
-  closed_without_logs: number;
-  board_health_score: number;
-  total_spillage_hours: number;
-}
-
-export interface ActivityRow {
-  occurred_at: string;
-  text: string;
-  kind: "released" | "completed" | "blocked" | "qa" | "merged" | "update";
-  project_id: string;
-  project_name: string;
-}
-
-export interface RiskRow {
-  category: string;
-  severity: "high" | "medium" | "low";
-  title: string;
-  recommendation: string | null;
-  person_id: string | null;
-  project_id: string | null;
-  identified_at: string;
-}
-
-export interface BlockerRow {
-  ticket_id: string;
+export interface OpenTicketRow {
+  id: string;
   jira_key: string;
   summary: string;
-  priority: string | null;
-  updated_at: string;
-  project_id: string;
-  project_slug: string;
-  project_name: string;
-  owner_name: string | null;
-  days_blocked: number;
+  assignee_person_id: string | null;
+  original_estimate_seconds: number | null;
+  /** Jira's own lifetime total logged time on this ticket (all-time, not sprint-scoped) -- not dependent on the assignee keeping a remaining-estimate field up to date. */
+  time_spent_seconds: number;
+  sprint_id: string | null;
+  is_blocked: boolean;
+  /** Raw Jira status name (e.g. "Testing", "In Progress") -- status_category alone can't tell a ticket in QA/Testing apart from one still being coded. */
+  status: string;
 }
 
-export interface TicketHygieneRow {
+export interface WorklogTicketRow {
+  ticket_id: string;
+}
+
+export interface SprintWorklogRow {
+  ticket_id: string;
+  author_person_id: string | null;
+  seconds: number;
+}
+
+export interface HygieneRow {
   ticket_id: string;
   jira_key: string;
   summary: string;
   status: string;
-  status_category: string;
-  updated_at: string;
-  project_id: string | null;
-  project_slug: string | null;
-  project_name: string | null;
   person_id: string | null;
   person_name: string | null;
-  sprint_name: string;
   missing_estimate: boolean;
   missing_epic: boolean;
   missing_comments: boolean;
   missing_worklog: boolean;
 }
 
+export interface PersonHistoryRow {
+  computed_at: string;
+  pace_pct: number;
+  bandwidth_hours: number;
+  estimate_accuracy: number | null;
+}
+
+export interface PersonDetailTicket {
+  key: string;
+  title: string;
+  status: string;
+  projectId: string | null;
+  projectName: string | null;
+  estimate: number | null;
+  remaining: number | null;
+  // `logged` is scoped to THIS person's own worklogs, not the ticket's
+  // total. A ticket that changed hands mid-sprint appears on both the
+  // former and current owner's board, each with only their own hours --
+  // `isAssignee` says which one currently holds it in Jira.
+  logged: number;
+  isAssignee: boolean;
+  updated: string;
+}
+
+// current/upcoming only -- the RPC doesn't compute this for `completed`
+// (resolved_ticket_history has no per-day worklog breakdown to draw from).
+export interface ActiveWorkTicket extends PersonDetailTicket {
+  // Hours logged against this ticket yesterday (the org's IST calendar day
+  // before today), regardless of author -- lets Active work surface what
+  // was actually worked on most recently. 0 for a ticket untouched
+  // yesterday, not just "logged": undefined -- always present.
+  loggedYesterday: number;
+}
+
 export interface PersonDetail {
   id: string;
   name: string;
-  role: string | null;
-  team: string | null;
-  teamGuessed: boolean;
-  metrics: Record<string, unknown>;
-  allocations: {
-    projectId: string;
-    projectName: string;
-    color: string | null;
-    pct: number;
-    hours: number;
+  current: ActiveWorkTicket[];
+  upcoming: ActiveWorkTicket[];
+  completed: (PersonDetailTicket & { projectName: string | null })[];
+  // Done tickets still sitting live in `tickets` for a currently-tracked
+  // sprint (same RPC field engineering-ethos's Data Gaps panel reads) --
+  // unlike `completed` (backed by resolved_ticket_history), this doesn't
+  // depend on Jira's Resolution field being set on the way to Done, which
+  // several boards' workflows never do. Without this, "Completed this
+  // sprint" reads empty for anyone whose recent work is on such a board,
+  // even though the tickets are genuinely Done (found live: Shreya
+  // Kumari's ACX board never sets Resolution, so `completed` was always
+  // empty for her despite 9 real Done tickets this sprint).
+  completedThisSprint: {
+    key: string;
+    title: string;
+    projectName: string | null;
+    isAssignee: boolean;
   }[];
-  current: Ticket[];
-  upcoming: Ticket[];
-  completed: Ticket[];
-  comments: { ticket: string; text: string; when: string }[];
+}
+
+export interface ProjectDetailBlocker {
+  ticket: string;
+  title: string;
+  since: string;
+  owner: string | null;
+  priority: string | null;
+}
+
+export interface ProjectDetailTicket {
+  key: string;
+  title: string;
+  status: string;
+  assignee: string | null;
+  estimate: number | null;
 }
 
 export interface ProjectDetail {
   id: string;
   name: string;
-  color: string | null;
   purpose: string | null;
-  health: DbHealth;
-  progress: number | null;
-  sprintGoal: string | null;
   summary: string | null;
-  initiatives: {
-    name: string;
-    summary: string | null;
-    progress: number;
-    issues: {
-      key: string;
-      title: string;
-      status: string;
-      assignee: string | null;
-      estimate: number | null;
-    }[];
-  }[];
+  sprintGoal: string | null;
+  currentSprintTickets: ProjectDetailTicket[];
+  progress: number | null;
   delivered: {
     name: string;
-    description: string | null;
     date: string | null;
     hours: number;
     tickets: string[];
+    description: string | null;
   }[];
-  risks: {
-    blockers: {
-      ticket: string;
-      title: string;
-      since: string;
-      owner: string | null;
-      priority: string | null;
-    }[];
-    missingEstimates: number;
-  };
-  activity: { when: string; text: string; kind: string }[];
+  risks: { blockers: ProjectDetailBlocker[]; missingEstimates: number };
+}
+
+export interface SprintRow {
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+export interface AdjustmentRow {
+  person_id: string;
+  leave_days_this_sprint: number;
+  note: string | null;
+}
+
+export interface PlanningAvailabilityRow {
+  id: string;
+  person_id: string;
+  from_date: string;
+  to_date: string;
+  hours: number;
+  notes: string | null;
+}
+
+export type PlanningAvailabilityInput = Omit<PlanningAvailabilityRow, "id">;
+
+// One issue sitting in a board's NEXT (future-state) sprint -- see
+// useNextSprintTickets.
+export interface NextSprintTicketRow {
+  jira_key: string;
+  jira_project_key: string;
+  board_name: string;
+  jira_sprint_id: number;
+  sprint_name: string;
+  /** Jira usually leaves a future sprint's dates empty until it starts. */
+  sprint_start_date: string | null;
+  sprint_end_date: string | null;
+  sprint_goal: string | null;
+  summary: string;
+  issue_type: string | null;
+  status: string;
+  priority: string | null;
+  /** Null for an unassigned ticket, or an assignee that isn't in `people`. */
+  assignee_person_id: string | null;
+  assignee_name: string | null;
+  original_estimate_seconds: number | null;
+}
+
+// ---------- Hooks ----------
+export function useTeams() {
+  return useQuery({
+    queryKey: ["teams"],
+    queryFn: () => api<{ id: string; name: string }[]>("teams"),
+  });
+}
+
+export function usePeopleOverview() {
+  return useQuery({ queryKey: ["people-overview"], queryFn: () => api<PersonRow[]>("people") });
+}
+
+export function useProjectsOverview() {
+  return useQuery({
+    queryKey: ["projects-overview"],
+    queryFn: () => api<ProjectRow[]>("projects"),
+  });
+}
+
+// Every project's contributor breakdown, fetched in bulk -- avoids an N+1
+// query when computing per-person spillage share and per-project contributor names.
+export function usePersonAllocations() {
+  return useQuery({
+    queryKey: ["person-allocations"],
+    queryFn: () => api<AllocationRow[]>("allocations"),
+  });
+}
+
+// Ids (+ each one's own start_date) of the sprints each Jira board is
+// currently tracking -- at most one per board (enforced by a unique partial
+// index). "This sprint" anywhere in this app means a ticket whose sprint_id
+// is one of these, same convention v_projects_overview/v_ticket_hygiene
+// already use for their own scoping. start_date is carried along so
+// allocatedHours can judge "logged before vs during this ticket's own
+// sprint" per-ticket (see computeSprintHours in emp-engine.ts) rather than
+// against one shared global cutoff -- boards run staggered, unaligned
+// sprint cadences, mirroring engineering-ethos's own activeSprintIds
+// treatment (confirmed live against the shared DB).
+export interface TrackedSprintRow {
+  id: string;
+  start_date: string;
+}
+export function useTrackedSprintIds() {
+  return useQuery({
+    queryKey: ["tracked-sprint-ids"],
+    queryFn: () => api<TrackedSprintRow[]>("tracked-sprints"),
+  });
+}
+
+// Hand-maintained real leave/absence records -- the sync job already
+// prorates each person's sprint capacity target against this, but the app
+// wasn't reading or displaying it. Read-only from the client: RLS restricts
+// writes to the sync job's service_role key (see migration 0008), so this
+// table is maintained directly in Supabase, not through this app's UI.
+export function useAdjustments() {
+  return useQuery({
+    queryKey: ["adjustments"],
+    queryFn: () => api<AdjustmentRow[]>("adjustments"),
+  });
+}
+
+// All open (non-done) tickets org-wide, INCLUDING their sprint_id -- callers
+// must further filter to useTrackedSprintIds() before treating these as
+// "this sprint's" work; a ticket can sit open for many sprints past its own
+// board's currently-tracked one.
+export function useOpenTickets() {
+  return useQuery({
+    queryKey: ["open-tickets"],
+    queryFn: () => api<OpenTicketRow[]>("open-tickets"),
+  });
+}
+
+// Done tickets currently sitting in one of the tracked sprints -- Jira
+// boards often empty out (everything moved to Done) on the sprint's last
+// day, before anyone clicks "Complete Sprint". Those tickets drop out of
+// useOpenTickets() the moment they're done, so without this, a person's
+// loggedHours/utilisation would collapse to 0 on that last day even though
+// a full sprint of real work happened -- see computeSprintHours, which
+// folds these in so hours logged against a ticket before it was finished
+// still count as this sprint's work, right up until the sprint is
+// genuinely marked complete (i.e. it drops out of trackedSprintIds).
+export function useSprintDoneTickets(trackedSprintIds: string[]) {
+  return useQuery({
+    queryKey: ["sprint-done-tickets", trackedSprintIds],
+    enabled: trackedSprintIds.length > 0,
+    queryFn: () =>
+      api<OpenTicketRow[]>(
+        "sprint-done-tickets?sprintIds=" + encodeURIComponent(trackedSprintIds.join(",")),
+      ),
+  });
+}
+
+// Ticket ids that have at least one worklog, ever -- paired with
+// useOpenTickets() to compute "missing worklog" per person in bulk.
+export function useWorklogTicketIds() {
+  return useQuery({
+    queryKey: ["worklog-ticket-ids"],
+    queryFn: () => api<WorklogTicketRow[]>("worklog-ticket-ids"),
+  });
+}
+
+// Worklogs timestamped on/after the sprint start -- "logged this sprint"
+// means logged since the sprint kicked off, not all-time (an all-time total
+// on a spillover ticket would double-count work already credited to a prior sprint).
+export function useSprintWorklogs(sprintStartIso: string | null) {
+  return useQuery({
+    queryKey: ["sprint-worklogs", sprintStartIso ?? ""],
+    enabled: !!sprintStartIso,
+    queryFn: () =>
+      api<SprintWorklogRow[]>("sprint-worklogs?since=" + encodeURIComponent(sprintStartIso!)),
+  });
+}
+
+export interface AllWorklogRow {
+  ticket_id: string;
+  author_person_id: string | null;
+  started_at: string;
+  seconds: number;
+}
+
+// Every worklog, unscoped by date -- ported from engineering-ethos's
+// useAllWorklogs. allocatedHours needs each ticket's logging split into
+// "before its own tracked sprint started" vs "on/after" (see
+// computeSprintHours), which a single date-filtered fetch like
+// useSprintWorklogs can't provide.
+export function useAllWorklogs() {
+  return useQuery({
+    queryKey: ["all-worklogs"],
+    queryFn: () => api<AllWorklogRow[]>("all-worklogs"),
+  });
+}
+
+export function useTicketHygiene() {
+  return useQuery({
+    queryKey: ["ticket-hygiene"],
+    queryFn: () => api<HygieneRow[]>("ticket-hygiene"),
+  });
+}
+
+export function usePersonDetail(personId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["person-detail", personId ?? ""],
+    enabled: enabled && !!personId,
+    queryFn: () => api<PersonDetail>("people/" + encodeURIComponent(personId!)),
+  });
+}
+
+export function useProjectDetail(slug: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["project-detail", slug ?? ""],
+    enabled: enabled && !!slug,
+    queryFn: () => api<ProjectDetail>("projects/" + encodeURIComponent(slug!)),
+  });
+}
+
+// Recent daily sync snapshots for one person -- the real stand-in for the
+// mock's per-sprint Performance History (the 5 boards' sprints run on
+// materially the same calendar window, so a shared date-labelled trend is
+// meaningful even though there's no single global "sprint 41-44").
+export function usePersonHistory(personId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["person-history", personId ?? ""],
+    enabled: enabled && !!personId,
+    queryFn: () => api<PersonHistoryRow[]>("person-history/" + encodeURIComponent(personId!)),
+  });
+}
+
+// The Planning page's ad-hoc availability log -- multiple arbitrary
+// date-ranged entries per person, distinct from `adjustments`'s single
+// leave-days-per-sprint count (see migration 0038). Entries overlapping the
+// current sprint reduce displayed capacity client-side (see buildEmployees
+// in emp-engine.ts), but this never feeds the sync job's computeMetrics() --
+// it doesn't touch the `adjustments`/`people` numbers engineering-ethos and
+// summit-read read, so this table stays invisible to those two dashboards.
+export function usePlanningAvailability() {
+  return useQuery({
+    queryKey: ["planning-availability"],
+    queryFn: () => api<PlanningAvailabilityRow[]>("planning-availability"),
+  });
+}
+
+// Issues already placed in each board's next (future-state) sprint -- a
+// snapshot the Jira sync replaces wholesale every run (migration 0069). Kept
+// out of `tickets` on purpose: that table, and every view over it, is scoped
+// to tracked (active) sprints, so "this sprint" numbers never include
+// next-sprint work. Read-only from the client.
+export function useNextSprintTickets() {
+  return useQuery({
+    queryKey: ["next-sprint-tickets"],
+    queryFn: () => api<NextSprintTicketRow[]>("next-sprint-tickets"),
+  });
+}
+
+export function useAddPlanningAvailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PlanningAvailabilityInput) =>
+      api<PlanningAvailabilityRow[]>("planning-availability", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["planning-availability"] }),
+  });
+}
+
+export function useUpdatePlanningAvailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: PlanningAvailabilityRow) =>
+      api<PlanningAvailabilityRow[]>("planning-availability/" + encodeURIComponent(id), {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["planning-availability"] }),
+  });
+}
+
+export function useDeletePlanningAvailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<void>("planning-availability/" + encodeURIComponent(id), { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["planning-availability"] }),
+  });
+}
+
+// Kicks off an incremental Jira sync immediately via the same GitHub Actions
+// workflow the daily cron uses, instead of waiting for the next scheduled
+// run. Doesn't invalidate any queries itself -- the sync runs in CI and
+// takes longer than a request round-trip, so there's nothing fresh to
+// re-fetch the moment this resolves.
+export function useTriggerJiraSync() {
+  return useMutation({
+    mutationFn: () => api<{ triggeredAt: string }>("jira-sync", { method: "POST" }),
+  });
+}
+
+// The currently-tracked sprint whose length is closest to the org's 10-workday
+// policy -- same "canonical sprint" pick used by v_canonical_sprint, just
+// read directly here for the Dashboard title.
+export function useCanonicalSprint() {
+  return useQuery({
+    queryKey: ["canonical-sprint"],
+    queryFn: () => api<SprintRow[]>("canonical-sprint"),
+  });
+}
+
+// v_team_sprint_summaries/v_org_sprint_summaries (0068) -- historical
+// capacity/utilisation per team per sprint, rolled up from
+// person_sprint_summaries (the same append-only record the People page's
+// history chart reads). Unlike v_exec_capacity (live, current sprint
+// only), these cover every sprint that's ever been snapshotted.
+export interface TeamSprintSummaryRow {
+  team: "Development" | "Infrastructure" | "Telephony";
+  sprint_start: string;
+  sprint_end: string;
+  person_count: number;
+  sprint_workdays: number;
+  total_productive_hours: number;
+  allocated_hours: number;
+  logged_hours: number;
+  capacity_used_pct: number;
+  utilisation_pct: number;
+  avg_pace_score: number | null;
+  avg_estimate_score: number | null;
+  avg_hygiene_score: number | null;
+  avg_overall_score: number | null;
+  // The org-sprint bucket this row was grouped into -- two teams' own
+  // min(sprint_start) for the same conceptual org sprint can differ by
+  // minutes (non-aligned boards), so chart/group by this, not sprint_start.
+  group_day: string;
+}
+
+export interface OrgSprintSummaryRow {
+  sprint_start: string;
+  sprint_end: string;
+  person_count: number;
+  sprint_workdays: number;
+  total_productive_hours: number;
+  allocated_hours: number;
+  logged_hours: number;
+  capacity_used_pct: number;
+  utilisation_pct: number;
+}
+
+export function useTeamSprintSummaries() {
+  return useQuery({
+    queryKey: ["team-sprint-summaries"],
+    queryFn: () => api<TeamSprintSummaryRow[]>("team-sprint-summaries"),
+  });
+}
+
+export function useOrgSprintSummaries() {
+  return useQuery({
+    queryKey: ["org-sprint-summaries"],
+    queryFn: () => api<OrgSprintSummaryRow[]>("org-sprint-summaries"),
+  });
 }

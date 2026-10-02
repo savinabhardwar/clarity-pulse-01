@@ -10,11 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NextSprintRouteImport } from './routes/next-sprint'
 import { Route as PeopleRouteImport } from './routes/people'
+import { Route as PlanningRouteImport } from './routes/planning'
 import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as ResourcePlanningRouteImport } from './routes/resource-planning'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as TeamHealthRouteImport } from './routes/team-health'
+import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as ApiClaritySplatRouteImport } from './routes/api.clarity.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -22,9 +22,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NextSprintRoute = NextSprintRouteImport.update({
+  id: '/next-sprint',
+  path: '/next-sprint',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PeopleRoute = PeopleRouteImport.update({
   id: '/people',
   path: '/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningRoute = PlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -32,19 +42,9 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResourcePlanningRoute = ResourcePlanningRouteImport.update({
-  id: '/resource-planning',
-  path: '/resource-planning',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TeamHealthRoute = TeamHealthRouteImport.update({
-  id: '/team-health',
-  path: '/team-health',
+const TrendsRoute = TrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiClaritySplatRoute = ApiClaritySplatRouteImport.update({
@@ -55,69 +55,69 @@ const ApiClaritySplatRoute = ApiClaritySplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/next-sprint': typeof NextSprintRoute
   '/people': typeof PeopleRoute
+  '/planning': typeof PlanningRoute
   '/projects': typeof ProjectsRoute
-  '/resource-planning': typeof ResourcePlanningRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/team-health': typeof TeamHealthRoute
+  '/trends': typeof TrendsRoute
   '/api/clarity/$': typeof ApiClaritySplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/next-sprint': typeof NextSprintRoute
   '/people': typeof PeopleRoute
+  '/planning': typeof PlanningRoute
   '/projects': typeof ProjectsRoute
-  '/resource-planning': typeof ResourcePlanningRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/team-health': typeof TeamHealthRoute
+  '/trends': typeof TrendsRoute
   '/api/clarity/$': typeof ApiClaritySplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/next-sprint': typeof NextSprintRoute
   '/people': typeof PeopleRoute
+  '/planning': typeof PlanningRoute
   '/projects': typeof ProjectsRoute
-  '/resource-planning': typeof ResourcePlanningRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/team-health': typeof TeamHealthRoute
+  '/trends': typeof TrendsRoute
   '/api/clarity/$': typeof ApiClaritySplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/next-sprint'
     | '/people'
+    | '/planning'
     | '/projects'
-    | '/resource-planning'
-    | '/sitemap.xml'
-    | '/team-health'
+    | '/trends'
     | '/api/clarity/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/next-sprint'
     | '/people'
+    | '/planning'
     | '/projects'
-    | '/resource-planning'
-    | '/sitemap.xml'
-    | '/team-health'
+    | '/trends'
     | '/api/clarity/$'
   id:
     | '__root__'
     | '/'
+    | '/next-sprint'
     | '/people'
+    | '/planning'
     | '/projects'
-    | '/resource-planning'
-    | '/sitemap.xml'
-    | '/team-health'
+    | '/trends'
     | '/api/clarity/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NextSprintRoute: typeof NextSprintRoute
   PeopleRoute: typeof PeopleRoute
+  PlanningRoute: typeof PlanningRoute
   ProjectsRoute: typeof ProjectsRoute
-  ResourcePlanningRoute: typeof ResourcePlanningRoute
-  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  TeamHealthRoute: typeof TeamHealthRoute
+  TrendsRoute: typeof TrendsRoute
   ApiClaritySplatRoute: typeof ApiClaritySplatRoute
 }
 
@@ -130,11 +130,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/next-sprint': {
+      id: '/next-sprint'
+      path: '/next-sprint'
+      fullPath: '/next-sprint'
+      preLoaderRoute: typeof NextSprintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/people': {
       id: '/people'
       path: '/people'
       fullPath: '/people'
       preLoaderRoute: typeof PeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning': {
+      id: '/planning'
+      path: '/planning'
+      fullPath: '/planning'
+      preLoaderRoute: typeof PlanningRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -144,25 +158,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resource-planning': {
-      id: '/resource-planning'
-      path: '/resource-planning'
-      fullPath: '/resource-planning'
-      preLoaderRoute: typeof ResourcePlanningRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/team-health': {
-      id: '/team-health'
-      path: '/team-health'
-      fullPath: '/team-health'
-      preLoaderRoute: typeof TeamHealthRouteImport
+    '/trends': {
+      id: '/trends'
+      path: '/trends'
+      fullPath: '/trends'
+      preLoaderRoute: typeof TrendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/clarity/$': {
@@ -177,11 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NextSprintRoute: NextSprintRoute,
   PeopleRoute: PeopleRoute,
+  PlanningRoute: PlanningRoute,
   ProjectsRoute: ProjectsRoute,
-  ResourcePlanningRoute: ResourcePlanningRoute,
-  SitemapDotxmlRoute: SitemapDotxmlRoute,
-  TeamHealthRoute: TeamHealthRoute,
+  TrendsRoute: TrendsRoute,
   ApiClaritySplatRoute: ApiClaritySplatRoute,
 }
 export const routeTree = rootRouteImport

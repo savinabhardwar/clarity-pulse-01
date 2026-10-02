@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.config import Settings, get_settings
 from app.dashboard import router
 from app.supabase import SupabaseService
+from app.team_pulse import router as team_pulse_router
 
 
 def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None):
@@ -19,6 +20,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     application = FastAPI(title="ClarityPulse API", version="0.1.0", lifespan=lifespan)
     application.include_router(router, prefix="/api")
+    application.include_router(team_pulse_router, prefix="/api")
 
     @application.get("/api/health", tags=["health"])
     async def health():

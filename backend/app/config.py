@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     )
     supabase_url: str | None = None
     supabase_anon_key: SecretStr | None = None
+    github_actions_token: SecretStr | None = None
+    github_actions_ref: str = "main"
 
 
 @lru_cache
