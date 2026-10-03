@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           vercel deploy --prod --yes --json --token="$VERCEL_TOKEN" > deployment.json
-          url=$(python -c 'import json; print(json.load(open("deployment.json"))["deployment"]["url"])')
+          url=$(python -c 'import json; data=json.load(open("deployment.json")); print(data.get("deployment", data)["url"])')
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Check deployed API health
         env:
@@ -95,7 +95,7 @@ jobs:
           if [ -n "$VERCEL_PROTECTION_BYPASS" ]; then
             headers=(-H "x-vercel-protection-bypass: $VERCEL_PROTECTION_BYPASS")
           fi
-          vercel curl /api/health --deployment "$DEPLOYMENT_URL" --token="$VERCEL_TOKEN" -- \
+          curl "${DEPLOYMENT_URL%/}/api/health" \
             --fail --silent --show-error --retry 5 --retry-all-errors \
             --retry-delay 5 --max-time 60 "${headers[@]}" -o health.json
           python -c 'import json; data=json.load(open("health.json")); assert data.get("status") == "ok", data'
