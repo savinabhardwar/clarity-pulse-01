@@ -74,8 +74,9 @@ Manual runs are supported; select the staging branch. Other branches cannot depl
 
 The Vercel project itself is staging-only. Its Production environment gives
 staging a stable domain and works without a paid custom environment.
-The workflow uses `vercel pull --environment=production`, `vercel build --prod`,
-and `vercel deploy --prebuilt --prod` **only for that staging project**.
+The workflow uses `vercel pull --environment=production` and
+`vercel deploy --prod` **only for that staging project**. Vercel builds the
+filtered source remotely so ignored files cannot become dangling prebuilt links.
 Commands run at the repository root; the project's Root Directory selects
 `backend`. Do not also change the workflow working directory to backend.
 
