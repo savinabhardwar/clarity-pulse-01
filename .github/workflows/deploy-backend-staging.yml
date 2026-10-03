@@ -1,0 +1,108 @@
+name: Deploy backend to Vercel staging
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - "backend/app/**"
+      - "backend/tests/**"
+      - "backend/pyproject.toml"
+      - "backend/uv.lock"
+      - "deployment/backend/staging/**"
+      - ".github/workflows/deploy-backend-staging.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-backend-staging
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.ref == 'refs/heads/staging' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        run: python -m pip install -e ./backend
+      - name: Install deployment check dependency
+        run: python -m pip install "PyYAML>=6,<7"
+      - name: Verify staging branch and destination guards
+        run: python -m unittest discover -s deployment/backend/staging -p "test_*.py" -v
+      - name: Run offline backend tests
+        working-directory: backend
+        run: python -m unittest discover -s tests -v
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/staging' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+      VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_PROTECTION_BYPASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check deployment credentials
+        shell: bash
+        run: |
+          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing GitHub staging secret: $key"
+              exit 1
+            fi
+          done
+      - name: Prepare isolated staging configuration
+        run: python deployment/backend/staging/prepare.py
+      - name: Install Vercel CLI
+        run: npm install --global vercel@62.2.0
+      # Run from the repository root. The Vercel project's Root Directory
+      # must be backend; running inside backend would apply that path twice.
+      - name: Pull staging project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Build backend
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy backend
+        id: deploy
+        shell: bash
+        run: |
+          vercel deploy --prebuilt --prod --yes --json --token="$VERCEL_TOKEN" > deployment.json
+          url=$(python -c 'import json; print(json.load(open("deployment.json"))["deployment"]["url"])')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Check deployed API health
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        shell: bash
+        run: |
+          headers=()
+          if [ -n "$VERCEL_PROTECTION_BYPASS" ]; then
+            headers=(-H "x-vercel-protection-bypass: $VERCEL_PROTECTION_BYPASS")
+          fi
+          vercel curl /api/health --deployment "$DEPLOYMENT_URL" --token="$VERCEL_TOKEN" -- \
+            --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 5 --max-time 60 "${headers[@]}" -o health.json
+          python -c 'import json; data=json.load(open("health.json")); assert data.get("status") == "ok", data'
+          echo "Backend deployed: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove generated staging files
+        if: always()
+        run: python deployment/backend/staging/prepare.py --clean

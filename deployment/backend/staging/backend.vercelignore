@@ -1,0 +1,16 @@
+.env
+.env.*
+.venv/
+__pycache__/
+**/__pycache__/
+*.egg-info/
+**/*.egg-info/
+tests/
+scripts/
+automation/
+.tools/
+.venv-workers/
+jobs/
+
+deployment/
+.staging-deployment-overlay.json

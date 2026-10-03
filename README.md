@@ -1,5 +1,7 @@
 # ClarityPulse
 
+Backend staging deployment setup: [Vercel and GitHub Actions](deployment/backend/staging/README.md).
+
 Engineering dashboards for people, capacity, delivery, and team health.
 Project Compass is a separate application and Git repository at
 `../project-compass/` in the local workspace.

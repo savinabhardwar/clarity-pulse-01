@@ -15,5 +15,8 @@ smoke = ["playwright>=1.40,<2"]
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.vercel]
+entrypoint = "app.main:app"
+
 [tool.setuptools.package-data]
 "app.jobs.release_notes" = ["prompt.txt"]

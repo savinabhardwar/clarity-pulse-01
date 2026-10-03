@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.vercel/
 .npm-cache/
 dist
 dist-ssr
@@ -67,3 +68,11 @@ runs_*.json
 
 # context-mem
 .context-mem/
+.vercel
+.env*
+
+# Created only by the guarded staging deployment preparation
+/.vercelignore
+/backend/.vercelignore
+/backend/vercel.json
+/.staging-deployment-overlay.json
