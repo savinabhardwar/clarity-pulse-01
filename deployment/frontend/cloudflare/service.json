@@ -1,0 +1,4 @@
+{
+  "backendVariable": "CLARITY_BACKEND_URL",
+  "stagingBackendUrl": "https://clarity-pulse-backend-staging.vercel.app"
+}

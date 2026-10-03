@@ -2,6 +2,7 @@
 
 | Service | Environment | Canonical configuration |
 | --- | --- | --- |
+| Frontend Worker | Production and staging | [frontend/cloudflare](frontend/cloudflare/README.md) |
 | Python API | Staging | [backend/staging](backend/staging/README.md) |
 | Python API | Production | No production Vercel workflow configured here |
 

@@ -64,8 +64,8 @@ Manual runs are supported; select the staging branch. Other branches cannot depl
 7. Configure the frontend server's `CLARITY_BACKEND_URL` with the staging
    project's stable production-domain URL, rather than an individual deployment
    URL. Confirm that the frontend server can reach it. If Deployment Protection
-   protects that domain, the current frontend adapter does not send a bypass
-   header; configure access before connecting it. The workflow's optional bypass
+   protects that domain, configure `BACKEND_PROTECTION_BYPASS` in the frontend GitHub environment
+   so its Worker can send the server-only bypass header. The workflow's optional bypass
    secret only authenticates its health check. Without it, authenticated
    `vercel curl` can generate a bypass for the workflow's token; keep the
    project's Deployment Protection enabled.

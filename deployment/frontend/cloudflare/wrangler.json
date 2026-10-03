@@ -1,0 +1,21 @@
+{
+  "compatibility_date": "2026-10-03",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "../../../frontend/.output/server/index.mjs",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "../../../frontend/.output/public"
+  },
+  "no_bundle": true,
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": [
+        "**/*.mjs",
+        "**/*.js"
+      ]
+    }
+  ]
+}

@@ -164,11 +164,16 @@ frontend server's deployment environment before publishing the frontend.
 The local default URL will not reach your Python service from a remote host.
 The root build command remains `npm run build`.
 
-Nitro's default Cloudflare output is under `frontend/.output/`. The Netlify
-configuration publishes `frontend/dist`, with its server functions emitted
-at the repository root under `.netlify/functions-internal/`. Neither target
-was deployed as part of this refactor. No production migrations were applied and no
-scheduled jobs or webhook registrations were changed remotely.
+The frontend deploys on Cloudflare Workers. Its config, environment checks,
+and setup instructions are under [deployment/frontend/cloudflare](deployment/frontend/cloudflare/README.md).
+The GitHub workflow deploys `main` to production and `staging` to a separate
+Worker, each using its own GitHub environment settings. Configure the exact
+existing Worker names, account/token, and Python backend URL before pushing.
+
+The old Netlify file is archived under `deployment/frontend/legacy-netlify/`;
+it is not part of the active frontend pipeline. The backend staging workflow
+continues to target its dedicated Vercel project. No hosting targets were
+deployed or remote settings changed while adding these workflows.
 
 This project remains connected to [Lovable](https://lovable.dev). Root Git
 and Lovable metadata are preserved. Lovable editor compatibility with the

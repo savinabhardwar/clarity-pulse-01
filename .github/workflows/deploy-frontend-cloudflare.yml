@@ -1,0 +1,71 @@
+name: Deploy frontend to Cloudflare
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - "frontend/**"
+      - "package.json"
+      - "package-lock.json"
+      - "deployment/frontend/cloudflare/**"
+      - ".github/workflows/deploy-frontend-cloudflare.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-frontend-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    env:
+      NITRO_PRESET: cloudflare-module
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_FRONTEND_WORKER_NAME: ${{ vars.CLOUDFLARE_FRONTEND_WORKER_NAME }}
+      FRONTEND_BACKEND_URL: ${{ vars.FRONTEND_BACKEND_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test --workspace frontend
+      - run: python -m pip install "PyYAML>=6,<7"
+      - name: Verify frontend deployment boundaries
+        run: python -m unittest discover -s deployment/frontend/cloudflare -p "test_*.py" -v
+      - name: Verify server-only backend transport
+        run: node --experimental-strip-types deployment/frontend/cloudflare/test_proxy.mjs
+      - name: Build Cloudflare frontend
+        run: npm run build
+      - name: Prepare environment-specific Worker configuration
+        id: config
+        shell: bash
+        run: |
+          config=$(python deployment/frontend/cloudflare/prepare.py)
+          echo "path=$config" >> "$GITHUB_OUTPUT"
+      - name: Check Cloudflare deploy credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: test -n "$CLOUDFLARE_API_TOKEN"
+      - name: Deploy frontend Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.134.0"
+          packageManager: npm
+          command: deploy --config ${{ steps.config.outputs.path }}
+          secrets: ${{ secrets.BACKEND_PROTECTION_BYPASS != '' && 'BACKEND_PROTECTION_BYPASS' || '' }}
+        env:
+          BACKEND_PROTECTION_BYPASS: ${{ secrets.BACKEND_PROTECTION_BYPASS }}
