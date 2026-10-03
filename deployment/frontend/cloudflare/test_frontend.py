@@ -60,6 +60,9 @@ class FrontendDeploymentTests(unittest.TestCase):
         action=next(step for step in job["steps"] if step.get("id")=="deploy")
         self.assertEqual(action["uses"],"cloudflare/wrangler-action@v4")
         self.assertIn("--config",action["with"]["command"])
+        self.assertEqual(action["with"]["workingDirectory"], "frontend/.output/server")
+        config_step=next(step for step in job["steps"] if step.get("id")=="config")
+        self.assertIn('cp "$config" frontend/.output/server/wrangler.json', config_step["run"])
         self.assertEqual(job["env"]["NITRO_PRESET"],"cloudflare-module")
 
     def test_non_cloudflare_build_is_rejected(self):

@@ -52,6 +52,7 @@ jobs:
         shell: bash
         run: |
           config=$(python deployment/frontend/cloudflare/prepare.py)
+          cp "$config" frontend/.output/server/wrangler.json
           echo "path=$config" >> "$GITHUB_OUTPUT"
       - name: Check Cloudflare deploy credentials
         env:
@@ -65,7 +66,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.134.0"
           packageManager: npm
-          command: deploy --config ${{ steps.config.outputs.path }}
+          workingDirectory: frontend/.output/server
+          command: deploy --config wrangler.json
           secrets: ${{ secrets.BACKEND_PROTECTION_BYPASS != '' && 'BACKEND_PROTECTION_BYPASS' || '' }}
         env:
           BACKEND_PROTECTION_BYPASS: ${{ secrets.BACKEND_PROTECTION_BYPASS }}
