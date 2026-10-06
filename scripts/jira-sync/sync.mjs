@@ -457,6 +457,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
       created_at: t.created,
       updated_at: t.updated,
       resolved_at: t.resolutiondate,
+      status_category_changed_at: t.statusCategoryChangedAt ?? null,
       is_blocked: t.status.toLowerCase().includes("block"),
       last_synced_at: new Date(),
     }));
@@ -479,6 +480,7 @@ async function run({ syncType = "manual", asOf = new Date() } = {}) {
         "labels",
         "updated_at",
         "resolved_at",
+        "status_category_changed_at",
         "is_blocked",
         "last_synced_at",
       ],

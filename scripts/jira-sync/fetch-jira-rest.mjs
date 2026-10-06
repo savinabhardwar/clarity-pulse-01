@@ -114,6 +114,7 @@ function slimIssue(issue) {
     created: f.created,
     updated: f.updated,
     resolutiondate: f.resolutiondate ?? null,
+    statusCategoryChangedAt: f.statuscategorychangedate ?? null,
     estimateSeconds: f.timeoriginalestimate ?? null,
     remainingSeconds: f.timeestimate ?? null,
     spentSeconds: f.timespent ?? 0,
@@ -224,6 +225,10 @@ async function fetchInWindowIssues(trackedSprints) {
       "created",
       "updated",
       "resolutiondate",
+      // When the ticket last changed status CATEGORY (i.e. when it became Done).
+      // Populated even where Resolution never is, so it dates a ticket's
+      // completion on boards whose workflows skip Resolution.
+      "statuscategorychangedate",
       "timeoriginalestimate",
       "timeestimate",
       "timespent",
