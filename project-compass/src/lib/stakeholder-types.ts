@@ -59,6 +59,15 @@ export const JIRA_STATUSES = [
   "NOT SUCCESSFUL",
 ] as const;
 
+// Statuses from which marking an item Done in Compass is pushed to Jira (all
+// of its linked tickets are transitioned to Done). Matched case-insensitively
+// because Jira spells some of these in capitals ("TESTING"; see JIRA_STATUSES).
+const JIRA_DONE_ELIGIBLE_STATUSES = ["review", "in review", "testing"];
+
+export function canMarkDoneInJira(status: string): boolean {
+  return JIRA_DONE_ELIGIBLE_STATUSES.includes(status.trim().toLowerCase());
+}
+
 export type Priority = "High" | "Medium" | "Low";
 export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];
 // Lower rank = higher priority, for sort comparisons (High before Medium before Low).

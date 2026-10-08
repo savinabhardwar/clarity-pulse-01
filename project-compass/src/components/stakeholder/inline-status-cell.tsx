@@ -11,7 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useItemJiraLinks, useUpdateItem } from "@/data/queries";
+import { pushDoneToJira } from "@/data/jira-done";
 import {
+  canMarkDoneInJira,
   JIRA_STATUSES,
   STAKEHOLDER_STATUSES,
   type ItemDraft,
@@ -42,16 +44,24 @@ type StatusCellItem = Pick<
 // from Jira by the webhook (api.jira-webhook.ts) and the daily
 // sync-stakeholder-jira-status job, so a manual change would silently revert
 // the next time the ticket moves. Change it in Jira instead.
+//
+// The one exception is Review/Testing -> Done: that is pushed to Jira (every
+// linked ticket is transitioned to Done, see actions/mark-jira-done.ts), then
+// written to Compass, so the two systems agree and nothing reverts.
 export function InlineStatusCell({ item }: { item: StatusCellItem }) {
   const updateItem = useUpdateItem();
   const links = useItemJiraLinks(item.id);
   const [editing, setEditing] = useState(false);
+  const [pushingToJira, setPushingToJira] = useState(false);
 
   const badge = <StatusBadge status={item.status} kind={item.statusKind} />;
 
+  const linked = (links.data?.length ?? 0) > 0;
+  const jiraDoneAllowed = linked && canMarkDoneInJira(item.status);
+
   // Treat "still loading the links" like linked: better a momentarily
   // read-only badge than offering a change that is about to be overwritten.
-  if (links.isLoading || (links.data?.length ?? 0) > 0) {
+  if (links.isLoading || (linked && !jiraDoneAllowed)) {
     return (
       <span
         title={
@@ -65,10 +75,7 @@ export function InlineStatusCell({ item }: { item: StatusCellItem }) {
     );
   }
 
-  function commit(next: string) {
-    setEditing(false);
-    if (next === item.status) return;
-
+  function writeStatus(next: string, onSuccess: () => void) {
     const draft: ItemDraft = {
       requestType: item.requestType,
       summary: item.summary,
@@ -83,11 +90,35 @@ export function InlineStatusCell({ item }: { item: StatusCellItem }) {
 
     updateItem.mutate(
       { id: item.id, draft },
-      {
-        onSuccess: () => toast.success(`Status changed to ${next}`),
-        onError: (err) => toast.error(err.message),
-      },
+      { onSuccess, onError: (err) => toast.error(err.message) },
     );
+  }
+
+  async function markDoneInJira() {
+    setPushingToJira(true);
+    const pushed = await pushDoneToJira(item.id);
+    setPushingToJira(false);
+    if (!pushed.ok) {
+      // Leave the Compass status alone: a ticket is still open in Jira, so
+      // "Done" would be untrue (the webhook syncs whichever tickets did move).
+      toast.error(pushed.message);
+      return;
+    }
+    writeStatus("Done", () =>
+      toast.success(`Marked Done in Jira (${pushed.keys.join(", ")}) and Compass`),
+    );
+  }
+
+  function commit(next: string) {
+    setEditing(false);
+    if (next === item.status) return;
+
+    if (jiraDoneAllowed) {
+      if (next === "Done") void markDoneInJira();
+      return;
+    }
+
+    writeStatus(next, () => toast.success(`Status changed to ${next}`));
   }
 
   if (editing) {
@@ -96,7 +127,12 @@ export function InlineStatusCell({ item }: { item: StatusCellItem }) {
     ];
     // A stored status that's in neither list (it can only have come from
     // Jira) must still be selectable-as-current, or the Select renders blank.
-    const options = base.includes(item.status) ? base : [item.status, ...base];
+    // A linked item in Review/Testing is offered nothing but Done.
+    const options = jiraDoneAllowed
+      ? [item.status, "Done"]
+      : base.includes(item.status)
+        ? base
+        : [item.status, ...base];
 
     return (
       <Select
@@ -125,8 +161,12 @@ export function InlineStatusCell({ item }: { item: StatusCellItem }) {
     <button
       type="button"
       onClick={() => setEditing(true)}
-      disabled={updateItem.isPending}
-      title="Click to change status"
+      disabled={updateItem.isPending || pushingToJira}
+      title={
+        jiraDoneAllowed
+          ? "Click to mark Done — also moves the linked Jira ticket(s) to Done"
+          : "Click to change status"
+      }
       className="group inline-flex items-center gap-1 rounded hover:opacity-80 disabled:opacity-60"
     >
       {badge}

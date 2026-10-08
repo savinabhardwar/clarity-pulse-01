@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { findJiraMatch, type JiraMatchCandidate } from "@/actions/find-jira-match";
+import { pushDoneToJira } from "@/data/jira-done";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -47,6 +48,7 @@ import {
   JIRA_STATUSES,
   PRIORITIES,
   STAKEHOLDER_STATUSES,
+  canMarkDoneInJira,
   deriveJiraKey,
   formatSize,
   getIdentity,
@@ -161,7 +163,9 @@ export function ItemFormDrawer({
   const addJiraLink = useAddJiraLink();
   const removeJiraLink = useRemoveJiraLink();
 
-  const isPending = createItem.isPending || updateItem.isPending;
+  const [pushingToJira, setPushingToJira] = useState(false);
+
+  const isPending = createItem.isPending || updateItem.isPending || pushingToJira;
 
   useEffect(() => {
     if (!open) return;
@@ -295,7 +299,7 @@ export function ItemFormDrawer({
     );
   }
 
-  function onSubmit(values: FormValues) {
+  async function onSubmit(values: FormValues) {
     // "Created By" is never picked in the form -- it's the item's original
     // author (preserved as-is on edit) or, for a brand-new item, whoever is
     // currently signed in via the identity gate.
@@ -315,6 +319,22 @@ export function ItemFormDrawer({
     };
 
     if (item) {
+      // Review/Testing -> Done on a Jira-linked item is pushed to Jira first
+      // (every linked ticket moves to Done); if any ticket can't be moved we
+      // stop, so Compass never says Done while Jira is still open. Any other
+      // change to a linked item's status is still overwritten by the Jira sync.
+      const linkedCount = jiraLinksQuery.data?.length ?? 0;
+      if (values.status === "Done" && linkedCount > 0 && canMarkDoneInJira(item.status)) {
+        setPushingToJira(true);
+        const pushed = await pushDoneToJira(item.id);
+        setPushingToJira(false);
+        if (!pushed.ok) {
+          toast.error(pushed.message);
+          return;
+        }
+        toast.success(`Marked Done in Jira (${pushed.keys.join(", ")})`);
+      }
+
       updateItem.mutate(
         { id: item.id, draft },
         {
