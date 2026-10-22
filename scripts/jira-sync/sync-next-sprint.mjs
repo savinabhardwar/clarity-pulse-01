@@ -67,6 +67,35 @@ async function fetchFutureSprintIssues(jiraBaseUrl) {
     "project",
     SPRINT_FIELD,
   ];
+  const issues = await searchAll(jiraBaseUrl, jql, fields);
+
+  // Team-managed sub-tasks (e.g. TT's "Subtask") carry their parent's sprint
+  // in the sprint field but never match `Sprint in futureSprints()` in JQL --
+  // pull them in via their parents. buildNextSprintRows still filters each
+  // one by its own sprint field. Company-managed sub-tasks already matched
+  // above, hence the dedupe by key.
+  const seen = new Set(issues.map((i) => i.key));
+  const parentKeys = issues.filter((i) => !i.fields.issuetype?.subtask).map((i) => i.key);
+  for (let i = 0; i < parentKeys.length; i += SUBTASK_PARENT_CHUNK) {
+    const chunk = parentKeys.slice(i, i + SUBTASK_PARENT_CHUNK);
+    const subtasks = await searchAll(
+      jiraBaseUrl,
+      `parent in (${chunk.join(",")}) AND issuetype in subTaskIssueTypes() AND statusCategory != Done`,
+      fields,
+    );
+    for (const st of subtasks) {
+      if (seen.has(st.key)) continue;
+      seen.add(st.key);
+      issues.push(st);
+    }
+  }
+  return issues;
+}
+
+// Keeps each `parent in (...)` JQL comfortably under Jira's query length limit.
+const SUBTASK_PARENT_CHUNK = 50;
+
+async function searchAll(jiraBaseUrl, jql, fields) {
   const issues = [];
   let nextPageToken;
   do {

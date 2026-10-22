@@ -213,40 +213,101 @@ async function fetchInWindowIssues(trackedSprints) {
     )
     .join(" OR ");
   if (!clause) return [];
-  const issues = await jiraSearch({
-    jql: clause,
-    fields: [
-      "summary",
-      "status",
-      "issuetype",
-      "priority",
-      "assignee",
-      "reporter",
-      "created",
-      "updated",
-      "resolutiondate",
-      // When the ticket last changed status CATEGORY (i.e. when it became Done).
-      // Populated even where Resolution never is, so it dates a ticket's
-      // completion on boards whose workflows skip Resolution.
-      "statuscategorychangedate",
-      "timeoriginalestimate",
-      "timeestimate",
-      "timespent",
-      "parent",
-      "project",
-      "worklog",
-      "comment",
-      "labels",
-      // QA Assignee / QA Planned Hours -- created for ACX's same-ticket
-      // Dev+QA effort tracking (Sept 2026), but the fields themselves are
-      // instance-global and their screens are shared across ~16 projects,
-      // so any project's issues MAY carry them, not just ACX's. Harmless
-      // to request everywhere: null on issues where they're unset.
-      QA_ASSIGNEE_FIELD,
-      QA_PLANNED_HOURS_FIELD,
-    ],
-  });
+  const issues = await jiraSearch({ jql: clause, fields: IN_WINDOW_FIELDS });
+
+  // Sub-tasks of the in-sprint tickets. Team-managed projects (e.g. TT's
+  // "Subtask" type) show the parent's sprint on a sub-task but never match
+  // `Sprint = ...` in JQL, so the query above silently skipped them -- and
+  // every hour logged on them (16h of one engineer's sprint in Oct 2026).
+  // Company-managed sub-tasks DO match the sprint JQL and are already in
+  // `issues`, hence the dedupe by key.
+  const seen = new Set(issues.map((i) => i.key));
+  const parentKeys = issues.filter((i) => !i.fields.issuetype?.subtask).map((i) => i.key);
+  for (let i = 0; i < parentKeys.length; i += SUBTASK_PARENT_CHUNK) {
+    const chunk = parentKeys.slice(i, i + SUBTASK_PARENT_CHUNK);
+    const subtasks = await jiraSearch({
+      jql: `parent in (${chunk.join(",")}) AND issuetype in subTaskIssueTypes()`,
+      fields: IN_WINDOW_FIELDS,
+    });
+    for (const st of subtasks) {
+      if (seen.has(st.key)) continue;
+      seen.add(st.key);
+      issues.push(st);
+    }
+  }
+
+  // The search API embeds at most 20 worklogs per issue -- page in the
+  // rest for any issue with more, or its older hours silently vanish.
+  for (const issue of issues) {
+    const wl = issue.fields.worklog;
+    if (wl && wl.total > (wl.worklogs?.length ?? 0)) {
+      wl.worklogs = await fetchAllWorklogs(issue.key);
+    }
+  }
+
   return issues.map(slimIssue);
+}
+
+// Keeps each `parent in (...)` JQL comfortably under Jira's query length limit.
+const SUBTASK_PARENT_CHUNK = 50;
+
+const IN_WINDOW_FIELDS = [
+  "summary",
+  "status",
+  "issuetype",
+  "priority",
+  "assignee",
+  "reporter",
+  "created",
+  "updated",
+  "resolutiondate",
+  // When the ticket last changed status CATEGORY (i.e. when it became Done).
+  // Populated even where Resolution never is, so it dates a ticket's
+  // completion on boards whose workflows skip Resolution.
+  "statuscategorychangedate",
+  "timeoriginalestimate",
+  "timeestimate",
+  "timespent",
+  "parent",
+  "project",
+  "worklog",
+  "comment",
+  "labels",
+  // QA Assignee / QA Planned Hours -- created for ACX's same-ticket
+  // Dev+QA effort tracking (Sept 2026), but the fields themselves are
+  // instance-global and their screens are shared across ~16 projects,
+  // so any project's issues MAY carry them, not just ACX's. Harmless
+  // to request everywhere: null on issues where they're unset.
+  QA_ASSIGNEE_FIELD,
+  QA_PLANNED_HOURS_FIELD,
+];
+
+async function fetchAllWorklogs(issueKey) {
+  const all = [];
+  let startAt = 0;
+  for (;;) {
+    const body = await withRetry(
+      async () => {
+        const res = await fetch(
+          `${JIRA_BASE}/rest/api/3/issue/${issueKey}/worklog?startAt=${startAt}&maxResults=1000`,
+          { headers: { Authorization: authHeader(), Accept: "application/json" } },
+        );
+        if (!res.ok) {
+          const err = new Error(`Jira worklog fetch failed for ${issueKey}: ${res.status} ${await res.text()}`);
+          err.status = res.status;
+          throw err;
+        }
+        return res.json();
+      },
+      {
+        label: `Jira worklogs (${issueKey})`,
+        isRetryable: (err) => isRetryableHttpStatus(err.status),
+      },
+    );
+    all.push(...body.worklogs);
+    startAt += body.worklogs.length;
+    if (body.worklogs.length === 0 || startAt >= body.total) return all;
+  }
 }
 
 async function fetchEpics() {
